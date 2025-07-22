@@ -1,0 +1,56 @@
+List Name,Card Name,Description,Checklist,Checklist Item
+Backlog,Project Initialization,,Setup,Initialize Git repository
+Backlog,Project Initialization,,Setup,Set up backend (FastAPI) structure
+Backlog,Project Initialization,,Setup,Set up frontend (React) structure
+Backlog,Project Initialization,,Setup,Configure database (PostgreSQL/SQLite)
+Backlog,Project Initialization,,Setup,Create requirements.txt/pyproject.toml
+Backlog,Core Models & Database,,Models,Define SQLAlchemy models (Lead, Contact, Deal, User, Message)
+Backlog,Core Models & Database,,Models,Create Alembic migrations
+Backlog,Core Models & Database,,Models,Set up DB connection/session
+Backlog,Pydantic Schemas,,Schemas,Lead schema
+Backlog,Pydantic Schemas,,Schemas,Contact schema
+Backlog,Pydantic Schemas,,Schemas,Deal schema
+Backlog,Pydantic Schemas,,Schemas,User schema
+Backlog,Pydantic Schemas,,Schemas,Message schema
+Backlog,Leads Endpoints,,Endpoints,GET /leads
+Backlog,Leads Endpoints,,Endpoints,POST /leads
+Backlog,Leads Endpoints,,Endpoints,GET /leads/{id}
+Backlog,Leads Endpoints,,Endpoints,PUT /leads/{id}
+Backlog,Leads Endpoints,,Endpoints,DELETE /leads/{id}
+Backlog,Contacts Endpoints,,Endpoints,GET /contacts
+Backlog,Contacts Endpoints,,Endpoints,POST /contacts
+Backlog,Contacts Endpoints,,Endpoints,GET /contacts/{id}
+Backlog,Contacts Endpoints,,Endpoints,PUT /contacts/{id}
+Backlog,Contacts Endpoints,,Endpoints,DELETE /contacts/{id}
+Backlog,Deals (Kanban) Endpoints,,Endpoints,GET /deals
+Backlog,Deals (Kanban) Endpoints,,Endpoints,POST /deals
+Backlog,Deals (Kanban) Endpoints,,Endpoints,PUT /deals/{id}
+Backlog,Dashboard Endpoint,,Endpoints,GET /dashboard
+Backlog,Chat Endpoints,,Endpoints,POST /chat/
+Backlog,Chat Endpoints,,Endpoints,GET /chat/
+Backlog,Chat Endpoints,,Endpoints,WebSocket /ws/chat (optional)
+Backlog,AI Endpoints,,Endpoints,POST /ai/suggest_response
+Backlog,AI Endpoints,,Endpoints,POST /ai/summarize_lead
+Backlog,AI Endpoints,,Endpoints,GET /digest/{user_id}
+Backlog,Authentication (Optional),,Auth,Implement JWT/session auth
+Backlog,Authentication (Optional),,Auth,Protect endpoints
+Backlog,Testing,,Tests,Unit tests for endpoints
+Backlog,Testing,,Tests,Integration tests
+Backlog,API Documentation,,Docs,Enable Swagger UI
+Backlog,API Documentation,,Docs,Write endpoint docstrings
+Backlog,Sales Assistant (AI),,AI,Implement sales_assistant.py
+Backlog,Sales Assistant (AI),,AI,Integrate OpenAI API
+Backlog,Sales Assistant (AI),,AI,Expose endpoints
+Backlog,Daily Digest (AI),,AI,Implement digest.py
+Backlog,Daily Digest (AI),,AI,Integrate OpenAI API
+Backlog,Daily Digest (AI),,AI,Expose endpoint
+Backlog,WebSocket Chat (Optional),,Chat,Implement WebSocket endpoint
+Backlog,WebSocket Chat (Optional),,Chat,Handle message broadcast/persistence
+Backlog,Docker & Deployment,,Deployment,Write Dockerfile for backend
+Backlog,Docker & Deployment,,Deployment,Write docker-compose.yml
+Backlog,Docker & Deployment,,Deployment,Set up env variables/secrets
+Backlog,Docker & Deployment,,Deployment,Test local deployment
+Backlog,Documentation & DevOps,,Docs,Write README.md
+Backlog,Documentation & DevOps,,Docs,Document API endpoints
+Backlog,Documentation & DevOps,,Docs,Add code comments/docstrings
+Backlog,Documentation & DevOps,,Docs,Set up pre-commit hooks/linters (optional)
