@@ -75,7 +75,7 @@ crm_ai_react_boilerplate/
   - `POST /chat/`
   - `POST /digest/`
 - Use Pydantic models
-- Use SQLite or PostgreSQL
+- Use PostgreSQL
 
 ---
 

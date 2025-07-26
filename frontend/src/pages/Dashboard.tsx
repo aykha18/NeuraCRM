@@ -1,42 +1,28 @@
 /**
  * Dashboard page: Header, AI Insights card, Metrics cards, Analytics charts, and Activity Feed
- * - Uses Recharts for real charts with sample data
+ * - Uses Recharts for real charts with data from backend
  * - Custom dot style for line chart
  * - Pie chart slices pop out on hover
+ * - Integrated with React Query for data fetching
  */
 import React, { useState } from "react";
-import { Users, CheckCircle, DollarSign, Brain, Zap, MessageCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Users, CheckCircle, DollarSign, Brain, Zap, MessageCircle, Plus, UserPlus, Clock } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Sector
 } from "recharts";
+import { fetchDashboardData } from "../services/dashboard";
+import type { DashboardData } from "../services/dashboard";
 
-const performanceData = [
-  { month: "Jan", leads: 195, deals: 65, revenue: 30 },
-  { month: "Feb", leads: 210, deals: 70, revenue: 35 },
-  { month: "Mar", leads: 225, deals: 75, revenue: 40 },
-  { month: "Apr", leads: 240, deals: 80, revenue: 45 },
-  { month: "May", leads: 250, deals: 85, revenue: 50 },
-  { month: "Jun", leads: 260, deals: 90, revenue: 55 },
-];
-
-const leadQualityData = [
-  { name: "Qualified", value: 45, color: "#22c55e" },
-  { name: "Nurturing", value: 30, color: "#fbbf24" },
-  { name: "Cold", value: 15, color: "#64748b" },
-  { name: "Hot", value: 10, color: "#a21caf" },
-];
-
-const activityFeed = [
-  {
-    icon: <Zap className="w-4 h-4 text-pink-500" />, color: "bg-pink-100", title: "AI identified high-value prospect: TechCorp Inc.", time: "2 min ago"
-  },
-  {
-    icon: <CheckCircle className="w-4 h-4 text-yellow-500" />, color: "bg-yellow-100", title: 'Deal "Enterprise Package" moved to final stage', time: "15 min ago"
-  },
-  {
-    icon: <MessageCircle className="w-4 h-4 text-blue-500" />, color: "bg-blue-100", title: "Message from John Doe", time: "1 hour ago"
-  },
-];
+// Icon mapping for activity feed
+const iconMap: Record<string, React.ReactNode> = {
+  CheckCircle: <CheckCircle className="w-4 h-4 text-yellow-500" />,
+  Plus: <Plus className="w-4 h-4 text-green-500" />,
+  UserPlus: <UserPlus className="w-4 h-4 text-blue-500" />,
+  Clock: <Clock className="w-4 h-4 text-orange-500" />,
+  MessageCircle: <MessageCircle className="w-4 h-4 text-blue-500" />,
+  Zap: <Zap className="w-4 h-4 text-pink-500" />
+};
 
 // Custom dot for each line
 const CustomDot = (color: string) => (props: any) => {
@@ -121,8 +107,59 @@ const CompactTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
-  // State for hovered pie slice
-  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+  // Fetch dashboard data using React Query
+  const { data: dashboardData, isLoading, error } = useQuery<DashboardData>({
+    queryKey: ['dashboard'],
+    queryFn: fetchDashboardData,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Error loading dashboard</div>
+          <div className="text-gray-600">Please check your connection and try again</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use fallback data if no data is available
+  const data = dashboardData || {
+    metrics: {
+      active_leads: 0,
+      closed_deals: 0,
+      total_revenue: 0,
+      ai_score: 0,
+      lead_quality_score: 0,
+      conversion_rate: 0,
+      target_achievement: 0
+    },
+    performance: [],
+    lead_quality: [],
+    activity_feed: []
+  };
+
+  // Format revenue for display
+  const formatRevenue = (revenue: number) => {
+    if (revenue >= 1000000) {
+      return `$${(revenue / 1000000).toFixed(1)}M`;
+    } else if (revenue >= 1000) {
+      return `$${(revenue / 1000).toFixed(0)}K`;
+    }
+    return `$${revenue.toFixed(0)}`;
+  };
 
   return (
     <div>
@@ -177,34 +214,34 @@ export default function Dashboard() {
           <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full mb-3">
             <Users className="w-7 h-7 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">247</div>
+          <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">{data.metrics.active_leads}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">Active Leads</div>
-          <div className="text-xs text-purple-500">Quality score: 8.4/10</div>
+          <div className="text-xs text-purple-500">Quality score: {data.metrics.lead_quality_score}/10</div>
         </div>
         {/* Deals Closed */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 flex flex-col items-center text-center border transition duration-300 ease hover:shadow-2xl hover:scale-105">
           <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full mb-3">
             <CheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
           </div>
-          <div className="text-3xl font-extrabold text-green-600 dark:text-green-400 mb-1">34</div>
+          <div className="text-3xl font-extrabold text-green-600 dark:text-green-400 mb-1">{data.metrics.closed_deals}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">Deals Closed</div>
-          <div className="text-xs text-pink-500">Conversion rate: 13.8%</div>
+          <div className="text-xs text-pink-500">Conversion rate: {data.metrics.conversion_rate}%</div>
         </div>
         {/* Revenue */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 flex flex-col items-center text-center border transition duration-300 ease hover:shadow-2xl hover:scale-105">
           <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-full mb-3">
             <DollarSign className="w-7 h-7 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400 mb-1">$847K</div>
+          <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400 mb-1">{formatRevenue(data.metrics.total_revenue)}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">Revenue</div>
-          <div className="text-xs text-blue-500">Above target by 12%</div>
+          <div className="text-xs text-blue-500">Above target by {data.metrics.target_achievement}%</div>
         </div>
         {/* AI Score */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 flex flex-col items-center text-center border transition duration-300 ease hover:shadow-2xl hover:scale-105">
           <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-full mb-3">
             <Brain className="w-7 h-7 text-orange-600 dark:text-orange-400" />
           </div>
-          <div className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 mb-1">94</div>
+          <div className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 mb-1">{data.metrics.ai_score}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">AI Score</div>
           <div className="text-xs text-green-500">Performance excellent</div>
         </div>
@@ -217,7 +254,7 @@ export default function Dashboard() {
           <div className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Performance Analytics</div>
           <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={performanceData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <LineChart data={data.performance} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="month" stroke="#64748b" />
                 <YAxis stroke="#64748b" />
@@ -237,7 +274,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={leadQualityData}
+                  data={data.lead_quality}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
@@ -246,14 +283,8 @@ export default function Dashboard() {
                   outerRadius={70}
                   fill="#8884d8"
                   label
-                  {...({
-                    activeIndex: activePieIndex ?? 0,
-                    activeShape: renderActiveShape,
-                    onMouseEnter: (_: any, index: number) => setActivePieIndex(index),
-                    onMouseLeave: () => setActivePieIndex(null),
-                  } as any)}
                 >
-                  {leadQualityData.map((entry, index) => (
+                  {data.lead_quality.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -263,7 +294,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
           <ul className="mt-4 w-full text-sm">
-            {leadQualityData.map((item) => (
+            {data.lead_quality.map((item) => (
               <li key={item.name} className="flex items-center justify-between mb-1">
                 <span className="flex items-center gap-2">
                   <span className="inline-block w-3 h-3 rounded-full" style={{ background: item.color }}></span>
@@ -280,15 +311,21 @@ export default function Dashboard() {
             <Zap className="w-5 h-5 text-pink-500" /> Smart Activity Feed
           </div>
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {activityFeed.map((item, idx) => (
-              <li key={idx} className="flex items-center gap-3 py-3">
-                <span className={`flex items-center justify-center rounded-full ${item.color} w-8 h-8`}>{item.icon}</span>
-                <div className="flex-1">
-                  <div className="text-gray-900 dark:text-white text-sm font-medium">{item.title}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{item.time}</div>
-                </div>
-              </li>
-            ))}
+            {data.activity_feed.length > 0 ? (
+              data.activity_feed.map((item, idx) => (
+                <li key={idx} className="flex items-center gap-3 py-3">
+                  <span className={`flex items-center justify-center rounded-full ${item.color} w-8 h-8`}>
+                    {iconMap[item.icon] || <MessageCircle className="w-4 h-4 text-blue-500" />}
+                  </span>
+                  <div className="flex-1">
+                    <div className="text-gray-900 dark:text-white text-sm font-medium">{item.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{item.time}</div>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="py-3 text-gray-500 dark:text-gray-400 text-sm">No recent activity</li>
+            )}
           </ul>
         </div>
       </div>

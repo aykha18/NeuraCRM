@@ -1,0 +1,21 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="neura-gradient" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f43f5e"/>
+      <stop offset="1" stop-color="#a21caf"/>
+    </linearGradient>
+  </defs>
+  <rect width="80" height="80" rx="40" fill="url(#neura-gradient)"/>
+  <!-- Stylized N -->
+  <path d="M25 55V25L55 55V25" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Neural/circuit dots and lines -->
+  <circle cx="25" cy="25" r="3" fill="#fff"/>
+  <circle cx="55" cy="55" r="3" fill="#fff"/>
+  <circle cx="55" cy="25" r="3" fill="#fff"/>
+  <circle cx="25" cy="55" r="3" fill="#fff"/>
+  <circle cx="40" cy="40" r="2.5" fill="#fff"/>
+  <line x1="25" y1="25" x2="40" y2="40" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/>
+  <line x1="55" y1="55" x2="40" y2="40" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/>
+  <line x1="55" y1="25" x2="40" y2="40" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/>
+  <line x1="25" y1="55" x2="40" y2="40" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/>
+</svg> 

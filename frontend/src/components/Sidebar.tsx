@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle } from "lucide-react";
+import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
 const navItems = [
@@ -29,11 +30,10 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       <div>
         {/* Logo and subtitle (compact) */}
         <div className="flex flex-col items-center py-6">
-          <div className="bg-gradient-to-r from-pink-500 to-pink-400 rounded-full p-2 mb-2">
-            <Bot className="w-6 h-6 text-white" />
+          <div className="flex flex-col items-center mb-2">
+            <img src={neuraLogo} alt="NeuraCRM logo" className="w-14 h-14 rounded-full border-2 border-pink-300 shadow" />
+            <div className="text-xs text-blue-200 mt-2 text-center font-medium">Smarter Sales, Powered by AI</div>
           </div>
-          <div className="font-extrabold text-xl tracking-tight">CRM AI</div>
-          <div className="text-xs text-blue-200 mt-1">Neural Edition</div>
         </div>
         {/* Navigation (centered pill for active) */}
         <nav className="flex-1 relative">

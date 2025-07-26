@@ -2,24 +2,30 @@
  * Contacts page: Stunning table with search, filters, actions, detail modal, sorting, pagination, bulk actions, inline editing, and export
  * - Modern, responsive design matching Leads page
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Filter, Eye, Edit, Trash2, X, ChevronUp, ChevronDown, Download } from "lucide-react";
 import * as XLSX from "xlsx";
+import { fetchContacts, getContact, updateContact, deleteContact } from "../services/contacts";
+import DetailModal from "../components/DetailModal";
 
-const sampleContacts = [
-  { id: 1, name: "John Doe", email: "john@acme.com", company: "Acme Corp", status: "Active", owner: "Alex", created: "2024-06-01" },
-  { id: 2, name: "Jane Smith", email: "jane@globex.com", company: "Globex", status: "Inactive", owner: "Sam", created: "2024-06-02" },
-  { id: 3, name: "Alice Brown", email: "alice@initech.com", company: "Initech", status: "Active", owner: "Alex", created: "2024-06-03" },
-  { id: 4, name: "Bob Lee", email: "bob@umbrella.com", company: "Umbrella", status: "Active", owner: "Chris", created: "2024-06-04" },
-  { id: 5, name: "Charlie Black", email: "charlie@wayne.com", company: "Wayne Enterprises", status: "Inactive", owner: "Sam", created: "2024-06-05" },
-  { id: 6, name: "Diana Prince", email: "diana@stark.com", company: "Stark Industries", status: "Active", owner: "Alex", created: "2024-06-06" },
-  { id: 7, name: "Eve White", email: "eve@oscorp.com", company: "Oscorp", status: "Active", owner: "Chris", created: "2024-06-07" },
-  { id: 8, name: "Frank Green", email: "frank@lexcorp.com", company: "LexCorp", status: "Inactive", owner: "Sam", created: "2024-06-08" },
-];
+// Status colors for contact statuses
 
 const statusColors: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
   Inactive: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+};
+
+const statusBadgeColors: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  inactive: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  new: 'bg-blue-100 text-blue-700',
+  qualified: 'bg-green-100 text-green-700',
+  lost: 'bg-red-100 text-red-700',
+  converted: 'bg-purple-100 text-purple-700',
+  contacted: 'bg-yellow-100 text-yellow-700',
+  proposal: 'bg-pink-100 text-pink-700',
+  negotiation: 'bg-orange-100 text-orange-700',
+  won: 'bg-green-200 text-green-800',
 };
 
 const columns = [
@@ -31,37 +37,60 @@ const columns = [
   { key: "created", label: "Created" },
 ];
 
-const statusOptions = ["Active", "Inactive"];
+const statusOptions = ["New", "Contacted", "Qualified", "Lost", "Active", "Inactive"];
 const ownerOptions = ["Alex", "Sam", "Chris"];
 
 export default function Contacts() {
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [detailContact, setDetailContact] = useState<any>(null);
+  const [detailContact, setDetailContact] = useState<any | null>(null);
   const [sortBy, setSortBy] = useState<string>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
-  const [contactsData, setContactsData] = useState(sampleContacts);
   const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
-  const pageSize = 5;
+  const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
+  const [editCellValue, setEditCellValue] = useState("");
+  const pageSize = 10;
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  useEffect(() => {
+    fetchContacts()
+      .then(data => {
+        setContacts(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Failed to load contacts");
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <div className="p-8 text-lg">Loading...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
 
   // Filtered and sorted contacts
-  let contacts = contactsData.filter(
+  let contactsToDisplay = contacts.filter(
     (contact) =>
-      (!search || contact.name.toLowerCase().includes(search.toLowerCase()) || contact.company.toLowerCase().includes(search.toLowerCase()) || contact.email.toLowerCase().includes(search.toLowerCase())) &&
+      (!search || contact.name?.toLowerCase().includes(search.toLowerCase()) || contact.company?.toLowerCase().includes(search.toLowerCase()) || contact.email?.toLowerCase().includes(search.toLowerCase())) &&
       (!statusFilter || contact.status === statusFilter)
   );
-  contacts = contacts.sort((a, b) => {
+  contactsToDisplay = contactsToDisplay.sort((a, b) => {
     if ((a as any)[sortBy] < (b as any)[sortBy]) return sortDir === "asc" ? -1 : 1;
     if ((a as any)[sortBy] > (b as any)[sortBy]) return sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
   // Pagination
-  const totalPages = Math.ceil(contacts.length / pageSize);
-  const pagedContacts = contacts.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(contactsToDisplay.length / pageSize);
+  const pagedContacts = contactsToDisplay.slice((page - 1) * pageSize, page * pageSize);
 
   // Handle column sort
   const handleSort = (col: string) => {
@@ -88,18 +117,48 @@ export default function Contacts() {
     setSelected(selected.includes(id) ? selected.filter(i => i !== id) : [...selected, id]);
   };
   const clearSelected = () => setSelected([]);
-  const deleteSelected = () => {
-    alert(`Deleted ${selected.length} contacts (demo only)`);
-    clearSelected();
+  const confirmBulkDeleteAction = () => {
+    setConfirmBulkDelete(true);
+  };
+  
+  const cancelBulkDelete = () => {
+    setConfirmBulkDelete(false);
+  };
+  
+  const deleteSelected = async () => {
+    if (selected.length === 0) return;
+    
+    setActionLoading(true);
+    try {
+      // Create an array of promises for each delete operation
+      const deletePromises = selected.map(id => deleteContact(id));
+      
+      // Wait for all delete operations to complete
+      await Promise.all(deletePromises);
+      
+      // Refresh the contacts list
+      await fetchContacts().then(setContacts);
+      
+      setToast(`Successfully deleted ${selected.length} contacts`);
+      setTimeout(() => setToast(null), 2000);
+      
+      // Clear the selection
+      clearSelected();
+    } catch (e) {
+      alert("Failed to delete selected contacts");
+    }
+    setActionLoading(false);
+    setConfirmBulkDelete(false);
   };
 
+  // Inline editing logic
   // Inline editing logic
   const startEdit = (id: number, field: string, value: string) => {
     setEditing({ id, field });
     setEditValue(value);
   };
   const saveEdit = (id: number, field: string) => {
-    setContactsData((prev) =>
+    setContacts((prev) =>
       prev.map((contact) =>
         contact.id === id ? { ...contact, [field]: editValue } : contact
       )
@@ -107,19 +166,47 @@ export default function Contacts() {
     setEditing(null);
     setEditValue("");
   };
-  const handleEditKey = (e: React.KeyboardEvent, id: number, field: string) => {
-    if (e.key === "Enter") {
-      saveEdit(id, field);
-    } else if (e.key === "Escape") {
-      setEditing(null);
-      setEditValue("");
+  // const handleEditKey = (e: React.KeyboardEvent, id: number, field: string) => {
+  //   if (e.key === "Enter") {
+  //     saveEdit(id, field);
+  //   } else if (e.key === "Escape") {
+  //     setEditing(null);
+  //     setEditValue("");
+  //   }
+  // };
+
+  // Inline edit handlers with API integration
+  const startEditCell = (id: number, field: string, value: string) => {
+    setEditingCell({ id, field });
+    setEditCellValue(value);
+  };
+  const saveEditCell = async (id: number, field: string) => {
+    setActionLoading(true);
+    try {
+      await updateContact(id, { [field]: editCellValue });
+      setContacts(prev =>
+        prev.map(contact =>
+          contact.id === id ? { ...contact, [field]: editCellValue } : contact
+        )
+      );
+      setToast("Contact updated!");
+      setTimeout(() => setToast(null), 2000);
+    } catch (e) {
+      alert("Failed to update contact");
     }
+    setEditingCell(null);
+    setEditCellValue("");
+    setActionLoading(false);
+  };
+  const handleEditCellKey = (e: React.KeyboardEvent, id: number, field: string) => {
+    if (e.key === "Enter") saveEditCell(id, field);
+    if (e.key === "Escape") setEditingCell(null);
   };
 
   // CSV Export
   function exportCSV() {
     const headers = ["Name", "Email", "Company", "Status", "Owner", "Created"];
-    const rows = contacts.map(contact => [
+    const rows = contactsToDisplay.map(contact => [
       contact.name,
       contact.email,
       contact.company,
@@ -143,7 +230,7 @@ export default function Contacts() {
   // Excel Export
   function exportExcel() {
     const headers = ["Name", "Email", "Company", "Status", "Owner", "Created"];
-    const rows = contacts.map(contact => [
+    const rows = contactsToDisplay.map(contact => [
       contact.name,
       contact.email,
       contact.company,
@@ -157,6 +244,39 @@ export default function Contacts() {
     XLSX.writeFile(wb, "contacts.xlsx");
   }
 
+  // Action handlers
+  const handleView = async (id: number) => {
+    setActionLoading(true);
+    try {
+      const contact = await getContact(id);
+      setDetailContact(contact);
+    } catch (e) {
+      alert("Failed to fetch contact details");
+    }
+    setActionLoading(false);
+  };
+
+  const handleDelete = async (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setActionLoading(true);
+    try {
+      await deleteContact(confirmDeleteId);
+      fetchContacts().then(setContacts);
+      setToast("Contact deleted!");
+      setTimeout(() => setToast(null), 2000);
+    } catch (e) {
+      alert("Failed to delete contact");
+    }
+    setActionLoading(false);
+    setConfirmDeleteId(null);
+  };
+
+  const cancelDelete = () => setConfirmDeleteId(null);
+
   return (
     <div className="p-2 md:p-6">
       {/* Bulk Action Bar */}
@@ -165,14 +285,16 @@ export default function Contacts() {
           <span className="text-pink-700 dark:text-pink-200 font-semibold">{selected.length} selected</span>
           <div className="flex gap-2">
             <button
-              className="px-4 py-1 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition"
-              onClick={deleteSelected}
+              className="px-4 py-1 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={confirmBulkDeleteAction}
+              disabled={actionLoading}
             >
               Delete Selected
             </button>
             <button
-              className="px-4 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+              className="px-4 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={clearSelected}
+              disabled={actionLoading}
             >
               Clear
             </button>
@@ -203,6 +325,10 @@ export default function Contacts() {
               className="rounded-full pl-10 pr-4 py-2 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 w-40 shadow appearance-none"
             >
               <option value="">All Statuses</option>
+              <option value="New">New</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Qualified">Qualified</option>
+              <option value="Lost">Lost</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
@@ -277,39 +403,39 @@ export default function Contacts() {
                 </td>
                 {/* Name (inline edit) */}
                 <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900 dark:text-white">
-                  {editing?.id === contact.id && editing.field === "name" ? (
+                  {editingCell && editingCell.id === contact.id && editingCell.field === "name" ? (
                     <input
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(contact.id, "name")}
-                      onKeyDown={e => handleEditKey(e, contact.id, "name")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(contact.id, "name")}
+                      onKeyDown={e => handleEditCellKey(e, contact.id, "name")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   ) : (
                     <span
                       className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(contact.id, "name", contact.name)}
+                      onClick={() => startEditCell(contact.id, "name", contact.name)}
                     >
-                      {contact.name}
+                      {contact.name || contact.contact_name}
                     </span>
                   )}
                 </td>
                 {/* Email (inline edit) */}
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                  {editing?.id === contact.id && editing.field === "email" ? (
+                  {editingCell && editingCell.id === contact.id && editingCell.field === "email" ? (
                     <input
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(contact.id, "email")}
-                      onKeyDown={e => handleEditKey(e, contact.id, "email")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(contact.id, "email")}
+                      onKeyDown={e => handleEditCellKey(e, contact.id, "email")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   ) : (
                     <span
                       className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(contact.id, "email", contact.email)}
+                      onClick={() => startEditCell(contact.id, "email", contact.email)}
                     >
                       {contact.email}
                     </span>
@@ -317,19 +443,19 @@ export default function Contacts() {
                 </td>
                 {/* Company (inline edit) */}
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                  {editing?.id === contact.id && editing.field === "company" ? (
+                  {editingCell && editingCell.id === contact.id && editingCell.field === "company" ? (
                     <input
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(contact.id, "company")}
-                      onKeyDown={e => handleEditKey(e, contact.id, "company")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(contact.id, "company")}
+                      onKeyDown={e => handleEditCellKey(e, contact.id, "company")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   ) : (
                     <span
                       className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(contact.id, "company", contact.company)}
+                      onClick={() => startEditCell(contact.id, "company", contact.company)}
                     >
                       {contact.company}
                     </span>
@@ -337,37 +463,37 @@ export default function Contacts() {
                 </td>
                 {/* Status (inline edit) */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {editing?.id === contact.id && editing.field === "status" ? (
+                  {editingCell && editingCell.id === contact.id && editingCell.field === "status" ? (
                     <select
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(contact.id, "status")}
-                      onKeyDown={e => handleEditKey(e, contact.id, "status")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(contact.id, "status")}
+                      onKeyDown={e => handleEditCellKey(e, contact.id, "status")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
-                      {statusOptions.map((opt) => (
+                      {Object.keys(statusBadgeColors).map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   ) : (
                     <span
-                      className={`cursor-pointer hover:underline px-3 py-1 rounded-full text-xs font-bold ${statusColors[contact.status]}`}
-                      onClick={() => startEdit(contact.id, "status", contact.status)}
+                      className={`cursor-pointer hover:underline px-3 py-1 rounded-full text-xs font-bold capitalize ${statusBadgeColors[contact.status?.toLowerCase()] || 'bg-gray-200 text-gray-700'}`}
+                      onClick={() => startEditCell(contact.id, "status", contact.status)}
                     >
-                      {contact.status}
+                      {contact.status || "N/A"}
                     </span>
                   )}
                 </td>
                 {/* Owner (inline edit) */}
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                  {editing?.id === contact.id && editing.field === "owner" ? (
+                  {editingCell && editingCell.id === contact.id && editingCell.field === "owner_id" ? (
                     <select
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(contact.id, "owner")}
-                      onKeyDown={e => handleEditKey(e, contact.id, "owner")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(contact.id, "owner_id")}
+                      onKeyDown={e => handleEditCellKey(e, contact.id, "owner_id")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                       {ownerOptions.map((opt) => (
@@ -377,30 +503,34 @@ export default function Contacts() {
                   ) : (
                     <span
                       className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(contact.id, "owner", contact.owner)}
+                      onClick={() => startEditCell(contact.id, "owner_id", contact.owner_id?.toString() || "")}
                     >
-                      {contact.owner}
+                      {contact.owner_name || "N/A"}
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{contact.created}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{contact.created_at?.slice(0, 10) || "N/A"}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right flex gap-2 justify-end">
                   <button
                     className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition"
                     title="View"
-                    onClick={() => setDetailContact(contact)}
+                    onClick={() => handleView(contact.id)}
+                    disabled={actionLoading}
                   >
                     <Eye className="w-5 h-5 text-blue-500" />
                   </button>
-                  <button
+                  {/* <button
                     className="p-2 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-900 transition"
                     title="Edit"
+                    disabled={actionLoading}
                   >
                     <Edit className="w-5 h-5 text-yellow-500" />
-                  </button>
+                  </button> */}
                   <button
                     className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
                     title="Delete"
+                    onClick={() => handleDelete(contact.id)}
+                    disabled={actionLoading}
                   >
                     <Trash2 className="w-5 h-5 text-red-500" />
                   </button>
@@ -431,25 +561,29 @@ export default function Contacts() {
                   onChange={() => toggleOne(contact.id)}
                   className="accent-pink-500 w-5 h-5 rounded focus:ring-pink-400"
                 />
-                <span className="font-bold text-lg text-gray-900 dark:text-white">{contact.name}</span>
+                <span className="font-bold text-lg text-gray-900 dark:text-white">{contact.name || contact.contact_name}</span>
               </div>
               <div className="flex gap-2">
                 <button
                   className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition"
                   title="View"
-                  onClick={() => setDetailContact(contact)}
+                  onClick={() => handleView(contact.id)}
+                  disabled={actionLoading}
                 >
                   <Eye className="w-5 h-5 text-blue-500" />
                 </button>
                 <button
                   className="p-2 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-900 transition"
                   title="Edit"
+                  disabled={actionLoading}
                 >
                   <Edit className="w-5 h-5 text-yellow-500" />
                 </button>
                 <button
                   className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
                   title="Delete"
+                  onClick={() => handleDelete(contact.id)}
+                  disabled={actionLoading}
                 >
                   <Trash2 className="w-5 h-5 text-red-500" />
                 </button>
@@ -458,10 +592,10 @@ export default function Contacts() {
             <div className="text-gray-700 dark:text-gray-200 text-sm mb-1"><span className="font-semibold">Email:</span> {contact.email}</div>
             <div className="text-gray-700 dark:text-gray-200 text-sm mb-1"><span className="font-semibold">Company:</span> {contact.company}</div>
             <div className="text-sm mb-1">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[contact.status]}`}>{contact.status}</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${statusBadgeColors[contact.status?.toLowerCase()] || 'bg-gray-200 text-gray-700'}`}>{contact.status || "N/A"}</span>
             </div>
-            <div className="text-gray-700 dark:text-gray-200 text-sm mb-1"><span className="font-semibold">Owner:</span> {contact.owner}</div>
-            <div className="text-gray-500 dark:text-gray-400 text-xs"><span className="font-semibold">Created:</span> {contact.created}</div>
+            <div className="text-gray-700 dark:text-gray-200 text-sm mb-1"><span className="font-semibold">Owner:</span> {contact.owner_name || "N/A"}</div>
+            <div className="text-gray-500 dark:text-gray-400 text-xs"><span className="font-semibold">Created:</span> {contact.created_at?.slice(0, 10) || "N/A"}</div>
           </div>
         ))}
         {pagedContacts.length === 0 && (
@@ -490,27 +624,66 @@ export default function Contacts() {
         </button>
       </div>
 
-      {/* Detail Modal Skeleton */}
-      {detailContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
-            <button
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() => setDetailContact(null)}
-              title="Close"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Contact Details</h2>
-            <div className="space-y-2">
-              <div><span className="font-semibold">Name:</span> {detailContact.name}</div>
-              <div><span className="font-semibold">Email:</span> {detailContact.email}</div>
-              <div><span className="font-semibold">Company:</span> {detailContact.company}</div>
-              <div><span className="font-semibold">Status:</span> {detailContact.status}</div>
-              <div><span className="font-semibold">Owner:</span> {detailContact.owner}</div>
-              <div><span className="font-semibold">Created:</span> {detailContact.created}</div>
-            </div>
-          </div>
+      {/* Detail Modal using the DetailModal component */}
+      <DetailModal open={!!detailContact} onClose={() => setDetailContact(null)} title="Contact Details">
+        {detailContact && (
+          <>
+            <div><b>Name:</b> {detailContact.name}</div>
+            <div><b>Email:</b> {detailContact.email}</div>
+            <div><b>Company:</b> {detailContact.company}</div>
+            <div><b>Status:</b> {detailContact.status}</div>
+            <div><b>Owner:</b> {detailContact.owner_name || detailContact.owner}</div>
+            <div><b>Created:</b> {detailContact.created_at?.slice(0, 10) || detailContact.created}</div>
+          </>
+        )}
+      </DetailModal>
+
+      {/* Confirmation Modal for Single Delete */}
+      <DetailModal open={confirmDeleteId !== null} onClose={cancelDelete} title="Delete Contact?">
+        <div>Are you sure you want to delete this contact?</div>
+        <div className="flex gap-4 mt-6 justify-end">
+          <button
+            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+            onClick={cancelDelete}
+            disabled={actionLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+            onClick={confirmDelete}
+            disabled={actionLoading}
+          >
+            Delete
+          </button>
+        </div>
+      </DetailModal>
+
+      {/* Confirmation Modal for Bulk Delete */}
+      <DetailModal open={confirmBulkDelete} onClose={cancelBulkDelete} title="Delete Multiple Contacts?">
+        <div>Are you sure you want to delete {selected.length} contacts? This action cannot be undone.</div>
+        <div className="flex gap-4 mt-6 justify-end">
+          <button
+            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+            onClick={cancelBulkDelete}
+            disabled={actionLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+            onClick={deleteSelected}
+            disabled={actionLoading}
+          >
+            {actionLoading ? "Deleting..." : "Delete All"}
+          </button>
+        </div>
+      </DetailModal>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-fade-in">
+          {toast}
         </div>
       )}
     </div>

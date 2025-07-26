@@ -3,26 +3,28 @@
  * - Modern, responsive design matching dashboard
  * - Column sorting, pagination, bulk actions, row highlight, inline editing
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Filter, Eye, Edit, Trash2, X, ChevronUp, ChevronDown, Download } from "lucide-react";
 import * as XLSX from "xlsx";
-
-const sampleLeads = [
-  { id: 1, name: "John Doe", company: "Acme Corp", status: "New", owner: "Alex", created: "2024-06-01" },
-  { id: 2, name: "Jane Smith", company: "Globex", status: "Contacted", owner: "Sam", created: "2024-06-02" },
-  { id: 3, name: "Alice Brown", company: "Initech", status: "Qualified", owner: "Alex", created: "2024-06-03" },
-  { id: 4, name: "Bob Lee", company: "Umbrella", status: "Lost", owner: "Chris", created: "2024-06-04" },
-  { id: 5, name: "Charlie Black", company: "Wayne Enterprises", status: "New", owner: "Sam", created: "2024-06-05" },
-  { id: 6, name: "Diana Prince", company: "Stark Industries", status: "Qualified", owner: "Alex", created: "2024-06-06" },
-  { id: 7, name: "Eve White", company: "Oscorp", status: "Contacted", owner: "Chris", created: "2024-06-07" },
-  { id: 8, name: "Frank Green", company: "LexCorp", status: "Lost", owner: "Sam", created: "2024-06-08" },
-];
+import { fetchLeads, getLead, updateLead, deleteLead } from "../services/leads";
+import DetailModal from "../components/DetailModal";
 
 const statusColors: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
   Contacted: "bg-yellow-100 text-yellow-700",
   Qualified: "bg-green-100 text-green-700",
   Lost: "bg-red-100 text-red-700",
+};
+
+const statusBadgeColors: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-700',
+  qualified: 'bg-green-100 text-green-700',
+  lost: 'bg-red-100 text-red-700',
+  converted: 'bg-purple-100 text-purple-700',
+  contacted: 'bg-yellow-100 text-yellow-700',
+  proposal: 'bg-pink-100 text-pink-700',
+  negotiation: 'bg-orange-100 text-orange-700',
+  won: 'bg-green-200 text-green-800',
 };
 
 const columns = [
@@ -36,34 +38,57 @@ const columns = [
 const statusOptions = ["New", "Contacted", "Qualified", "Lost"];
 const ownerOptions = ["Alex", "Sam", "Chris"];
 
-export default function Leads() {
+export default function LeadsPage() {
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [detailLead, setDetailLead] = useState<any>(null);
+  const [detailLead, setDetailLead] = useState<any | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
+  const [editCellValue, setEditCellValue] = useState("");
   const [sortBy, setSortBy] = useState<string>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
-  const [leadsData, setLeadsData] = useState(sampleLeads);
+  const [leadsData, setLeadsData] = useState(leads); // This state is no longer needed for static data
   const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
-  const pageSize = 5;
+  const pageSize = 10;
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchLeads()
+      .then(data => {
+        setLeads(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Failed to load leads");
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <div className="p-8 text-lg">Loading...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
 
   // Filtered and sorted leads
-  let leads = leadsData.filter(
+  let leadsToDisplay = leads.filter(
     (lead) =>
       (!search || lead.name.toLowerCase().includes(search.toLowerCase()) || lead.company.toLowerCase().includes(search.toLowerCase())) &&
       (!statusFilter || lead.status === statusFilter)
   );
-  leads = leads.sort((a, b) => {
+  leadsToDisplay = leadsToDisplay.sort((a, b) => {
     if ((a as any)[sortBy] < (b as any)[sortBy]) return sortDir === "asc" ? -1 : 1;
     if ((a as any)[sortBy] > (b as any)[sortBy]) return sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
   // Pagination
-  const totalPages = Math.ceil(leads.length / pageSize);
-  const pagedLeads = leads.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(leadsToDisplay.length / pageSize);
+  const pagedLeads = leadsToDisplay.slice((page - 1) * pageSize, page * pageSize);
 
   // Handle column sort
   const handleSort = (col: string) => {
@@ -102,7 +127,7 @@ export default function Leads() {
     setEditValue(value);
   };
   const saveEdit = (id: number, field: string) => {
-    setLeadsData((prev) =>
+    setLeads((prev) =>
       prev.map((lead) =>
         lead.id === id ? { ...lead, [field]: editValue } : lead
       )
@@ -119,10 +144,38 @@ export default function Leads() {
     }
   };
 
+  // Inline edit handlers
+  const startEditCell = (id: number, field: string, value: string) => {
+    setEditingCell({ id, field });
+    setEditCellValue(value);
+  };
+  const saveEditCell = async (id: number, field: string) => {
+    setActionLoading(true);
+    try {
+      await updateLead(id, { [field]: editCellValue });
+      setLeads(prev =>
+        prev.map(lead =>
+          lead.id === id ? { ...lead, [field]: editCellValue } : lead
+        )
+      );
+      setToast("Lead updated!");
+      setTimeout(() => setToast(null), 2000);
+    } catch (e) {
+      alert("Failed to update lead");
+    }
+    setEditingCell(null);
+    setEditCellValue("");
+    setActionLoading(false);
+  };
+  const handleEditCellKey = (e: React.KeyboardEvent, id: number, field: string) => {
+    if (e.key === "Enter") saveEditCell(id, field);
+    if (e.key === "Escape") setEditingCell(null);
+  };
+
   // CSV Export
   function exportCSV() {
     const headers = ["Name", "Company", "Status", "Owner", "Created"];
-    const rows = leads.map(lead => [
+    const rows = leadsToDisplay.map(lead => [
       lead.name,
       lead.company,
       lead.status,
@@ -145,7 +198,7 @@ export default function Leads() {
   // Excel Export
   function exportExcel() {
     const headers = ["Name", "Company", "Status", "Owner", "Created"];
-    const rows = leads.map(lead => [
+    const rows = leadsToDisplay.map(lead => [
       lead.name,
       lead.company,
       lead.status,
@@ -157,6 +210,53 @@ export default function Leads() {
     XLSX.utils.book_append_sheet(wb, ws, "Leads");
     XLSX.writeFile(wb, "leads.xlsx");
   }
+
+  // Action handlers
+  const handleView = async (id: number) => {
+    setActionLoading(true);
+    try {
+      const lead = await getLead(id);
+      setDetailLead(lead);
+    } catch (e) {
+      alert("Failed to fetch lead details");
+    }
+    setActionLoading(false);
+  };
+
+  // const handleEdit = async (id: number) => {
+  //   const newTitle = prompt("Enter new title for the lead:");
+  //   if (!newTitle) return;
+  //   setActionLoading(true);
+  //   try {
+  //     await updateLead(id, { title: newTitle });
+  //     // Refresh leads
+  //     fetchLeads().then(setLeads);
+  //   } catch (e) {
+  //     alert("Failed to update lead");
+  //   }
+  //   setActionLoading(false);
+  // };
+
+  const handleDelete = async (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setActionLoading(true);
+    try {
+      await deleteLead(confirmDeleteId);
+      fetchLeads().then(setLeads);
+      setToast("Lead deleted!");
+      setTimeout(() => setToast(null), 2000);
+    } catch (e) {
+      alert("Failed to delete lead");
+    }
+    setActionLoading(false);
+    setConfirmDeleteId(null);
+  };
+
+  const cancelDelete = () => setConfirmDeleteId(null);
 
   return (
     <div className="p-2 md:p-6">
@@ -231,170 +331,115 @@ export default function Leads() {
 
       {/* Responsive Table: hidden on mobile */}
       <div className="overflow-x-auto rounded-2xl shadow border bg-white dark:bg-gray-900 hidden sm:block">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-4 py-3 text-center">
+        <table className="min-w-full bg-white dark:bg-gray-900 rounded shadow overflow-hidden">
+          <thead>
+            <tr className="bg-gray-100 dark:bg-gray-700">
+              <th className="px-4 py-2">
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
+                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
                   onChange={toggleAll}
+                  aria-label="Select all leads on this page"
                   className="accent-pink-500 w-5 h-5 rounded focus:ring-pink-400"
                 />
               </th>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none group"
-                  onClick={() => handleSort(col.key)}
-                >
-                  <span className="flex items-center gap-1">
-                    {col.label}
-                    {sortBy === col.key && (
-                      sortDir === "asc" ? (
-                        <ChevronUp className="w-4 h-4 text-pink-500" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-pink-500" />
-                      )
-                    )}
-                  </span>
-                </th>
-              ))}
-              <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Name</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Company</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Owner</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Created</th>
+              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-            {pagedLeads.map((lead) => (
+          <tbody>
+            {pagedLeads.map(lead => (
               <tr
                 key={lead.id}
-                className={`transition ${selected.includes(lead.id) ? "bg-pink-100 dark:bg-pink-900/40" : "hover:bg-pink-50 dark:hover:bg-pink-900/20"}`}
+                className="border-b border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition cursor-pointer"
               >
-                <td className="px-4 py-4 text-center">
+                <td className="px-4 py-2">
                   <input
                     type="checkbox"
                     checked={selected.includes(lead.id)}
                     onChange={() => toggleOne(lead.id)}
+                    aria-label={`Select lead ${lead.title || lead.contact_name}`}
                     className="accent-pink-500 w-5 h-5 rounded focus:ring-pink-400"
                   />
                 </td>
-                {/* Name (inline edit) */}
-                <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900 dark:text-white">
-                  {editing?.id === lead.id && editing.field === "name" ? (
+                <td className="px-4 py-2 text-gray-900 dark:text-white">
+                  {editingCell && editingCell.id === lead.id && editingCell.field === "title" ? (
                     <input
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(lead.id, "name")}
-                      onKeyDown={e => handleEditKey(e, lead.id, "name")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(lead.id, "title")}
+                      onKeyDown={e => handleEditCellKey(e, lead.id, "title")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   ) : (
                     <span
                       className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(lead.id, "name", lead.name)}
+                      onClick={() => startEditCell(lead.id, "title", lead.title)}
                     >
-                      {lead.name}
+                      {lead.title || lead.contact_name}
                     </span>
                   )}
                 </td>
-                {/* Company (inline edit) */}
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                  {editing?.id === lead.id && editing.field === "company" ? (
-                    <input
-                      autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(lead.id, "company")}
-                      onKeyDown={e => handleEditKey(e, lead.id, "company")}
-                      className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                  ) : (
-                    <span
-                      className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(lead.id, "company", lead.company)}
-                    >
-                      {lead.company}
-                    </span>
-                  )}
-                </td>
-                {/* Status (inline edit) */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {editing?.id === lead.id && editing.field === "status" ? (
+                <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{lead.company}</td>
+                <td className="px-4 py-2">
+                  {editingCell && editingCell.id === lead.id && editingCell.field === "status" ? (
                     <select
                       autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(lead.id, "status")}
-                      onKeyDown={e => handleEditKey(e, lead.id, "status")}
+                      value={editCellValue}
+                      onChange={e => setEditCellValue(e.target.value)}
+                      onBlur={() => saveEditCell(lead.id, "status")}
+                      onKeyDown={e => handleEditCellKey(e, lead.id, "status")}
                       className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
-                      {statusOptions.map((opt) => (
+                      {Object.keys(statusBadgeColors).map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   ) : (
                     <span
-                      className={`cursor-pointer hover:underline px-3 py-1 rounded-full text-xs font-bold ${statusColors[lead.status]}`}
-                      onClick={() => startEdit(lead.id, "status", lead.status)}
+                      className={`cursor-pointer hover:underline px-3 py-1 rounded-full text-xs font-bold capitalize ${statusBadgeColors[lead.status?.toLowerCase()] || 'bg-gray-200 text-gray-700'}`}
+                      onClick={() => startEditCell(lead.id, "status", lead.status)}
                     >
                       {lead.status}
                     </span>
                   )}
                 </td>
-                {/* Owner (inline edit) */}
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                  {editing?.id === lead.id && editing.field === "owner" ? (
-                    <select
-                      autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(lead.id, "owner")}
-                      onKeyDown={e => handleEditKey(e, lead.id, "owner")}
-                      className="rounded px-2 py-1 border-2 border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    >
-                      {ownerOptions.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span
-                      className="cursor-pointer hover:underline"
-                      onClick={() => startEdit(lead.id, "owner", lead.owner)}
-                    >
-                      {lead.owner}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{lead.created}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right flex gap-2 justify-end">
+                <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{lead.owner_name}</td>
+                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{lead.created_at?.slice(0, 10)}</td>
+                <td className="px-4 py-2 flex gap-2">
                   <button
-                    className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900 transition"
+                    className="text-blue-500 hover:text-blue-700"
                     title="View"
-                    onClick={() => setDetailLead(lead)}
+                    onClick={() => handleView(lead.id).then(() => setDetailLead(lead))}
+                    disabled={actionLoading}
                   >
-                    <Eye className="w-5 h-5 text-blue-500" />
+                    <Eye />
                   </button>
-                  <button
-                    className="p-2 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-900 transition"
+                  {/* <button
+                    className="text-yellow-500 hover:text-yellow-700"
                     title="Edit"
+                    onClick={() => handleEdit(lead.id)}
+                    disabled={actionLoading}
                   >
-                    <Edit className="w-5 h-5 text-yellow-500" />
-                  </button>
+                    <Edit />
+                  </button> */}
                   <button
-                    className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
+                    className="text-red-500 hover:text-red-700"
                     title="Delete"
+                    onClick={() => handleDelete(lead.id)}
+                    disabled={actionLoading}
                   >
-                    <Trash2 className="w-5 h-5 text-red-500" />
+                    <Trash2 />
                   </button>
                 </td>
               </tr>
             ))}
-            {pagedLeads.length === 0 && (
-              <tr>
-                <td colSpan={columns.length + 2} className="text-center py-8 text-gray-400 dark:text-gray-600">No leads found.</td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -423,12 +468,6 @@ export default function Leads() {
                   onClick={() => setDetailLead(lead)}
                 >
                   <Eye className="w-5 h-5 text-blue-500" />
-                </button>
-                <button
-                  className="p-2 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-900 transition"
-                  title="Edit"
-                >
-                  <Edit className="w-5 h-5 text-yellow-500" />
                 </button>
                 <button
                   className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
@@ -492,6 +531,44 @@ export default function Leads() {
               <div><span className="font-semibold">Created:</span> {detailLead.created}</div>
             </div>
           </div>
+        </div>
+      )}
+
+      <DetailModal open={!!detailLead} onClose={() => setDetailLead(null)} title="Lead Details">
+        {detailLead && (
+          <>
+            <div><b>Name:</b> {detailLead.title || detailLead.contact_name}</div>
+            <div><b>Company:</b> {detailLead.company}</div>
+            <div><b>Status:</b> {detailLead.status}</div>
+            <div><b>Owner:</b> {detailLead.owner_name}</div>
+            <div><b>Created:</b> {detailLead.created_at?.slice(0, 10)}</div>
+          </>
+        )}
+      </DetailModal>
+      {/* Confirmation Modal for Delete */}
+      <DetailModal open={confirmDeleteId !== null} onClose={cancelDelete} title="Delete Lead?">
+        <div>Are you sure you want to delete this lead?</div>
+        <div className="flex gap-4 mt-6 justify-end">
+          <button
+            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+            onClick={cancelDelete}
+            disabled={actionLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+            onClick={confirmDelete}
+            disabled={actionLoading}
+          >
+            Delete
+          </button>
+        </div>
+      </DetailModal>
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-fade-in">
+          {toast}
         </div>
       )}
     </div>

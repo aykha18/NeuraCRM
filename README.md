@@ -1,4 +1,6 @@
-# CRM AI React Boilerplate
+# NeuraCRM
+
+**Smarter Sales, Powered by AI**
 
 A modern CRM MVP with:
 
