@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Table
 from sqlalchemy.orm import relationship, declarative_base
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -56,6 +57,11 @@ class Lead(Base):
     status = Column(String)
     source = Column(String)
     created_at = Column(DateTime)
+    # Lead Scoring Fields
+    score = Column(Integer, default=0)  # 0-100 score
+    score_updated_at = Column(DateTime)
+    score_factors = Column(String)  # JSON string of scoring factors
+    score_confidence = Column(Float, default=0.0)  # 0.0-1.0 confidence
     # Relationships
     contact = relationship('Contact', back_populates='leads')
     owner = relationship('User', back_populates='leads')
@@ -146,4 +152,55 @@ class Tag(Base):
     label = Column(String, nullable=False)
     color = Column(String)
     # Relationships
-    deals = relationship('Deal', secondary=DealTag, back_populates='tags') 
+    deals = relationship('Deal', secondary=DealTag, back_populates='tags')
+
+class EmailTemplate(Base):
+    __tablename__ = 'email_templates'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    body = Column(String, nullable=False)  # HTML content
+    category = Column(String)  # welcome, follow_up, reminder, etc.
+    created_by = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    # Relationships
+    creator = relationship('User')
+
+class EmailCampaign(Base):
+    __tablename__ = 'email_campaigns'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    template_id = Column(Integer, ForeignKey('email_templates.id'))
+    subject_override = Column(String)  # Optional override of template subject
+    body_override = Column(String)  # Optional override of template body
+    target_type = Column(String)  # leads, contacts, deals, custom
+    target_ids = Column(String)  # JSON array of target IDs
+    scheduled_at = Column(DateTime)
+    sent_at = Column(DateTime)
+    status = Column(String, default='draft')  # draft, scheduled, sending, completed, paused
+    created_by = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Relationships
+    template = relationship('EmailTemplate')
+    creator = relationship('User')
+    logs = relationship('EmailLog', back_populates='campaign')
+
+class EmailLog(Base):
+    __tablename__ = 'email_logs'
+    id = Column(Integer, primary_key=True)
+    campaign_id = Column(Integer, ForeignKey('email_campaigns.id'))
+    recipient_type = Column(String)  # lead, contact, deal
+    recipient_id = Column(Integer)
+    recipient_email = Column(String, nullable=False)
+    recipient_name = Column(String)
+    subject = Column(String, nullable=False)
+    body = Column(String, nullable=False)  # Final personalized content
+    sent_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default='sent')  # sent, delivered, opened, clicked, bounced, failed
+    opened_at = Column(DateTime)
+    clicked_at = Column(DateTime)
+    error_message = Column(String)
+    # Relationships
+    campaign = relationship('EmailCampaign', back_populates='logs') 

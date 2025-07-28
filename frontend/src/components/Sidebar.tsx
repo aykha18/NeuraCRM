@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
@@ -9,7 +9,8 @@ const navItems = [
   { name: "Contacts", icon: <Contact />, path: "/contacts" },
   { name: "Pipeline", icon: <Kanban />, path: "/kanban" },
   { name: "Chat", icon: <MessageCircle />, path: "/chat" },
-  { name: "AI Assistant", icon: <Bot />, path: "/ai" },
+  { name: "AI Features", icon: <Bot />, path: "/ai" },
+  { name: "Email Automation", icon: <Mail />, path: "/email-automation" },
 ];
 
 const bottomItems = [
@@ -22,7 +23,7 @@ const bottomItems = [
  * - The dot is small, perfectly round, and smoothly transitions between active items using Framer Motion.
  * - Only one dot appears at the end of the active button.
  */
-export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function Sidebar({ open: _open, onClose }: { open: boolean; onClose: () => void }) {
   const location = useLocation();
 
   return (

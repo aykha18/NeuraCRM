@@ -10,6 +10,16 @@ export async function getLead(id: number) {
   return res.json();
 }
 
+export async function createLead(data: any) {
+  const res = await fetch("http://localhost:8000/api/leads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create lead");
+  return res.json();
+}
+
 export async function updateLead(id: number, data: any) {
   const res = await fetch(`http://localhost:8000/api/leads/${id}`, {
     method: "PUT",

@@ -175,7 +175,7 @@ export default function Kanban() {
   const dealsByStage = useMemo<DealsByStage>(() => {
     if (!kanbanData?.deals || !kanbanData?.stages) return {};
     
-    const stageMap = new Map<number, string>();
+      const stageMap = new Map<number, string>();
     kanbanData.stages.forEach(stage => stageMap.set(stage.id, stage.name));
     
     return kanbanData.deals.reduce((acc, deal) => {
@@ -259,7 +259,7 @@ export default function Kanban() {
 
   const deleteComment = useCallback((dealId: string, commentId: string) => {
     setComments(prev => ({
-      ...prev,
+        ...prev,
       [dealId]: (prev[dealId] || []).filter(c => c.id !== commentId)
     }));
     logActivity(dealId, "comment", "Deleted a comment");
@@ -273,11 +273,11 @@ export default function Kanban() {
     setTimeout(() => {
       const attachment = {
         id: Date.now().toString(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
+            name: file.name,
+            size: file.size,
+            type: file.type,
         url: URL.createObjectURL(file),
-        uploadedAt: new Date().toISOString(),
+            uploadedAt: new Date().toISOString(),
       };
       
       setAttachments(prev => ({
@@ -563,7 +563,7 @@ export default function Kanban() {
             ))}
           </select>
         </div>
-      </div>
+        </div>
       
       {/* Metrics Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -573,7 +573,7 @@ export default function Kanban() {
             <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-          </div>
+      </div>
           <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">{allDeals.length}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">Total Deals</div>
           <div className="text-xs text-purple-500">Active pipeline</div>
@@ -684,13 +684,13 @@ export default function Kanban() {
                                   {/* Compact Deal Card Content */}
                                   <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
+                                  <div className="flex items-center gap-2 mb-1">
                                         <span className={`inline-block w-2 h-2 rounded-full ${stageColors[deal.stage] || 'bg-gray-500'}`}></span>
                                         <div className="font-semibold text-gray-900 dark:text-white text-sm truncate">{deal.title}</div>
                                         <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-400 to-blue-400 text-white" title="AI Score">
-                                          {getDealScore(deal, activityLog[deal.id])}%
-                                        </span>
-                                      </div>
+                                      {getDealScore(deal, activityLog[deal.id])}%
+                                    </span>
+                                  </div>
                                       <div className="text-blue-600 dark:text-blue-400 font-bold text-base">{deal.value}</div>
                                       <div className="text-xs text-gray-500 dark:text-gray-400">Owner: {deal.owner}</div>
                                     </div>
@@ -729,7 +729,7 @@ export default function Kanban() {
                                   
                                   {/* Tags and Reminder - Compact */}
                                   <div className="flex items-center justify-between mb-2">
-                                    {deal.tags && deal.tags.length > 0 && (
+                                  {deal.tags && deal.tags.length > 0 && (
                                       <div className="flex gap-1">
                                         {deal.tags.slice(0, 2).map((tag: Tag) => (
                                           <span key={tag.label} className={`px-1.5 py-0.5 rounded-full text-xs font-semibold text-white ${tag.color}`}>{tag.label}</span>
@@ -737,16 +737,16 @@ export default function Kanban() {
                                         {deal.tags.length > 2 && (
                                           <span className="px-1.5 py-0.5 rounded-full text-xs font-semibold bg-gray-500 text-white">+{deal.tags.length - 2}</span>
                                         )}
-                                      </div>
-                                    )}
-                                    {deal.reminderDate && (
+                                    </div>
+                                  )}
+                                  {deal.reminderDate && (
                                       <div className="flex items-center gap-1 text-xs">
                                         <Calendar className="w-3 h-3" />
                                         <span className={dayjs(deal.reminderDate).isBefore(dayjs(), "day") ? "text-red-500" : dayjs(deal.reminderDate).isSame(dayjs(), "day") ? "text-yellow-500" : "text-blue-500"}>
                                           {dayjs(deal.reminderDate).format("MMM D")}
                                         </span>
-                                      </div>
-                                    )}
+                                    </div>
+                                  )}
                                   </div>
                                   
                                   {/* Actions and Watchers - Compact */}
@@ -768,21 +768,21 @@ export default function Kanban() {
                                       </button>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      {Array.isArray(deal.watchers) && deal.watchers.length > 0 && (
+                                    {Array.isArray(deal.watchers) && deal.watchers.length > 0 && (
                                         <div className="flex -space-x-1">
                                           {deal.watchers.slice(0, 3).map((w: string) => (
                                             <span key={w} className="w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center text-xs font-bold text-white border border-white dark:border-gray-900">
-                                              {getInitials(w)}
-                                            </span>
-                                          ))}
+                                            {getInitials(w)}
+                                          </span>
+                                        ))}
                                           {deal.watchers.length > 3 && (
                                             <span className="w-5 h-5 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300 border border-white dark:border-gray-900">
                                               +{deal.watchers.length - 3}
                                             </span>
                                           )}
-                                        </div>
-                                      )}
-                                    </div>
+                                      </div>
+                                    )}
+                                  </div>
                                   </div>
                                   
                                   {/* Next Step - Compact */}
@@ -856,8 +856,8 @@ export default function Kanban() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-                             {/* Top Owners/Contributors - Deals Closed */}
-               <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
+              {/* Top Owners/Contributors - Deals Closed */}
+              <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
                  <div className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Top 10 Owners (Deals Closed)</div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dealsClosedByOwner} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -869,8 +869,8 @@ export default function Kanban() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-                             {/* Deal Count by Owner (Pie Chart) */}
-               <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
+              {/* Deal Count by Owner (Pie Chart) */}
+              <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
                  <div className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Top 10 Deal Count by Owner</div>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
@@ -892,8 +892,8 @@ export default function Kanban() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-                             {/* Deal Value by Owner (Bar Chart) */}
-               <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
+              {/* Deal Value by Owner (Bar Chart) */}
+              <div className="col-span-1 md:col-span-2 xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow p-6 border flex flex-col items-center mt-6">
                  <div className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Top 10 Deal Value by Owner</div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dealValueByOwner} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -905,10 +905,10 @@ export default function Kanban() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+              </div>
           </>
         )}
-      </div>
+              </div>
 
       {/* Deal Detail Modal */}
       <DetailModal
@@ -931,11 +931,11 @@ export default function Kanban() {
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Owner</h3>
                 <p className="text-gray-600 dark:text-gray-300">{selectedDeal.owner}</p>
-              </div>
+            </div>
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Stage</h3>
                 <p className="text-gray-600 dark:text-gray-300">{selectedDeal.stage}</p>
-              </div>
+                </div>
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm">AI Score</h3>
                 <p className="text-gray-600 dark:text-gray-300">{getDealScore(selectedDeal, activityLog[selectedDeal.id])}%</p>
@@ -950,7 +950,7 @@ export default function Kanban() {
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Description</h3>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">{selectedDeal.description}</p>
-              </div>
+      </div>
             )}
 
             {/* Tags */}
@@ -964,10 +964,10 @@ export default function Kanban() {
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
+                    </div>
+                  )}
 
-            {/* Comments Section */}
+                  {/* Comments Section */}
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Comments</h3>
               <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
@@ -979,45 +979,45 @@ export default function Kanban() {
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white shadow ${userAvatars[comment.author]?.color || "bg-gray-400"}`}>
                       {getInitials(comment.author)}
                     </span>
-                    <div className="flex-1">
+                          <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-blue-600 dark:text-blue-400">[{comment.author}]</span>
-                        <span className="text-gray-400">{dayjs(comment.timestamp).fromNow()}</span>
-                      </div>
+                              <span className="text-gray-400">{dayjs(comment.timestamp).fromNow()}</span>
+                            </div>
                       <p className="text-gray-900 dark:text-gray-100 mt-1">{comment.text}</p>
-                    </div>
-                    <button
+                          </div>
+                          <button
                       className="text-xs text-gray-400 hover:text-red-500 transition"
-                      title="Delete"
+                            title="Delete"
                       onClick={() => deleteComment(selectedDeal.id, comment.id)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <form
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <form
                 className="flex gap-2 mt-2 items-center"
                 onSubmit={e => { e.preventDefault(); addComment(selectedDeal.id); }}
-              >
-                <input
-                  type="text"
+                    >
+                      <input
+                        type="text"
                   className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                />
-                <button
-                  type="submit"
+                        placeholder="Add a comment..."
+                        value={newComment}
+                        onChange={e => setNewComment(e.target.value)}
+                      />
+                      <button
+                        type="submit"
                   className="px-3 py-1 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition"
-                  disabled={!newComment.trim()}
-                >
+                        disabled={!newComment.trim()}
+                      >
                   Add
-                </button>
-              </form>
-            </div>
+                      </button>
+                    </form>
+                  </div>
 
-            {/* Attachments Section */}
+                  {/* Attachments Section */}
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Attachments</h3>
               <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
@@ -1026,71 +1026,71 @@ export default function Kanban() {
                 )}
                 {(attachments[selectedDeal.id] || []).map(att => (
                   <div key={att.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded px-3 py-2">
-                    <a
-                      href={att.url}
-                      download={att.name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 font-medium hover:underline truncate max-w-[120px]"
-                      title={att.name}
-                    >
-                      {att.name}
-                    </a>
-                    <span className="text-xs text-gray-500">({(att.size / 1024).toFixed(1)} KB)</span>
-                    <span className="text-xs text-gray-400">{att.type.startsWith("image/") ? "Image" : att.type === "application/pdf" ? "PDF" : att.type}</span>
-                    <span className="text-xs text-gray-400 ml-auto">{dayjs(att.uploadedAt).fromNow()}</span>
-                    <button
+                          <a
+                            href={att.url}
+                            download={att.name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 font-medium hover:underline truncate max-w-[120px]"
+                            title={att.name}
+                          >
+                            {att.name}
+                          </a>
+                          <span className="text-xs text-gray-500">({(att.size / 1024).toFixed(1)} KB)</span>
+                          <span className="text-xs text-gray-400">{att.type.startsWith("image/") ? "Image" : att.type === "application/pdf" ? "PDF" : att.type}</span>
+                          <span className="text-xs text-gray-400 ml-auto">{dayjs(att.uploadedAt).fromNow()}</span>
+                          <button
                       className="ml-2 text-xs text-gray-400 hover:text-red-500 transition"
-                      title="Delete"
+                            title="Delete"
                       onClick={() => deleteAttachment(selectedDeal.id, att.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <form
+                      className="flex gap-2 mt-2 items-center"
+                      onSubmit={e => e.preventDefault()}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <form
-                className="flex gap-2 mt-2 items-center"
-                onSubmit={e => e.preventDefault()}
-              >
                 <label className="px-3 py-1 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file && selectedDeal) addAttachment(selectedDeal.id, file);
-                      e.target.value = "";
-                    }}
-                    disabled={uploading}
-                  />
-                  {uploading ? "Uploading..." : "Upload"}
-                </label>
-              </form>
-            </div>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file && selectedDeal) addAttachment(selectedDeal.id, file);
+                            e.target.value = "";
+                          }}
+                          disabled={uploading}
+                        />
+                        {uploading ? "Uploading..." : "Upload"}
+                      </label>
+                    </form>
+                  </div>
 
-            {/* Activity Log Section */}
+                  {/* Activity Log Section */}
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">Activity Log</h3>
-              <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
+                    <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
                 {(activityLog[selectedDeal.id] || []).length === 0 && (
-                  <div className="text-gray-400">No activity yet.</div>
-                )}
+                        <div className="text-gray-400">No activity yet.</div>
+                      )}
                 {(activityLog[selectedDeal.id] || []).map(log => (
-                  <div key={log.id} className="flex items-center gap-2">
+                        <div key={log.id} className="flex items-center gap-2">
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white shadow ${userAvatars[log.user]?.color || "bg-gray-400"}`}>
-                      {getInitials(log.user)}
-                    </span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">[{log.user}]</span>
-                    <span className="font-bold text-gray-700 dark:text-gray-200">{log.type.charAt(0).toUpperCase() + log.type.slice(1)}</span>
-                    <span className="text-gray-900 dark:text-gray-100">{log.message}</span>
-                    <span className="text-gray-400 ml-auto">{dayjs(log.timestamp).fromNow()}</span>
+                            {getInitials(log.user)}
+                          </span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">[{log.user}]</span>
+                          <span className="font-bold text-gray-700 dark:text-gray-200">{log.type.charAt(0).toUpperCase() + log.type.slice(1)}</span>
+                          <span className="text-gray-900 dark:text-gray-100">{log.message}</span>
+                          <span className="text-gray-400 ml-auto">{dayjs(log.timestamp).fromNow()}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
+                  </div>
         )}
       </DetailModal>
 
@@ -1101,10 +1101,10 @@ export default function Kanban() {
         title={editingDeal ? `Edit Deal: ${editingDeal.title}` : 'Edit Deal'}
       >
         {editingDeal && (
-          <form onSubmit={e => { e.preventDefault(); saveEdit(); }}>
+                  <form onSubmit={e => { e.preventDefault(); saveEdit(); }}>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title</label>
                 <input
                   type="text"
                   value={editForm.title || editingDeal.title}
@@ -1112,9 +1112,9 @@ export default function Kanban() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   required
                 />
-              </div>
+                    </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Value</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Value</label>
                 <input
                   type="text"
                   value={editForm.value || editingDeal.value}
@@ -1122,77 +1122,77 @@ export default function Kanban() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   required
                 />
-              </div>
+                    </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Owner</label>
-                <select
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Owner</label>
+                      <select
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value={editForm.owner || editingDeal.owner}
                   onChange={e => handleEditChange("owner", e.target.value)}
-                  required
-                >
-                  {owners.map((owner) => (
-                    <option key={owner} value={owner}>{owner}</option>
-                  ))}
-                </select>
-              </div>
+                        required
+                      >
+                        {owners.map((owner) => (
+                          <option key={owner} value={owner}>{owner}</option>
+                        ))}
+                      </select>
+                    </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Stage</label>
-                <select
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Stage</label>
+                      <select
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value={editForm.stage || editingDeal.stage}
                   onChange={e => handleEditChange("stage", e.target.value)}
-                  required
-                >
-                  {stages.map((stage) => (
-                    <option key={stage.id} value={stage.name}>{stage.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tags</label>
-                <div className="flex flex-wrap gap-2">
-                  {predefinedTags.map(tag => {
-                    const selected = (editForm.tags || editingDeal.tags || []).some((t: Tag) => t.label === tag.label);
-                    return (
-                      <button
-                        key={tag.label}
-                        type="button"
-                        className={`px-2 py-1 rounded-full text-xs font-semibold border transition ${tag.color} text-white ${selected ? "ring-2 ring-pink-400" : "opacity-70"}`}
-                        onClick={() => {
-                          let tags = editForm.tags ? [...editForm.tags] : [...(editingDeal.tags || [])];
-                          if (selected) {
-                            tags = tags.filter((t: Tag) => t.label !== tag.label);
-                          } else {
-                            tags.push(tag);
-                          }
-                          handleEditChange("tags", tags);
-                        }}
+                        required
                       >
-                        {tag.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        {stages.map((stage) => (
+                    <option key={stage.id} value={stage.name}>{stage.name}</option>
+                        ))}
+                      </select>
+                    </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tags</label>
+                      <div className="flex flex-wrap gap-2">
+                        {predefinedTags.map(tag => {
+                    const selected = (editForm.tags || editingDeal.tags || []).some((t: Tag) => t.label === tag.label);
+                          return (
+                            <button
+                              key={tag.label}
+                              type="button"
+                              className={`px-2 py-1 rounded-full text-xs font-semibold border transition ${tag.color} text-white ${selected ? "ring-2 ring-pink-400" : "opacity-70"}`}
+                              onClick={() => {
+                          let tags = editForm.tags ? [...editForm.tags] : [...(editingDeal.tags || [])];
+                                if (selected) {
+                                  tags = tags.filter((t: Tag) => t.label !== tag.label);
+                                } else {
+                                  tags.push(tag);
+                                }
+                                handleEditChange("tags", tags);
+                              }}
+                            >
+                              {tag.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+              <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
                 <textarea
                   value={editForm.description || editingDeal.description || ""}
                   onChange={e => handleEditChange("description", e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
-              </div>
+                    </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Reminder / Follow-up Date</label>
-                <input
-                  type="date"
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Reminder / Follow-up Date</label>
+                      <input
+                        type="date"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value={editForm.reminderDate ? dayjs(editForm.reminderDate).format("YYYY-MM-DD") : editingDeal.reminderDate ? dayjs(editingDeal.reminderDate).format("YYYY-MM-DD") : ""}
-                  onChange={e => handleEditChange("reminderDate", e.target.value ? dayjs(e.target.value).toISOString() : undefined)}
-                />
-              </div>
+                        onChange={e => handleEditChange("reminderDate", e.target.value ? dayjs(e.target.value).toISOString() : undefined)}
+                      />
+                    </div>
               <div className="flex gap-2 pt-4">
                 <button
                   type="submit"
@@ -1211,19 +1211,19 @@ export default function Kanban() {
                   Cancel
                 </button>
               </div>
-            </div>
-          </form>
+                    </div>
+                  </form>
         )}
-        {editingDeal && (
+                  {editingDeal && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
+                    <button
+                      type="button"
               className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-              onClick={() => confirmDeleteDeal(editingDeal)}
-            >
-              Delete Deal
-            </button>
-          </div>
+                      onClick={() => confirmDeleteDeal(editingDeal)}
+                    >
+                      Delete Deal
+                    </button>
+            </div>
         )}
       </DetailModal>
 
@@ -1238,20 +1238,20 @@ export default function Kanban() {
             Are you sure you want to delete this deal? This action cannot be undone.
           </p>
           <div className="flex gap-2 pt-4">
-            <button
-              onClick={deleteDeal}
+                    <button
+                      onClick={deleteDeal}
               className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-            >
-              Delete
-            </button>
-            <button
+                    >
+                      Delete
+                    </button>
+                            <button
               onClick={() => setShowDeleteConfirm(false)}
               className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition"
-            >
+                            >
               Cancel
-            </button>
-          </div>
-        </div>
+                            </button>
+                      </div>
+                  </div>
       </DetailModal>
 
       {/* Delete Stage Confirmation Dialog */}
@@ -1265,20 +1265,20 @@ export default function Kanban() {
             Are you sure you want to delete the stage "{deleteStage}"? All deals in this stage will be removed. This action cannot be undone.
           </p>
           <div className="flex gap-2 pt-4">
-            <button
+                    <button
               onClick={() => deleteStage && handleDeleteStage(deleteStage)}
               className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-            >
+                    >
               Delete
-            </button>
-            <button
-              onClick={() => setDeleteStage(null)}
+                    </button>
+                    <button
+                      onClick={() => setDeleteStage(null)}
               className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+                    >
+                      Cancel
+                    </button>
+                  </div>
+            </div>
       </DetailModal>
     </div>
   );

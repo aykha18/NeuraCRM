@@ -1,16 +1,40 @@
-export async function fetchContacts() {
+// Contacts Service
+// API calls for contact management
+
+export interface Contact {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  owner_id?: number;
+  created_at?: string;
+  owner_name?: string;
+}
+
+export async function fetchContacts(): Promise<Contact[]> {
   const res = await fetch("http://localhost:8000/api/contacts");
   if (!res.ok) throw new Error("Failed to fetch contacts");
   return res.json();
 }
 
-export async function getContact(id: number) {
+export async function getContact(id: number): Promise<Contact> {
   const res = await fetch(`http://localhost:8000/api/contacts/${id}`);
   if (!res.ok) throw new Error("Failed to fetch contact");
   return res.json();
 }
 
-export async function updateContact(id: number, data: any) {
+export async function createContact(data: Partial<Contact>): Promise<Contact> {
+  const res = await fetch("http://localhost:8000/api/contacts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create contact");
+  return res.json();
+}
+
+export async function updateContact(id: number, data: Partial<Contact>): Promise<Contact> {
   const res = await fetch(`http://localhost:8000/api/contacts/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -20,9 +44,9 @@ export async function updateContact(id: number, data: any) {
   return res.json();
 }
 
-export async function deleteContact(id: number) {
+export async function deleteContact(id: number): Promise<{ message: string }> {
   const res = await fetch(`http://localhost:8000/api/contacts/${id}`, {
-    method: "DELETE"
+    method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete contact");
   return res.json();

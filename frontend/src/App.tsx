@@ -6,6 +6,8 @@ import Contacts from "./pages/Contacts";
 import Kanban from "./pages/Kanban";
 import Chat from "./pages/Chat";
 import Ai from "./pages/Ai";
+import EmailAutomation from "./pages/EmailAutomation";
+import { UserProvider } from "./contexts/UserContext";
 
 /**
  * App component sets up the main routing for the CRM application.
@@ -16,20 +18,23 @@ import Ai from "./pages/Ai";
 function App() {
   return (
     // Router provides navigation context for the app
-    <Router>
-      {/* Layout provides sidebar and topbar for all pages */}
-      <Layout>
-        {/* Routes define which page component to render for each path */}
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/contacts" element={<Contacts />} />
-          <Route path="/kanban" element={<Kanban />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/ai" element={<Ai />} />
-        </Routes>
-      </Layout>
-    </Router>
+    <UserProvider>
+      <Router>
+        {/* Layout provides sidebar and topbar for all pages */}
+        <Layout>
+          {/* Routes define which page component to render for each path */}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/contacts" element={<Contacts />} />
+            <Route path="/kanban" element={<Kanban />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/ai" element={<Ai />} />
+            <Route path="/email-automation" element={<EmailAutomation />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </UserProvider>
   );
 }
 

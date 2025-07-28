@@ -3,15 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
+import json
 
 # Import routers
 from api.routers import kanban
 from api.routers.dashboard import router as dashboard_router
 from api.routers.ai import router as ai_router
+from api.routers.email_automation import router as email_automation_router
 
 # Import database and models
 from api.db import SessionLocal
 from api.models import Lead, Contact, User
+from api.lead_scoring import lead_scoring_service
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -26,9 +29,9 @@ app = FastAPI(
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev, allow all. For prod, use your frontend URL.
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],  # Frontend URLs
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -36,6 +39,7 @@ app.add_middleware(
 app.include_router(kanban.router)
 app.include_router(dashboard_router)
 app.include_router(ai_router)
+app.include_router(email_automation_router)
 
 class Message(BaseModel):
     user: str
@@ -51,6 +55,11 @@ class LeadOut(BaseModel):
     contact_name: str | None = None
     company: str | None = None
     owner_name: str | None = None
+    # Lead scoring fields
+    score: int | None = None
+    score_updated_at: datetime | None = None
+    score_factors: str | None = None
+    score_confidence: float | None = None
     class Config:
         orm_mode = True
 
@@ -85,10 +94,192 @@ class ContactUpdate(BaseModel):
 def read_root():
     return {"message": "CRM API is running."}
 
+# Lead Scoring Endpoints
+@app.post("/api/leads/{lead_id}/score")
+def score_lead(lead_id: int):
+    """Calculate and update lead score"""
+    db: Session = SessionLocal()
+    
+    try:
+        lead = db.query(Lead).filter(Lead.id == lead_id).first()
+        if not lead:
+            db.close()
+            raise HTTPException(status_code=404, detail="Lead not found")
+        
+        # Calculate score
+        scoring_result = lead_scoring_service.calculate_lead_score(lead, db)
+        
+        # Update lead with new score
+        lead.score = scoring_result["score"]
+        lead.score_updated_at = datetime.now()
+        lead.score_factors = json.dumps(scoring_result["factors"])
+        lead.score_confidence = scoring_result["confidence"]
+        
+        db.commit()
+        db.refresh(lead)
+        
+        db.close()
+        return scoring_result
+        
+    except Exception as e:
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to score lead: {str(e)}")
+
+@app.post("/api/leads/score-all")
+def score_all_leads():
+    """Score all leads in the system"""
+    db: Session = SessionLocal()
+    
+    try:
+        leads = db.query(Lead).all()
+        results = []
+        
+        for lead in leads:
+            scoring_result = lead_scoring_service.calculate_lead_score(lead, db)
+            
+            # Update lead
+            lead.score = scoring_result["score"]
+            lead.score_updated_at = datetime.now()
+            lead.score_factors = json.dumps(scoring_result["factors"])
+            lead.score_confidence = scoring_result["confidence"]
+            
+            results.append({
+                "lead_id": lead.id,
+                "title": lead.title,
+                "score": scoring_result["score"],
+                "category": scoring_result["category"]
+            })
+        
+        db.commit()
+        db.close()
+        
+        return {
+            "message": f"Scored {len(results)} leads",
+            "results": results
+        }
+        
+    except Exception as e:
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to score leads: {str(e)}")
+
+@app.get("/api/leads/scoring-analytics")
+def get_scoring_analytics():
+    """Get lead scoring analytics"""
+    db: Session = SessionLocal()
+    
+    try:
+        # Get all leads with scores
+        leads = db.query(Lead).filter(Lead.score.isnot(None)).all()
+        
+        if not leads:
+            db.close()
+            return {
+                "total_leads": 0,
+                "average_score": 0,
+                "score_distribution": {},
+                "top_scoring_leads": []
+            }
+        
+        # Calculate analytics
+        scores = [lead.score for lead in leads]
+        average_score = sum(scores) / len(scores)
+        
+        # Score distribution
+        distribution = {
+            "Hot (80-100)": len([s for s in scores if s >= 80]),
+            "Warm (60-79)": len([s for s in scores if 60 <= s < 80]),
+            "Lukewarm (40-59)": len([s for s in scores if 40 <= s < 60]),
+            "Cold (0-39)": len([s for s in scores if s < 40])
+        }
+        
+        # Top scoring leads
+        top_leads = sorted(leads, key=lambda x: x.score, reverse=True)[:5]
+        top_scoring_leads = [
+            {
+                "id": lead.id,
+                "title": lead.title,
+                "score": lead.score,
+                "status": lead.status
+            }
+            for lead in top_leads
+        ]
+        
+        db.close()
+        
+        return {
+            "total_leads": len(leads),
+            "average_score": round(average_score, 2),
+            "score_distribution": distribution,
+            "top_scoring_leads": top_scoring_leads
+        }
+        
+    except Exception as e:
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+
 @app.post("/chat/")
 def chat_with_ai(message: Message):
     # This would call OpenAI or local LLM in real usage
     return {"response": f"AI response to: '{message.content}' from {message.user}"}
+
+# POST /api/leads endpoint (create new lead)
+@app.post("/api/leads", response_model=LeadOut)
+def create_lead(lead_data: LeadUpdate):
+    db: Session = SessionLocal()
+    
+    try:
+        # Create new lead
+        new_lead = Lead(
+            title=lead_data.title,
+            status=lead_data.status or "new",
+            source=lead_data.source or "manual",
+            contact_id=lead_data.contact_id or 1,  # Default to contact 1
+            owner_id=lead_data.owner_id or 1,  # Default to user 1
+            created_at=datetime.now()
+        )
+        
+        db.add(new_lead)
+        db.commit()
+        db.refresh(new_lead)
+        
+        # Return with joined info
+        result = (
+            db.query(
+                Lead.id,
+                Lead.title,
+                Lead.status,
+                Lead.source,
+                Lead.created_at,
+                Contact.name.label("contact_name"),
+                Contact.company.label("company"),
+                User.name.label("owner_name")
+            )
+            .join(Contact, Lead.contact_id == Contact.id)
+            .join(User, Lead.owner_id == User.id)
+            .filter(Lead.id == new_lead.id)
+            .first()
+        )
+        
+        if result:
+            db.close()
+            return dict(result._mapping)
+        else:
+            # Fallback if join fails - return basic lead info
+            db.close()
+            return {
+                "id": new_lead.id,
+                "title": new_lead.title,
+                "status": new_lead.status,
+                "source": new_lead.source,
+                "created_at": new_lead.created_at,
+                "contact_name": None,
+                "company": None,
+                "owner_name": None
+            }
+    except Exception as e:
+        db.rollback()
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to create lead: {str(e)}")
 
 # GET /api/leads endpoint (with joins)
 @app.get("/api/leads", response_model=list[LeadOut])
@@ -101,6 +292,10 @@ def get_leads():
             Lead.status,
             Lead.source,
             Lead.created_at,
+            Lead.score,
+            Lead.score_updated_at,
+            Lead.score_factors,
+            Lead.score_confidence,
             Contact.name.label("contact_name"),
             Contact.company.label("company"),
             User.name.label("owner_name")
