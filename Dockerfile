@@ -14,5 +14,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Start the application
-CMD ["python", "app.py"]
+# Start the application (try simple app first)
+CMD ["python", "simple_app.py"]

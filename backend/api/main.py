@@ -99,7 +99,11 @@ class ContactUpdate(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "CRM API is running."}
+    return {"message": "CRM API is running.", "status": "healthy"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "message": "Service is running"}
 
 # Lead Scoring Endpoints
 @app.post("/api/leads/{lead_id}/score")
