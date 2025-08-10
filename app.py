@@ -8,9 +8,9 @@ import sys
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
-# Import the simple app first (guaranteed to work)
-from api.main_simple import app
-print("Successfully imported simple FastAPI app")
+# Import the full FastAPI app with database functionality
+from api.main import app
+print("Successfully imported full FastAPI app with database")
 
 # This allows Railway to detect this as a FastAPI app
 if __name__ == "__main__":
