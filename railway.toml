@@ -2,10 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python main.py"
+startCommand = "bash start.sh"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-
-[env]
-NIXPACKS_NODE_PACKAGE_MANAGER = "npm"

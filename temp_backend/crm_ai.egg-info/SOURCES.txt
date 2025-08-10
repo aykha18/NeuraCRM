@@ -1,0 +1,7 @@
+README.md
+setup.py
+backend/crm_ai.egg-info/PKG-INFO
+backend/crm_ai.egg-info/SOURCES.txt
+backend/crm_ai.egg-info/dependency_links.txt
+backend/crm_ai.egg-info/requires.txt
+backend/crm_ai.egg-info/top_level.txt
