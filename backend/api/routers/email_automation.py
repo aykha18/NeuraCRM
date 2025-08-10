@@ -39,7 +39,7 @@ class EmailTemplateOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_active: bool
-    validation: dict
+    validation: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -115,7 +115,7 @@ def get_email_templates(
     # Add validation info to each template
     result = []
     for template in templates:
-        template_dict = EmailTemplateOut.from_orm(template).dict()
+        template_dict = EmailTemplateOut.model_validate(template).model_dump()
         template_dict['validation'] = email_automation_service.validate_template(template.body)
         result.append(template_dict)
     
@@ -142,7 +142,7 @@ def create_email_template(
     db.commit()
     db.refresh(template)
     
-    result = EmailTemplateOut.from_orm(template).dict()
+    result = EmailTemplateOut.model_validate(template).model_dump()
     result['validation'] = validation
     return result
 
@@ -174,7 +174,7 @@ def update_email_template(
     db.commit()
     db.refresh(template)
     
-    result = EmailTemplateOut.from_orm(template).dict()
+    result = EmailTemplateOut.model_validate(template).model_dump()
     result['validation'] = email_automation_service.validate_template(template.body)
     return result
 
@@ -259,7 +259,7 @@ def get_email_campaigns(
         query = query.filter(EmailCampaign.status == status)
     
     campaigns = query.all()
-    return [EmailCampaignOut.from_orm(campaign) for campaign in campaigns]
+    return [EmailCampaignOut.model_validate(campaign) for campaign in campaigns]
 
 @router.post("/campaigns", response_model=EmailCampaignOut)
 def create_email_campaign(
@@ -287,7 +287,7 @@ def create_email_campaign(
     db.commit()
     db.refresh(campaign)
     
-    return EmailCampaignOut.from_orm(campaign)
+    return EmailCampaignOut.model_validate(campaign)
 
 @router.post("/campaigns/{campaign_id}/send")
 def send_campaign(campaign_id: int, db: Session = Depends(get_db)):
@@ -385,7 +385,7 @@ def get_email_logs(
         query = query.filter(EmailLog.status == status)
     
     logs = query.order_by(EmailLog.sent_at.desc()).limit(limit).all()
-    return [EmailLogOut.from_orm(log) for log in logs]
+    return [EmailLogOut.model_validate(log) for log in logs]
 
 @router.get("/logs/analytics")
 def get_email_analytics(db: Session = Depends(get_db)):

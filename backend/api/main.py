@@ -29,7 +29,14 @@ app = FastAPI(
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],  # Frontend URLs
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:3000", 
+        "http://127.0.0.1:5173",
+        "https://*.railway.app",  # Allow Railway domains
+        "https://*.up.railway.app",  # Allow Railway domains
+        "*"  # Allow all origins in production (you can restrict this later)
+    ],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -61,7 +68,7 @@ class LeadOut(BaseModel):
     score_factors: str | None = None
     score_confidence: float | None = None
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LeadUpdate(BaseModel):
     title: str | None = None
@@ -80,7 +87,7 @@ class ContactOut(BaseModel):
     created_at: datetime | None = None
     owner_name: str | None = None
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Pydantic schema for Contact updates
 class ContactUpdate(BaseModel):

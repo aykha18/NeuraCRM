@@ -21,7 +21,13 @@ import {
   Lightbulb,
   Shield,
   Activity,
-  PieChart
+  PieChart,
+  Crown,
+  Mic,
+  FileText,
+  Globe,
+  BarChart,
+  BrainCircuit
 } from "lucide-react";
 
 interface AIFeature {
@@ -29,7 +35,7 @@ interface AIFeature {
   title: string;
   description: string;
   icon: React.ReactNode;
-  status: "implemented" | "upcoming";
+  status: "implemented" | "upcoming" | "premium";
   category: "lead-management" | "communication" | "analytics" | "automation";
   details: {
     howItWorks: string;
@@ -231,25 +237,186 @@ const aiFeatures: AIFeature[] = [
         "Sales methodology optimization"
       ]
     }
+  },
+  // Premium Features
+  {
+    id: "conversation-intelligence",
+    title: "Conversation Intelligence",
+    description: "Real-time analysis of sales calls and customer interactions to extract insights and improve performance.",
+    icon: <Mic className="w-8 h-8" />,
+    status: "premium",
+    category: "analytics",
+    details: {
+      howItWorks: "Advanced speech recognition and natural language processing analyze sales calls in real-time, extracting key insights, objection patterns, and conversation quality metrics. Provides instant feedback and coaching recommendations.",
+      businessBenefits: [
+        "Improve sales conversion rates by 25-40%",
+        "Identify winning conversation patterns",
+        "Reduce training time for new reps",
+        "Optimize sales scripts and approaches"
+      ],
+      technicalDetails: "Uses real-time speech-to-text, sentiment analysis, keyword extraction, and machine learning to analyze call patterns. Integrates with CRM and provides detailed conversation analytics.",
+      useCases: [
+        "Sales call analysis and coaching",
+        "Objection handling improvement",
+        "Script optimization",
+        "Performance benchmarking"
+      ]
+    }
+  },
+  {
+    id: "smart-nurturing",
+    title: "Smart Nurturing",
+    description: "Automated lead nurturing sequences that adapt based on behavior, engagement, and conversion probability.",
+    icon: <BrainCircuit className="w-8 h-8" />,
+    status: "premium",
+    category: "automation",
+    details: {
+      howItWorks: "AI-driven nurturing campaigns that automatically adapt content, timing, and channels based on lead behavior, engagement levels, and conversion signals. Creates personalized journeys for each prospect.",
+      businessBenefits: [
+        "Increase lead-to-customer conversion by 50%",
+        "Reduce manual nurturing tasks by 90%",
+        "Improve lead engagement rates",
+        "Scale personalized communication"
+      ],
+      technicalDetails: "Uses behavioral analytics, machine learning for journey optimization, multi-channel automation, and real-time decision making to create dynamic nurturing sequences.",
+      useCases: [
+        "Lead nurturing campaigns",
+        "Customer onboarding sequences",
+        "Re-engagement programs",
+        "Upsell/cross-sell automation"
+      ]
+    }
+  },
+  {
+    id: "document-processing",
+    title: "Document Processing",
+    description: "OCR and AI-powered data extraction from contracts, forms, and business documents with intelligent classification.",
+    icon: <FileText className="w-8 h-8" />,
+    status: "premium",
+    category: "automation",
+    details: {
+      howItWorks: "Advanced OCR and natural language processing extract key information from contracts, invoices, forms, and other business documents. Automatically classifies documents and populates CRM fields.",
+      businessBenefits: [
+        "Reduce manual data entry by 80%",
+        "Improve data accuracy and consistency",
+        "Accelerate document processing",
+        "Enhance compliance and audit trails"
+      ],
+      technicalDetails: "Uses state-of-the-art OCR, document classification, entity extraction, and machine learning to process various document types and extract structured data automatically.",
+      useCases: [
+        "Contract analysis and data extraction",
+        "Invoice processing and approval",
+        "Form data capture and validation",
+        "Document classification and routing"
+      ]
+    }
+  },
+  {
+    id: "voice-intelligence",
+    title: "Voice Intelligence",
+    description: "Advanced call analysis with emotion detection, speaker identification, and real-time insights.",
+    icon: <Mic className="w-8 h-8" />,
+    status: "premium",
+    category: "analytics",
+    details: {
+      howItWorks: "Real-time voice analysis detects emotions, speaker identification, call quality metrics, and provides instant insights during and after calls. Identifies patterns and opportunities for improvement.",
+      businessBenefits: [
+        "Improve call quality and outcomes",
+        "Identify customer emotions and satisfaction",
+        "Optimize sales team performance",
+        "Enhance customer experience"
+      ],
+      technicalDetails: "Uses voice biometrics, emotion recognition, speaker diarization, and real-time analytics to provide comprehensive call intelligence and actionable insights.",
+      useCases: [
+        "Sales call quality analysis",
+        "Customer service optimization",
+        "Emotion detection and response",
+        "Call center performance monitoring"
+      ]
+    }
+  },
+  {
+    id: "market-intelligence",
+    title: "Market Intelligence",
+    description: "External data integration and market analysis to identify opportunities and competitive threats.",
+    icon: <Globe className="w-8 h-8" />,
+    status: "premium",
+    category: "analytics",
+    details: {
+      howItWorks: "Integrates external data sources including market reports, social media, news, and industry databases to provide comprehensive market insights and competitive intelligence.",
+      businessBenefits: [
+        "Identify new market opportunities",
+        "Stay ahead of industry trends",
+        "Optimize pricing and positioning",
+        "Improve strategic decision making"
+      ],
+      technicalDetails: "Uses data aggregation, natural language processing, trend analysis, and machine learning to process multiple external data sources and provide actionable market intelligence.",
+      useCases: [
+        "Market opportunity identification",
+        "Competitive threat monitoring",
+        "Industry trend analysis",
+        "Strategic planning and forecasting"
+      ]
+    }
+  },
+  {
+    id: "advanced-forecasting",
+    title: "Advanced Forecasting",
+    description: "ML-powered sales forecasting with multiple models and scenario planning for accurate predictions.",
+    icon: <BarChart className="w-8 h-8" />,
+    status: "premium",
+    category: "analytics",
+    details: {
+      howItWorks: "Advanced machine learning models analyze historical data, market conditions, seasonality, and external factors to provide accurate sales forecasts with confidence intervals and scenario planning.",
+      businessBenefits: [
+        "Improve forecast accuracy by 30-50%",
+        "Better resource planning and allocation",
+        "Identify revenue risks and opportunities",
+        "Optimize sales strategies"
+      ],
+      technicalDetails: "Uses ensemble learning, time series analysis, external data integration, and scenario modeling to provide comprehensive forecasting with multiple prediction horizons.",
+      useCases: [
+        "Sales pipeline forecasting",
+        "Revenue planning and budgeting",
+        "Resource allocation optimization",
+        "Risk assessment and mitigation"
+      ]
+    }
   }
 ];
 
 export default function AIFeatures() {
   const [selectedFeature, setSelectedFeature] = useState<AIFeature | null>(null);
-  const [filter, setFilter] = useState<"all" | "implemented" | "upcoming">("all");
+  const [filter, setFilter] = useState<"all" | "implemented" | "upcoming" | "premium">("all");
 
   const filteredFeatures = aiFeatures.filter(feature => 
     filter === "all" || feature.status === filter
   );
 
   const getStatusColor = (status: string) => {
-    return status === "implemented" 
-      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
-      : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    switch (status) {
+      case "implemented":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "upcoming":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "premium":
+        return "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-400";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
+    }
   };
 
   const getStatusIcon = (status: string) => {
-    return status === "implemented" ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />;
+    switch (status) {
+      case "implemented":
+        return <CheckCircle className="w-4 h-4" />;
+      case "upcoming":
+        return <Clock className="w-4 h-4" />;
+      case "premium":
+        return <Crown className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
   };
 
   return (
@@ -260,11 +427,11 @@ export default function AIFeatures() {
           AI Features Showcase
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
-          Discover how AI is transforming your CRM experience. Explore implemented features and get a glimpse of what's coming next.
+          Discover how AI is transforming your CRM experience. Explore implemented features, upcoming capabilities, and premium features available on request.
         </p>
         
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setFilter("all")}
             className={`px-4 py-2 rounded-full font-medium transition ${
@@ -295,7 +462,32 @@ export default function AIFeatures() {
           >
             Upcoming
           </button>
+          <button
+            onClick={() => setFilter("premium")}
+            className={`px-4 py-2 rounded-full font-medium transition ${
+              filter === "premium"
+                ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            Premium Features
+          </button>
         </div>
+
+        {/* Premium Features Notice */}
+        {filter === "premium" && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Crown className="w-6 h-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800 dark:text-amber-300">Premium Features Available on Request</h3>
+                <p className="text-amber-700 dark:text-amber-400 text-sm">
+                  These advanced AI features are available for custom development. Contact us to discuss implementation options and pricing.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Features Grid */}
@@ -303,17 +495,23 @@ export default function AIFeatures() {
         {filteredFeatures.map((feature) => (
           <div
             key={feature.id}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+            className={`bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group ${
+              feature.status === "premium" ? "ring-2 ring-amber-200 dark:ring-amber-700" : ""
+            }`}
             onClick={() => setSelectedFeature(feature)}
           >
             {/* Icon and Status */}
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
+              <div className={`p-3 rounded-xl ${
+                feature.status === "premium" 
+                  ? "bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30"
+                  : "bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30"
+              }`}>
                 {feature.icon}
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(feature.status)}`}>
                 {getStatusIcon(feature.status)}
-                {feature.status}
+                {feature.status === "premium" ? "Premium" : feature.status}
               </span>
             </div>
 
@@ -351,7 +549,11 @@ export default function AIFeatures() {
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
+                  <div className={`p-3 rounded-xl ${
+                    selectedFeature.status === "premium" 
+                      ? "bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30"
+                      : "bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30"
+                  }`}>
                     {selectedFeature.icon}
                   </div>
                   <div>
@@ -359,7 +561,7 @@ export default function AIFeatures() {
                       {selectedFeature.title}
                     </h2>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedFeature.status)}`}>
-                      {selectedFeature.status}
+                      {selectedFeature.status === "premium" ? "Premium Feature" : selectedFeature.status}
                     </span>
                   </div>
                 </div>
@@ -374,6 +576,21 @@ export default function AIFeatures() {
 
             {/* Modal Content */}
             <div className="p-6 space-y-6">
+              {/* Premium Feature Notice */}
+              {selectedFeature.status === "premium" && (
+                <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Crown className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <h4 className="font-semibold text-amber-800 dark:text-amber-300">Premium Feature</h4>
+                      <p className="text-amber-700 dark:text-amber-400 text-sm">
+                        This feature is available for custom development. Contact our team to discuss implementation options, pricing, and timeline.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Description */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Overview</h3>

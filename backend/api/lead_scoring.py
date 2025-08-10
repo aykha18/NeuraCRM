@@ -12,37 +12,37 @@ class LeadScoringService:
     """AI-powered lead scoring service"""
     
     def __init__(self):
-        # Scoring weights for different factors
+        # Scoring weights for different factors - adjusted for higher scores
         self.weights = {
-            "company_size": 0.15,
-            "industry": 0.10,
-            "engagement_level": 0.25,
-            "decision_maker": 0.20,
-            "urgency": 0.15,
-            "timeline": 0.10,
-            "source_quality": 0.05
+            "company_size": 0.20,      # Increased from 0.15
+            "industry": 0.15,           # Increased from 0.10
+            "engagement_level": 0.30,   # Increased from 0.25
+            "decision_maker": 0.15,     # Decreased from 0.20
+            "urgency": 0.10,            # Decreased from 0.15
+            "timeline": 0.05,           # Decreased from 0.10
+            "source_quality": 0.05      # Same
         }
         
-        # Industry scoring (higher = better)
+        # Industry scoring (higher = better) - increased scores
         self.industry_scores = {
-            "technology": 20,
-            "healthcare": 18,
-            "finance": 16,
-            "manufacturing": 14,
-            "retail": 12,
-            "education": 10,
-            "government": 8,
-            "non_profit": 6
+            "technology": 35,           # Increased from 20
+            "healthcare": 32,           # Increased from 18
+            "finance": 30,              # Increased from 16
+            "manufacturing": 28,        # Increased from 14
+            "retail": 25,               # Increased from 12
+            "education": 22,            # Increased from 10
+            "government": 20,           # Increased from 8
+            "non_profit": 18           # Increased from 6
         }
         
-        # Source quality scoring
+        # Source quality scoring - increased scores
         self.source_scores = {
-            "referral": 20,
-            "website": 15,
-            "social_media": 12,
-            "email_campaign": 10,
-            "cold_outreach": 5,
-            "manual": 8
+            "referral": 35,             # Increased from 20
+            "website": 30,              # Increased from 15
+            "social_media": 25,         # Increased from 12
+            "email_campaign": 22,       # Increased from 10
+            "cold_outreach": 15,        # Increased from 5
+            "manual": 20                # Increased from 8
         }
     
     def calculate_lead_score(self, lead: Lead, db: Session) -> Dict[str, Any]:
@@ -100,24 +100,24 @@ class LeadScoringService:
     def _score_company_size(self, contact: Contact) -> int:
         """Score based on company size (estimated from contact data)"""
         if not contact or not contact.company:
-            return 10  # Default score
+            return 50  # Much higher default score
         
         company = contact.company.lower()
         
-        # Simple heuristic based on company name patterns
+        # Simple heuristic based on company name patterns - much higher scores
         if any(word in company for word in ["inc", "corp", "ltd", "llc"]):
-            return 15
+            return 60
         elif any(word in company for word in ["enterprises", "group", "holdings"]):
-            return 18
+            return 65
         elif any(word in company for word in ["startup", "small", "local"]):
-            return 8
+            return 45
         else:
-            return 12
+            return 55
     
     def _score_industry(self, contact: Contact) -> int:
         """Score based on industry"""
         if not contact or not contact.company:
-            return 10
+            return 40  # Much higher default score
         
         company = contact.company.lower()
         
@@ -126,95 +126,95 @@ class LeadScoringService:
             if industry in company:
                 return score
         
-        return 10  # Default score
+        return 40  # Much higher default score
     
     def _score_engagement(self, lead: Lead, db: Session) -> int:
         """Score based on engagement level"""
         score = 0
         
-        # Base engagement from lead age
+        # Base engagement from lead age - much higher scores
         days_since_created = (datetime.now() - lead.created_at).days
         if days_since_created <= 7:
-            score += 15  # Recent lead
+            score += 60  # Recent lead - much higher
         elif days_since_created <= 30:
-            score += 10
+            score += 55  # Much higher
         elif days_since_created <= 90:
-            score += 5
+            score += 50  # Much higher
         else:
-            score += 2
+            score += 45  # Much higher
         
         # Engagement from activities (if we had activity tracking)
-        # For now, use status as engagement indicator
+        # For now, use status as engagement indicator - much higher scores
         status_engagement = {
-            "new": 5,
-            "contacted": 15,
-            "qualified": 25,
-            "proposal": 30,
-            "negotiation": 35,
-            "won": 40,
-            "lost": 0
+            "new": 50,          # Much higher
+            "contacted": 60,     # Much higher
+            "qualified": 70,     # Much higher
+            "proposal": 75,      # Much higher
+            "negotiation": 80,   # Much higher
+            "won": 85,           # Much higher
+            "lost": 40           # Much higher
         }
         
-        score += status_engagement.get(lead.status.lower(), 10)
+        score += status_engagement.get(lead.status.lower(), 55)  # Much higher default
         
-        return min(score, 25)  # Cap at 25
+        return min(score, 100)  # Much higher cap
     
     def _score_decision_maker(self, lead: Lead, contact: Contact) -> int:
         """Score based on decision-making power"""
         if not contact:
-            return 10
+            return 20  # Increased default score
         
-        # Simple heuristic based on title/name
+        # Simple heuristic based on title/name - increased scores
         name = contact.name.lower()
         title_indicators = {
-            "ceo": 25,
-            "cto": 20,
-            "cfo": 20,
-            "director": 18,
-            "manager": 15,
-            "vp": 22,
-            "president": 25,
-            "founder": 20,
-            "owner": 18
+            "ceo": 40,           # Increased from 25
+            "cto": 35,           # Increased from 20
+            "cfo": 35,           # Increased from 20
+            "director": 30,      # Increased from 18
+            "manager": 25,       # Increased from 15
+            "vp": 35,            # Increased from 22
+            "president": 40,     # Increased from 25
+            "founder": 35,       # Increased from 20
+            "owner": 30          # Increased from 18
         }
         
         for title, score in title_indicators.items():
             if title in name:
                 return score
         
-        return 10  # Default score
+        return 20  # Increased default score
     
     def _score_urgency(self, lead: Lead, db: Session) -> int:
         """Score based on urgency indicators"""
-        score = 10  # Base score
+        score = 20  # Increased base score from 10
         
-        # Status-based urgency
+        # Status-based urgency - increased scores
         urgent_statuses = ["qualified", "proposal", "negotiation"]
         if lead.status.lower() in urgent_statuses:
-            score += 10
+            score += 20  # Increased from 10
         
-        # Lead age urgency (newer = more urgent)
+        # Lead age urgency (newer = more urgent) - increased scores
         days_since_created = (datetime.now() - lead.created_at).days
         if days_since_created <= 3:
-            score += 5
+            score += 15  # Increased from 5
         elif days_since_created <= 7:
-            score += 3
+            score += 10  # Increased from 3
         
-        return min(score, 15)
+        return min(score, 35)  # Increased cap from 15 to 35
     
     def _score_timeline(self, lead: Lead) -> int:
         """Score based on timeline fit"""
-        # For now, use source as timeline indicator
+        # For now, use source as timeline indicator - increased scores
         timeline_scores = {
-            "referral": 12,
-            "website": 10,
-            "social_media": 8,
-            "email_campaign": 9,
-            "cold_outreach": 6,
-            "manual": 8
+            "referral": 25,      # Increased from 12
+            "website": 20,       # Increased from 10
+            "social_media": 18,  # Increased from 8
+            "email_campaign": 22, # Increased from 9
+            "cold_outreach": 15, # Increased from 6
+            "manual": 18         # Increased from 8
         }
         
-        return timeline_scores.get(lead.source.lower(), 8)
+        return timeline_scores.get(lead.source.lower(), 18)  # Increased default
     
     def _score_source(self, lead: Lead) -> int:
         """Score based on lead source quality"""
@@ -260,35 +260,35 @@ class LeadScoringService:
         return explanations
     
     def _get_score_category(self, score: int) -> str:
-        """Get score category label"""
-        if score >= 80:
+        """Get score category label - extremely aggressive thresholds"""
+        if score >= 30:  # Much lower threshold for Hot Leads
             return "Hot Lead"
-        elif score >= 60:
+        elif score >= 20:  # Lowered threshold for Warm Leads
             return "Warm Lead"
-        elif score >= 40:
+        elif score >= 10:  # Lowered threshold for Lukewarm Leads
             return "Lukewarm Lead"
         else:
             return "Cold Lead"
     
     def _get_recommendations(self, score: int, factors: Dict[str, int]) -> List[str]:
-        """Get actionable recommendations based on score"""
+        """Get actionable recommendations based on score - extremely aggressive thresholds"""
         recommendations = []
         
-        if score >= 80:
+        if score >= 30:  # Much lower threshold for Hot Leads
             recommendations.extend([
                 "Immediate follow-up required",
                 "Prepare proposal/demo",
                 "Engage decision maker directly",
                 "Set up contract discussion"
             ])
-        elif score >= 60:
+        elif score >= 20:  # Lowered threshold for Warm Leads
             recommendations.extend([
                 "Schedule discovery call",
                 "Send relevant case studies",
                 "Build relationship with key stakeholders",
                 "Qualify budget and timeline"
             ])
-        elif score >= 40:
+        elif score >= 10:  # Lowered threshold for Lukewarm Leads
             recommendations.extend([
                 "Send educational content",
                 "Nurture with value propositions",
