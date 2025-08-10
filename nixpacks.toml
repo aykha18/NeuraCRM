@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["echo 'Python build complete'"]
+
+[start]
+cmd = "python app.py"
+
+[variables]
+NIXPACKS_NODE_PACKAGE_MANAGER = "npm"
+NIXPACKS_PYTHON_VERSION = "3.11"
