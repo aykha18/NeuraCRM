@@ -79,3 +79,31 @@ def get_scoring_analytics():
             "low": 0
         }
     }
+
+@app.get("/api/db-test")
+def test_database():
+    """Test database connection"""
+    try:
+        from api.db import engine
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1 as test")
+            return {"status": "success", "message": "Database connected!", "result": result.fetchone()[0]}
+    except Exception as e:
+        return {"status": "error", "message": f"Database connection failed: {str(e)}"}
+
+@app.get("/api/db-url")
+def get_database_url():
+    """Get database URL (masked)"""
+    import os
+    db_url = os.getenv("DATABASE_URL", "Not set")
+    if db_url != "Not set":
+        # Mask the password in the URL
+        if "@" in db_url:
+            parts = db_url.split("@")
+            if ":" in parts[0]:
+                user_pass = parts[0].split(":")
+                if len(user_pass) >= 3:
+                    user_pass[2] = "***"
+                    parts[0] = ":".join(user_pass)
+                    db_url = "@".join(parts)
+    return {"database_url": db_url}
