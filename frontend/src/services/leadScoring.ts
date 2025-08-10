@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../config';
+
 // Lead Scoring Service
 // API calls for lead scoring functionality
 
@@ -24,7 +26,6 @@ export interface ScoringAnalytics {
 
 // Score a single lead
 export async function scoreLead(leadId: number): Promise<LeadScore> {
-import { API_BASE_URL } from '../config';
 
   const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}/score`, {
     method: 'POST',

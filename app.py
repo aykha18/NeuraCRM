@@ -29,9 +29,9 @@ if os.getenv("DATABASE_URL"):
 else:
     print("No DATABASE_URL - skipping migrations")
 
-# Import the full FastAPI app with database functionality
-from api.main import app
-print("Successfully imported full FastAPI app with database")
+# Import the hybrid FastAPI app with CRUD functionality
+from api.main_hybrid import app
+print("Successfully imported hybrid FastAPI app with CRUD functionality")
 
 # This allows Railway to detect this as a FastAPI app
 if __name__ == "__main__":
