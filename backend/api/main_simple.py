@@ -85,8 +85,9 @@ def test_database():
     """Test database connection"""
     try:
         from api.db import engine
+        from sqlalchemy import text
         with engine.connect() as conn:
-            result = conn.execute("SELECT 1 as test")
+            result = conn.execute(text("SELECT 1 as test"))
             return {"status": "success", "message": "Database connected!", "result": result.fetchone()[0]}
     except Exception as e:
         return {"status": "error", "message": f"Database connection failed: {str(e)}"}
