@@ -14,15 +14,10 @@ try:
     print("Successfully imported full FastAPI app with database")
 except Exception as e:
     print(f"Error importing full app: {e}")
-    try:
-        # Fallback to simple app if database fails
-        from api.main_simple import app
-        print("Falling back to simple FastAPI app")
-    except Exception as e2:
-        print(f"Error importing simple app: {e2}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    import traceback
+    traceback.print_exc()
+    # Don't fallback to simple app - force database connection
+    sys.exit(1)
 
 # This allows Railway to detect this as a FastAPI app
 if __name__ == "__main__":
@@ -30,6 +25,18 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"Starting FastAPI app on port {port}")
     print(f"Database URL: {os.getenv('DATABASE_URL', 'Not set')}")
+    
+    # Test database connection
+    try:
+        from api.db import engine
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1")
+            print("Database connection successful!")
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     
     try:
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
