@@ -9,14 +9,20 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
-    # Import the FastAPI app
-    from api.main import app
-    print("Successfully imported FastAPI app")
+    # Try to import the simple app first (no database dependencies)
+    from api.main_simple import app
+    print("Successfully imported simple FastAPI app")
 except Exception as e:
-    print(f"Error importing app: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+    print(f"Error importing simple app: {e}")
+    try:
+        # Fallback to full app
+        from api.main import app
+        print("Successfully imported full FastAPI app")
+    except Exception as e2:
+        print(f"Error importing full app: {e2}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 # This allows Railway to detect this as a FastAPI app
 if __name__ == "__main__":
@@ -24,16 +30,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"Starting FastAPI app on port {port}")
     print(f"Database URL: {os.getenv('DATABASE_URL', 'Not set')}")
-    
-    # Test database connection before starting
-    try:
-        from api.db import engine
-        with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
-            print("Database connection successful!")
-    except Exception as e:
-        print(f"Database connection failed: {e}")
-        print("Starting app anyway...")
     
     try:
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
