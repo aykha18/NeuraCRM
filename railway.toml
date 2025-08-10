@@ -6,6 +6,3 @@ startCommand = "python main.py"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-
-[env]
-PYTHON_VERSION = "3.11"
