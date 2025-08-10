@@ -25,6 +25,16 @@ if __name__ == "__main__":
     print(f"Starting FastAPI app on port {port}")
     print(f"Database URL: {os.getenv('DATABASE_URL', 'Not set')}")
     
+    # Test database connection before starting
+    try:
+        from api.db import engine
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1")
+            print("Database connection successful!")
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        print("Starting app anyway...")
+    
     try:
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
     except Exception as e:

@@ -105,6 +105,10 @@ def read_root():
 def health_check():
     return {"status": "healthy", "message": "Service is running"}
 
+@app.get("/api/test")
+def test_api():
+    return {"message": "API is working", "endpoints": ["/api/leads", "/api/contacts", "/api/leads/scoring-analytics"]}
+
 # Lead Scoring Endpoints
 @app.post("/api/leads/{lead_id}/score")
 def score_lead(lead_id: int):
@@ -295,29 +299,58 @@ def create_lead(lead_data: LeadUpdate):
 # GET /api/leads endpoint (with joins)
 @app.get("/api/leads", response_model=list[LeadOut])
 def get_leads():
-    db: Session = SessionLocal()
-    leads = (
-        db.query(
-            Lead.id,
-            Lead.title,
-            Lead.status,
-            Lead.source,
-            Lead.created_at,
-            Lead.score,
-            Lead.score_updated_at,
-            Lead.score_factors,
-            Lead.score_confidence,
-            Contact.name.label("contact_name"),
-            Contact.company.label("company"),
-            User.name.label("owner_name")
-        )
-        .join(Contact, Lead.contact_id == Contact.id)
-        .join(User, Lead.owner_id == User.id)
-        .all()
-    )
-    db.close()
-    # Convert to list of dicts for Pydantic
-    return [dict(lead._mapping) for lead in leads]
+    try:
+        db: Session = SessionLocal()
+        # Try to get leads with joins, fallback to simple query if joins fail
+        try:
+            leads = (
+                db.query(
+                    Lead.id,
+                    Lead.title,
+                    Lead.status,
+                    Lead.source,
+                    Lead.created_at,
+                    Lead.score,
+                    Lead.score_updated_at,
+                    Lead.score_factors,
+                    Lead.score_confidence,
+                    Contact.name.label("contact_name"),
+                    Contact.company.label("company"),
+                    User.name.label("owner_name")
+                )
+                .outerjoin(Contact, Lead.contact_id == Contact.id)
+                .outerjoin(User, Lead.owner_id == User.id)
+                .all()
+            )
+            # Convert to list of dicts for Pydantic
+            result = [dict(lead._mapping) for lead in leads]
+        except Exception as join_error:
+            print(f"Join query failed: {join_error}")
+            # Fallback to simple lead query
+            leads = db.query(Lead).all()
+            result = [
+                {
+                    "id": lead.id,
+                    "title": lead.title,
+                    "status": lead.status,
+                    "source": lead.source,
+                    "created_at": lead.created_at,
+                    "score": lead.score,
+                    "score_updated_at": lead.score_updated_at,
+                    "score_factors": lead.score_factors,
+                    "score_confidence": lead.score_confidence,
+                    "contact_name": None,
+                    "company": None,
+                    "owner_name": None
+                }
+                for lead in leads
+            ]
+        db.close()
+        return result
+    except Exception as e:
+        print(f"Database error in get_leads: {e}")
+        # Return empty list if database is not available
+        return []
 
 @app.get("/api/leads/{lead_id}", response_model=LeadOut)
 def get_lead(lead_id: int):

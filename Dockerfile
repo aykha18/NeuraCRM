@@ -17,5 +17,5 @@ RUN chmod +x migrate.sh
 # Expose port
 EXPOSE 8000
 
-# Start the full CRM application with migrations
-CMD ["sh", "-c", "./migrate.sh && python app.py"]
+# Start the full CRM application with migrations (skip if no DB)
+CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then ./migrate.sh; fi && python app.py"]
