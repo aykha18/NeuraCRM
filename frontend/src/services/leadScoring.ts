@@ -24,7 +24,9 @@ export interface ScoringAnalytics {
 
 // Score a single lead
 export async function scoreLead(leadId: number): Promise<LeadScore> {
-  const response = await fetch(`http://localhost:8000/api/leads/${leadId}/score`, {
+import { API_BASE_URL } from '../config';
+
+  const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}/score`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -40,7 +42,7 @@ export async function scoreLead(leadId: number): Promise<LeadScore> {
 
 // Score all leads
 export async function scoreAllLeads(): Promise<{ message: string; results: any[] }> {
-  const response = await fetch('http://localhost:8000/api/leads/score-all', {
+  const response = await fetch(`${API_BASE_URL}/api/leads/score-all`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -56,7 +58,7 @@ export async function scoreAllLeads(): Promise<{ message: string; results: any[]
 
 // Get scoring analytics
 export async function getScoringAnalytics(): Promise<ScoringAnalytics> {
-  const response = await fetch('http://localhost:8000/api/leads/scoring-analytics');
+  const response = await fetch(`${API_BASE_URL}/api/leads/scoring-analytics`);
   
   if (!response.ok) {
     throw new Error('Failed to get scoring analytics');

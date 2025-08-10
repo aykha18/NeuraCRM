@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+import { API_BASE_URL } from '../config';
+
+const API_URL = `${API_BASE_URL}/api`;
 
 // Types
 export interface Stage {

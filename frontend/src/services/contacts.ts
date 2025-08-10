@@ -12,20 +12,22 @@ export interface Contact {
   owner_name?: string;
 }
 
+import { API_BASE_URL } from '../config';
+
 export async function fetchContacts(): Promise<Contact[]> {
-  const res = await fetch("http://localhost:8000/api/contacts");
+  const res = await fetch(`${API_BASE_URL}/api/contacts`);
   if (!res.ok) throw new Error("Failed to fetch contacts");
   return res.json();
 }
 
 export async function getContact(id: number): Promise<Contact> {
-  const res = await fetch(`http://localhost:8000/api/contacts/${id}`);
+  const res = await fetch(`${API_BASE_URL}/api/contacts/${id}`);
   if (!res.ok) throw new Error("Failed to fetch contact");
   return res.json();
 }
 
 export async function createContact(data: Partial<Contact>): Promise<Contact> {
-  const res = await fetch("http://localhost:8000/api/contacts", {
+  const res = await fetch(`${API_BASE_URL}/api/contacts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -35,7 +37,7 @@ export async function createContact(data: Partial<Contact>): Promise<Contact> {
 }
 
 export async function updateContact(id: number, data: Partial<Contact>): Promise<Contact> {
-  const res = await fetch(`http://localhost:8000/api/contacts/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/contacts/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -45,7 +47,7 @@ export async function updateContact(id: number, data: Partial<Contact>): Promise
 }
 
 export async function deleteContact(id: number): Promise<{ message: string }> {
-  const res = await fetch(`http://localhost:8000/api/contacts/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/contacts/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete contact");

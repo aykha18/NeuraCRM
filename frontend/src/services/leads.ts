@@ -1,17 +1,19 @@
+import { API_BASE_URL } from '../config';
+
 export async function fetchLeads() {
-  const res = await fetch("http://localhost:8000/api/leads");
+  const res = await fetch(`${API_BASE_URL}/api/leads`);
   if (!res.ok) throw new Error("Failed to fetch leads");
   return res.json();
 }
 
 export async function getLead(id: number) {
-  const res = await fetch(`http://localhost:8000/api/leads/${id}`);
+  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`);
   if (!res.ok) throw new Error("Failed to fetch lead");
   return res.json();
 }
 
 export async function createLead(data: any) {
-  const res = await fetch("http://localhost:8000/api/leads", {
+  const res = await fetch(`${API_BASE_URL}/api/leads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -21,7 +23,7 @@ export async function createLead(data: any) {
 }
 
 export async function updateLead(id: number, data: any) {
-  const res = await fetch(`http://localhost:8000/api/leads/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -31,7 +33,7 @@ export async function updateLead(id: number, data: any) {
 }
 
 export async function deleteLead(id: number) {
-  const res = await fetch(`http://localhost:8000/api/leads/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`, {
     method: "DELETE"
   });
   if (!res.ok) throw new Error("Failed to delete lead");
