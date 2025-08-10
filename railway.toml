@@ -1,12 +1,7 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "python app.py"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-
-[env]
-NIXPACKS_NODE_PACKAGE_MANAGER = "npm"
-NIXPACKS_PYTHON_VERSION = "3.11"
