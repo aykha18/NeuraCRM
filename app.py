@@ -30,14 +30,8 @@ else:
     print("No DATABASE_URL - skipping migrations")
 
 # Import the full FastAPI app with database functionality
-try:
-    from api.main import app
-    print("Successfully imported full FastAPI app with database")
-except Exception as e:
-    print(f"Error importing full app: {e}")
-    print("Falling back to simple app...")
-    from api.main_simple import app
-    print("Successfully imported simple FastAPI app")
+from api.main import app
+print("Successfully imported full FastAPI app with database")
 
 # This allows Railway to detect this as a FastAPI app
 if __name__ == "__main__":
