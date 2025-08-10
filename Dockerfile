@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Make migration script executable
+RUN chmod +x migrate.sh
+
 # Expose port
 EXPOSE 8000
 
-# Start the application (try simple app first)
-CMD ["python", "simple_app.py"]
+# Start the full CRM application with migrations
+CMD ["sh", "-c", "./migrate.sh && python app.py"]
