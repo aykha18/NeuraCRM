@@ -383,8 +383,7 @@ def get_leads():
         return result
     except Exception as e:
         print(f"Database error in get_leads: {e}")
-        # Return empty list if database is not available
-        return []
+        raise HTTPException(status_code=500, detail=f"Failed to fetch leads: {str(e)}")
 
 @app.get("/api/leads/{lead_id}", response_model=LeadOut)
 def get_lead(lead_id: int):
@@ -456,23 +455,35 @@ def delete_lead(lead_id: int):
 # GET /api/contacts endpoint
 @app.get("/api/contacts", response_model=list[ContactOut])
 def get_contacts():
-    db: Session = SessionLocal()
-    contacts = (
-        db.query(
-            Contact.id,
-            Contact.name,
-            Contact.email,
-            Contact.phone,
-            Contact.company,
-            Contact.created_at,
-            User.name.label("owner_name")
-        )
-        .join(User, Contact.owner_id == User.id, isouter=True)
-        .all()
-    )
-    db.close()
-    # Convert to list of dicts for Pydantic
-    return [dict(contact._mapping) for contact in contacts]
+    try:
+        db: Session = SessionLocal()
+        contacts = db.query(Contact).all()
+        
+        result = []
+        for contact in contacts:
+            # Get owner name if exists
+            owner_name = None
+            if contact.owner_id:
+                user = db.query(User).filter(User.id == contact.owner_id).first()
+                if user:
+                    owner_name = user.name
+            
+            result.append({
+                "id": contact.id,
+                "name": contact.name,
+                "email": contact.email,
+                "phone": contact.phone,
+                "company": contact.company,
+                "created_at": contact.created_at,
+                "owner_name": owner_name
+            })
+        
+        db.close()
+        return result
+        
+    except Exception as e:
+        print(f"Database error in get_contacts: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch contacts: {str(e)}")
 
 # GET /api/contacts/{contact_id} endpoint
 @app.get("/api/contacts/{contact_id}", response_model=ContactOut)
