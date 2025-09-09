@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import json
+import os
 
 # Import routers
 from api.routers import kanban
@@ -33,6 +36,7 @@ app.add_middleware(
         "http://localhost:5173", 
         "http://localhost:3000", 
         "http://127.0.0.1:5173",
+        "https://neuracrm.up.railway.app",  # Your Railway backend
         "https://*.railway.app",  # Allow Railway domains
         "https://*.up.railway.app",  # Allow Railway domains
         "*"  # Allow all origins in production (you can restrict this later)
@@ -47,6 +51,25 @@ app.include_router(kanban.router)
 app.include_router(dashboard_router)
 app.include_router(ai_router)
 app.include_router(email_automation_router)
+
+# Serve static files (frontend) if they exist
+frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend", "dist")
+if os.path.exists(frontend_dist_path):
+    app.mount("/static", StaticFiles(directory=frontend_dist_path), name="static")
+    
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        """Serve the React frontend for all non-API routes"""
+        if path.startswith("api/") or path.startswith("chat/") or path.startswith("health"):
+            # Let FastAPI handle API routes
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Serve index.html for all other routes (React Router)
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        else:
+            raise HTTPException(status_code=404, detail="Frontend not built")
 
 class Message(BaseModel):
     user: str

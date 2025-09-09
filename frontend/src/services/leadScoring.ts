@@ -26,7 +26,6 @@ export interface ScoringAnalytics {
 
 // Score a single lead
 export async function scoreLead(leadId: number): Promise<LeadScore> {
-
   const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}/score`, {
     method: 'POST',
     headers: {

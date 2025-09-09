@@ -4,9 +4,9 @@
  * - FULL FUNCTIONALITY: search, sort, pagination, actions
  */
 import { useEffect, useState } from "react";
-import { Search, Eye, Edit, Trash2, ChevronUp, ChevronDown, Download } from "lucide-react";
+import { Search, Eye, Edit, Trash2, ChevronUp, ChevronDown, Download, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
-import { fetchContacts, getContact, updateContact, deleteContact } from "../services/contacts";
+import { fetchContacts, getContact, updateContact, deleteContact, createContact } from "../services/contacts";
 import DetailModal from "../components/DetailModal";
 
 const columns = [
@@ -19,6 +19,7 @@ const columns = [
 
 export default function ContactsNew() {
   const [contacts, setContacts] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -34,6 +35,12 @@ export default function ContactsNew() {
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: "",
+    email: "",
+    company: ""
+  });
 
   useEffect(() => {
     console.log('ContactsNew page loading... - FULL FUNCTIONALITY');
@@ -238,6 +245,26 @@ export default function ContactsNew() {
 
   const cancelDelete = () => setConfirmDeleteId(null);
 
+  const handleCreateContact = async () => {
+    if (!newContact.name.trim()) {
+      setToast("Name is required");
+      return;
+    }
+    
+    setActionLoading(true);
+    try {
+      const createdContact = await createContact(newContact);
+      setContacts([...contacts, createdContact]);
+      setShowCreateModal(false);
+      setNewContact({ name: "", email: "", company: "" });
+      setToast("Contact created successfully!");
+    } catch (error) {
+      setToast("Failed to create contact");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="p-2 md:p-6">
       {/* Bulk Action Bar */}
@@ -264,16 +291,33 @@ export default function ContactsNew() {
       )}
 
       {/* Header and actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Contacts</h1>
-        <div className="flex gap-2 items-center">
+      <div className="flex flex-col gap-4 mb-6">
+        <h1 className="text-3xl font-extrabold text-red-600 dark:text-red-400">Contacts - ADD CONTACT BUTTON IS HERE!</h1>
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Add Contact button - Always visible - Updated */}
+          <button
+            className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold shadow-lg hover:from-red-600 hover:to-orange-600 transition flex items-center gap-2 text-lg"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-5 h-5" />
+            🎯 ADD CONTACT BUTTON 🎯
+          </button>
+          {/* Add Contact button - Always visible - Updated */}
+          <button
+            className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold shadow-lg hover:from-red-600 hover:to-orange-600 transition flex items-center gap-2 text-lg"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-5 h-5" />
+            🎯 ADD CONTACT BUTTON 🎯
+          </button>
+
           {/* Search bar */}
           <div className="relative">
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search contacts..."
+              placeholder="Search contacts... - UPDATED"
               className="rounded-full pl-10 pr-4 py-2 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 w-56 shadow"
             />
             <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
@@ -573,6 +617,64 @@ export default function ContactsNew() {
           >
             {actionLoading ? "Deleting..." : "Delete All"}
           </button>
+        </div>
+      </DetailModal>
+
+      {/* Create Contact Modal */}
+      <DetailModal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create New Contact">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={newContact.name}
+              onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
+              placeholder="Enter contact name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={newContact.email}
+              onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
+              placeholder="Enter email address"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Company
+            </label>
+            <input
+              type="text"
+              value={newContact.company}
+              onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
+              placeholder="Enter company name"
+            />
+          </div>
+          <div className="flex gap-4 mt-6 justify-end">
+            <button
+              className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+              onClick={() => setShowCreateModal(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold hover:from-pink-600 hover:to-purple-600 transition"
+              onClick={handleCreateContact}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Creating..." : "Create Contact"}
+            </button>
+          </div>
         </div>
       </DetailModal>
 
