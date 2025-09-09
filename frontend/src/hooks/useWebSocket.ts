@@ -1,4 +1,4 @@
-import { useRef } from "react";
+// import { useRef } from "react";
 
 export default function useWebSocket({ onMessage }: { onMessage: (msg: any) => void }) {
   // Placeholder: no real socket yet

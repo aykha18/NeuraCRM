@@ -4,16 +4,16 @@
  * - Responsive: horizontal scroll on mobile
  * - Beautiful Tailwind styling with backend integration
  */
-import { useState, useMemo, useCallback, Fragment, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, type KanbanBoard as ApiKanbanBoard, type Stage as ApiStage, type Deal as ApiDeal } from '../services/kanban';
-import { Plus, Pencil, Trash2, Eye, Calendar } from 'lucide-react';
-import { Dialog, Transition } from '@headlessui/react';
+import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
+import { Plus, Eye, Calendar } from 'lucide-react';
+// import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import CalendarHeatmap from 'react-calendar-heatmap';
+// import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -50,16 +50,16 @@ const predefinedTags = [
 ];
 
 // Sample users for demo
-const sampleUsers = ["You", "Alex", "Sam", "Chris"];
-const currentUser = 'Imran Patel';
+// const sampleUsers = ["You", "Alex", "Sam", "Chris"];
+// const currentUser = 'Imran Patel';
 
 // Avatar color mapping
-const userAvatars: Record<string, { color: string }> = {
-  "You": { color: "bg-gradient-to-r from-pink-500 to-purple-500" },
-  "Alex": { color: "bg-gradient-to-r from-blue-500 to-indigo-500" },
-  "Sam": { color: "bg-gradient-to-r from-green-500 to-teal-500" },
-  "Chris": { color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
-};
+// const userAvatars: Record<string, { color: string }> = {
+//   "You": { color: "bg-gradient-to-r from-pink-500 to-purple-500" },
+//   "Alex": { color: "bg-gradient-to-r from-blue-500 to-indigo-500" },
+//   "Sam": { color: "bg-gradient-to-r from-green-500 to-teal-500" },
+//   "Chris": { color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
+// };
 
 // Color tags for each stage
 const stageColors: Record<string, string> = {
@@ -118,10 +118,10 @@ function getNextStepSuggestion(deal: FrontendDeal) {
   }
 }
 
-function getDealSummary(deal: FrontendDeal, activity: Array<any> = [], comments: Array<any> = [], attachments: Array<any> = []) {
-  const lastActivity = activity[0]?.timestamp ? dayjs(activity[0].timestamp).fromNow() : "No activity yet";
-  return `${comments.length} comments, ${attachments.length} attachments, last activity ${lastActivity}, current stage: ${deal.stage}`;
-}
+// function getDealSummary(deal: FrontendDeal, activity: Array<any> = [], comments: Array<any> = [], attachments: Array<any> = []) {
+//   const lastActivity = activity[0]?.timestamp ? dayjs(activity[0].timestamp).fromNow() : "No activity yet";
+//   return `${comments.length} comments, ${attachments.length} attachments, last activity ${lastActivity}, current stage: ${deal.stage}`;
+// }
 
 // Helper to get initials for avatars
 function getInitials(name: string) {
@@ -135,7 +135,7 @@ export default function Kanban() {
   // State for UI
   const [selectedDeal, setSelectedDeal] = useState<FrontendDeal | null>(null);
   const [isDealModalOpen, setIsDealModalOpen] = useState(false);
-  const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
+  // const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'board' | 'analytics'>('board');
   
   // State for filtering
@@ -157,9 +157,9 @@ export default function Kanban() {
   const [activityLog, setActivityLog] = useState<Record<string, Array<{id: string, type: string, message: string, timestamp: string, user: string}>>>({});
   
   // State for stage management
-  const [newStage, setNewStage] = useState("");
-  const [editingStage, setEditingStage] = useState<string | null>(null);
-  const [editStageValue, setEditStageValue] = useState("");
+  // const [newStage, setNewStage] = useState("");
+  // const [editingStage, setEditingStage] = useState<string | null>(null);
+  // const [editStageValue, setEditStageValue] = useState("");
   const [deleteStage, setDeleteStage] = useState<string | null>(null);
   
   // State for watch loading
@@ -354,49 +354,49 @@ export default function Kanban() {
   }, [queryClient]);
 
   // Stage management functions
-  const handleAddStage = useCallback(() => {
-    if (!newStage.trim()) return;
-    
-    // Add to local state
-    queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
-      if (!oldData) return oldData;
-      
-      const newStageData = {
-        id: Date.now(),
-        name: newStage.trim(),
-        order: oldData.stages.length,
-        is_active: true,
-      };
-      
-      return {
-        ...oldData,
-        stages: [...oldData.stages, newStageData]
-      };
-    });
-    
-    setNewStage("");
-  }, [newStage, queryClient]);
+  // const handleAddStage = useCallback(() => {
+  //   if (!newStage.trim()) return;
+  //   
+  //   // Add to local state
+  //   queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
+  //     if (!oldData) return oldData;
+  //     
+  //     const newStageData = {
+  //       id: Date.now(),
+  //       name: newStage.trim(),
+  //       order: oldData.stages.length,
+  //       is_active: true,
+  //     };
+  //     
+  //     return {
+  //       ...oldData,
+  //       stages: [...oldData.stages, newStageData]
+  //     };
+  //   });
+  //   
+  //   setNewStage("");
+  // }, [newStage, queryClient]);
 
-  const handleRenameStage = useCallback((oldName: string, newName: string) => {
-    if (!newName.trim() || newName === oldName) {
-      setEditingStage(null);
-      return;
-    }
-    
-    // Update local state
-    queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
-      if (!oldData) return oldData;
-      
-      return {
-        ...oldData,
-        stages: oldData.stages.map(s => 
-          s.name === oldName ? { ...s, name: newName.trim() } : s
-        )
-      };
-    });
-    
-    setEditingStage(null);
-  }, [queryClient]);
+  // const handleRenameStage = useCallback((oldName: string, newName: string) => {
+  //   if (!newName.trim() || newName === oldName) {
+  //     setEditingStage(null);
+  //     return;
+  //   }
+  //   
+  //   // Update local state
+  //   queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
+  //     if (!oldData) return oldData;
+  //     
+  //     return {
+  //       ...oldData,
+  //       stages: oldData.stages.map(s => 
+  //         s.name === oldName ? { ...s, name: newName.trim() } : s
+  //       )
+  //     };
+  //   });
+  //   
+  //   setEditingStage(null);
+  // }, [queryClient]);
 
   const handleDeleteStage = useCallback((stageName: string) => {
     // Remove from local state
@@ -425,7 +425,7 @@ export default function Kanban() {
       return;
     }
     
-    const sourceStageId = parseInt(source.droppableId);
+    // const sourceStageId = parseInt(source.droppableId);
     const destStageId = parseInt(destination.droppableId);
     const dealId = parseInt(result.draggableId);
     
@@ -623,7 +623,7 @@ export default function Kanban() {
       <div className="flex justify-end mb-2">
         <button
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white font-semibold shadow hover:from-fuchsia-700 hover:to-pink-600 transition"
-          onClick={() => setIsManageStagesOpen(true)}
+          onClick={() => {/* setIsManageStagesOpen(true) */}}
         >
           <Plus className="w-4 h-4" /> Manage Stages
         </button>
@@ -662,7 +662,7 @@ export default function Kanban() {
                       </span>
                     </div>
                     <Droppable droppableId={String(stage.id)} isDropDisabled={false}>
-                      {(provided, snapshot) => (
+                      {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}

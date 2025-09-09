@@ -35,7 +35,7 @@ export const sendAIMessage = async (request: AIChatRequest): Promise<AIChatRespo
 };
 
 // Mock function for getting CRM context (will be enhanced later)
-export const getCRMContext = async (userId: number) => {
+export const getCRMContext = async (_userId: number) => {
   // TODO: Fetch real CRM data (deals, contacts, etc.) for context
   return {
     deals: [],

@@ -12,7 +12,7 @@ import {
   Mail, 
   TrendingUp, 
   Users, 
-  BarChart3, 
+  // BarChart3, 
   Zap,
   Clock,
   CheckCircle,

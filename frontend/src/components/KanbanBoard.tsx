@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, MoreHorizontal, GripVertical } from 'lucide-react';
 import { getKanbanBoard, moveDeal } from '../services/kanban';
-import type { KanbanBoard as KanbanBoardType, Stage, Deal } from '../services/kanban';
+import type { KanbanBoard as KanbanBoardType, Deal } from '../services/kanban';
 
 export default function KanbanBoard() {
   const [board, setBoard] = useState<KanbanBoardType | null>(null);

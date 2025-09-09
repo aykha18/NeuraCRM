@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Mail, 
   Plus, 
@@ -7,17 +7,17 @@ import {
   Eye, 
   Send, 
   BarChart3, 
-  Calendar,
-  Users,
+  // Calendar,
+  // Users,
   Target,
   FileText,
-  Settings,
+  // Settings,
   CheckCircle,
-  AlertCircle,
+  // AlertCircle,
   Clock,
   Play,
   Pause,
-  Square
+  // Square
 } from 'lucide-react';
 import {
   getEmailTemplates,
@@ -31,8 +31,8 @@ import {
   sendCampaign,
   getEmailLogs,
   getEmailAnalytics,
-  getTemplateVariables,
-  formatTemplateVariable,
+  // getTemplateVariables,
+  // formatTemplateVariable,
   type EmailTemplate,
   type EmailCampaign,
   type EmailLog,

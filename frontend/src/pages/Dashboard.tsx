@@ -5,11 +5,11 @@
  * - Pie chart slices pop out on hover
  * - Integrated with React Query for data fetching
  */
-import React, { useState } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Users, CheckCircle, DollarSign, Brain, Zap, MessageCircle, Plus, UserPlus, Clock } from "lucide-react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Sector
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from "recharts";
 import { fetchDashboardData } from "../services/dashboard";
 import type { DashboardData } from "../services/dashboard";
@@ -41,26 +41,26 @@ const CustomDot = (color: string) => (props: any) => {
 };
 
 // Custom active shape for pop-out pie slice using Sector
-const renderActiveShape = (props: any) => {
-  const {
-    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill
-  } = props;
-  return (
-    <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 12} // pop out by 12px
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        stroke="#fff"
-        strokeWidth={2}
-      />
-    </g>
-  );
-};
+// const renderActiveShape = (props: any) => {
+//   const {
+//     cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill
+//   } = props;
+//   return (
+//     <g>
+//       <Sector
+//         cx={cx}
+//         cy={cy}
+//         innerRadius={innerRadius}
+//         outerRadius={outerRadius + 12} // pop out by 12px
+//         startAngle={startAngle}
+//         endAngle={endAngle}
+//         fill={fill}
+//         stroke="#fff"
+//         strokeWidth={2}
+//       />
+//     </g>
+//   );
+// };
 
 // Small custom tooltip for pie chart
 const CustomPieTooltip = ({ active, payload }: any) => {

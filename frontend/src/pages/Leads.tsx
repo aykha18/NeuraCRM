@@ -4,7 +4,7 @@
  * - Column sorting, pagination, bulk actions, row highlight, inline editing
  */
 import { useEffect, useState } from "react";
-import { Search, Filter, Eye, Edit, Trash2, X, ChevronUp, ChevronDown, Download, Plus, Zap, BarChart3, TrendingUp } from "lucide-react";
+import { Search, Filter, Eye, Trash2, X, ChevronUp, ChevronDown, Download, Plus, Zap, BarChart3, TrendingUp } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fetchLeads, getLead, createLead, updateLead, deleteLead } from "../services/leads";
 import { scoreAllLeads, getScoringAnalytics } from "../services/leadScoring";
@@ -45,7 +45,7 @@ const columns = [
 ];
 
 
-const ownerOptions = ["Alex", "Sam", "Chris"];
+// const ownerOptions = ["Alex", "Sam", "Chris"];
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -61,9 +61,9 @@ export default function LeadsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
-  const [leadsData, setLeadsData] = useState(leads); // This state is no longer needed for static data
-  const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
-  const [editValue, setEditValue] = useState("");
+  // const [leadsData, setLeadsData] = useState(leads); // This state is no longer needed for static data
+  // const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
+  // const [editValue, setEditValue] = useState("");
   const pageSize = 10;
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export default function LeadsPage() {
     fetchLeads()
       .then(data => {
         console.log('Leads loaded:', data.length, 'leads');
-        console.log('Sample lead statuses:', data.slice(0, 5).map(l => ({ id: l.id, title: l.title, status: l.status })));
+        console.log('Sample lead statuses:', data.slice(0, 5).map((l: any) => ({ id: l.id, title: l.title, status: l.status })));
         setLeads(data);
         setLoading(false);
       })
@@ -227,27 +227,27 @@ export default function LeadsPage() {
   };
 
   // Inline editing logic
-  const startEdit = (id: number, field: string, value: string) => {
-    setEditing({ id, field });
-    setEditValue(value);
-  };
-  const saveEdit = (id: number, field: string) => {
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id ? { ...lead, [field]: editValue } : lead
-      )
-    );
-    setEditing(null);
-    setEditValue("");
-  };
-  const handleEditKey = (e: React.KeyboardEvent, id: number, field: string) => {
-    if (e.key === "Enter") {
-      saveEdit(id, field);
-    } else if (e.key === "Escape") {
-      setEditing(null);
-      setEditValue("");
-    }
-  };
+  // const startEdit = (id: number, field: string, value: string) => {
+  //   setEditing({ id, field });
+  //   setEditValue(value);
+  // };
+  // const saveEdit = (id: number, field: string) => {
+  //   setLeads((prev) =>
+  //     prev.map((lead) =>
+  //       lead.id === id ? { ...lead, [field]: editValue } : lead
+  //     )
+  //   );
+  //   setEditing(null);
+  //   setEditValue("");
+  // };
+  // const handleEditKey = (e: React.KeyboardEvent, id: number, field: string) => {
+  //   if (e.key === "Enter") {
+  //     saveEdit(id, field);
+  //   } else if (e.key === "Escape") {
+  //     setEditing(null);
+  //     setEditValue("");
+  //   }
+  // };
 
   // Inline edit handlers
   const startEditCell = (id: number, field: string, value: string) => {
