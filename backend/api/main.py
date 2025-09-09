@@ -53,16 +53,25 @@ app.include_router(ai_router)
 app.include_router(email_automation_router)
 
 # Serve static files (frontend) if they exist
-frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend", "dist")
+frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend_dist")
+print(f"Looking for frontend at: {frontend_dist_path}")
+print(f"Frontend dist exists: {os.path.exists(frontend_dist_path)}")
+
 if os.path.exists(frontend_dist_path):
+    print("Mounting static files and serving frontend")
     app.mount("/static", StaticFiles(directory=frontend_dist_path), name="static")
     
     @app.get("/{path:path}")
     async def serve_frontend(path: str):
         """Serve the React frontend for all non-API routes"""
-        if path.startswith("api/") or path.startswith("chat/") or path.startswith("health"):
-            # Let FastAPI handle API routes
+        # Skip API routes
+        if path.startswith("api/") or path.startswith("chat/") or path.startswith("health") or path.startswith("docs"):
             raise HTTPException(status_code=404, detail="Not found")
+        
+        # Serve static files if they exist
+        static_file_path = os.path.join(frontend_dist_path, path)
+        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+            return FileResponse(static_file_path)
         
         # Serve index.html for all other routes (React Router)
         index_path = os.path.join(frontend_dist_path, "index.html")
@@ -70,6 +79,8 @@ if os.path.exists(frontend_dist_path):
             return FileResponse(index_path)
         else:
             raise HTTPException(status_code=404, detail="Frontend not built")
+else:
+    print("Frontend dist directory not found - serving API only")
 
 class Message(BaseModel):
     user: str
