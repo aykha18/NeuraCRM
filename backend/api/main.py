@@ -519,6 +519,49 @@ def update_contact(contact_id: int, update: ContactUpdate):
     db.close()
     return dict(result._mapping)
 
+# POST /api/contacts endpoint (create new contact)
+@app.post("/api/contacts", response_model=ContactOut)
+def create_contact(contact_data: ContactUpdate):
+    try:
+        db: Session = SessionLocal()
+        
+        # Create new contact
+        new_contact = Contact(
+            name=contact_data.name,
+            email=contact_data.email,
+            phone=contact_data.phone,
+            company=contact_data.company,
+            owner_id=1  # Default owner - you might want to get this from auth
+        )
+        
+        db.add(new_contact)
+        db.commit()
+        db.refresh(new_contact)
+        
+        # Get owner name for response
+        owner_name = None
+        if new_contact.owner_id:
+            user = db.query(User).filter(User.id == new_contact.owner_id).first()
+            if user:
+                owner_name = user.name
+        
+        result = {
+            "id": new_contact.id,
+            "name": new_contact.name,
+            "email": new_contact.email,
+            "phone": new_contact.phone,
+            "company": new_contact.company,
+            "created_at": new_contact.created_at,
+            "owner_name": owner_name
+        }
+        
+        db.close()
+        return result
+        
+    except Exception as e:
+        print(f"Database error in create_contact: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create contact: {str(e)}")
+
 # DELETE /api/contacts/{contact_id} endpoint
 @app.delete("/api/contacts/{contact_id}")
 def delete_contact(contact_id: int):
