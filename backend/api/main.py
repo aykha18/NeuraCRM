@@ -331,7 +331,7 @@ def create_lead(lead_data: LeadUpdate):
         raise HTTPException(status_code=500, detail=f"Failed to create lead: {str(e)}")
 
 # GET /api/leads endpoint (with joins)
-@app.get("/api/leads", response_model=list[LeadOut])
+@app.get("/api/leads")
 def get_leads():
     try:
         db: Session = SessionLocal()
@@ -380,7 +380,7 @@ def get_leads():
                 for lead in leads
             ]
         db.close()
-        return result
+        return {"leads": result, "count": len(result)}
     except Exception as e:
         print(f"Database error in get_leads: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch leads: {str(e)}")
