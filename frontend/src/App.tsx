@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
-import Contacts from "./pages/Contacts";
+import Contacts from "./pages/contaxt";
 import Kanban from "./pages/Kanban";
 import Chat from "./pages/Chat";
 import Ai from "./pages/Ai";

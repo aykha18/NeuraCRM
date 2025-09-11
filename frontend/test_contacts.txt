@@ -1,0 +1,42 @@
+﻿import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/pages/Contacts.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=d124530c"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/Khana/smart_crm/frontend/src/pages/Contacts.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+export default function Contacts() {
+  return /* @__PURE__ */ jsxDEV("div", { style: { padding: 24, fontSize: 24, color: "#0ea5e9" }, children: "Contacts FIXED v1" }, void 0, false, {
+    fileName: "C:/Users/Khana/smart_crm/frontend/src/pages/Contacts.tsx",
+    lineNumber: 21,
+    columnNumber: 10
+  }, this);
+}
+_c = Contacts;
+var _c;
+$RefreshReg$(_c, "Contacts");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/Khana/smart_crm/frontend/src/pages/Contacts.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/Khana/smart_crm/frontend/src/pages/Contacts.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJtYXBwaW5ncyI6IkFBQ1E7Ozs7Ozs7Ozs7Ozs7Ozs7QUFEUCx3QkFBd0JBLFdBQVc7QUFDcEMsU0FBUSx1QkFBQyxTQUFJLE9BQU8sRUFBRUMsU0FBUyxJQUFJQyxVQUFVLElBQUlDLE9BQU8sVUFBVSxHQUFHLGlDQUE3RDtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBQThFO0FBQ3RGO0FBQUNDLEtBRndCSjtBQUFRLElBQUFJO0FBQUFDLGFBQUFELElBQUEiLCJuYW1lcyI6WyJDb250YWN0cyIsInBhZGRpbmciLCJmb250U2l6ZSIsImNvbG9yIiwiX2MiLCIkUmVmcmVzaFJlZyQiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQ29udGFjdHMudHN4Il0sInNvdXJjZXNDb250ZW50IjpbIu+7v2V4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIENvbnRhY3RzKCkge1xucmV0dXJuICg8ZGl2IHN0eWxlPXt7IHBhZGRpbmc6IDI0LCBmb250U2l6ZTogMjQsIGNvbG9yOiAnIzBlYTVlOScgfX0+Q29udGFjdHMgRklYRUQgdjE8L2Rpdj4pO1xufVxyXG4iXSwiZmlsZSI6IkM6L1VzZXJzL0toYW5hL3NtYXJ0X2NybS9mcm9udGVuZC9zcmMvcGFnZXMvQ29udGFjdHMudHN4In0=
