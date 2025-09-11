@@ -116,10 +116,6 @@ class ContactUpdate(BaseModel):
 def read_root():
     return {"message": "CRM API is running.", "status": "healthy"}
 
-@app.get("/ping")
-def ping():
-    return {"status": "ok", "message": "pong"}
-
 @app.get("/health")
 def health_check():
     try:
@@ -134,6 +130,10 @@ def health_check():
 @app.get("/api/test")
 def test_api():
     return {"message": "API is working", "endpoints": ["/api/leads", "/api/contacts", "/api/leads/scoring-analytics"]}
+
+@app.get("/api/ping")
+def ping():
+    return {"status": "ok", "message": "pong"}
 
 # Lead Scoring Endpoints
 @app.post("/api/leads/{lead_id}/score")
