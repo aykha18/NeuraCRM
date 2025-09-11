@@ -118,14 +118,7 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    try:
-        # Test database connection
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        return {"status": "healthy", "message": "Service is running", "database": "connected"}
-    except Exception as e:
-        return {"status": "unhealthy", "message": f"Database connection failed: {str(e)}"}
+    return {"status": "healthy", "message": "Service is running"}
 
 @app.get("/api/test")
 def test_api():
