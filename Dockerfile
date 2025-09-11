@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # Start the CRM application
-CMD ["python", "-m", "uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "main.py"]
