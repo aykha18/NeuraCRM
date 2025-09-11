@@ -116,9 +116,20 @@ class ContactUpdate(BaseModel):
 def read_root():
     return {"message": "CRM API is running.", "status": "healthy"}
 
+@app.get("/ping")
+def ping():
+    return {"status": "ok", "message": "pong"}
+
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "message": "Service is running"}
+    try:
+        # Test database connection
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        return {"status": "healthy", "message": "Service is running", "database": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "message": f"Database connection failed: {str(e)}"}
 
 @app.get("/api/test")
 def test_api():

@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "python main.py"
-healthcheckPath = "/"
+startCommand = "python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
+healthcheckPath = "/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
