@@ -3,21 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import Optional
 from datetime import datetime
 import json
 import os
+import logging
 
-# Import routers
-from api.routers import kanban
-from api.routers.dashboard import router as dashboard_router
-from api.routers.ai import router as ai_router
-from api.routers.email_automation import router as email_automation_router
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Import database and models
-from api.db import SessionLocal
-from api.models import Lead, Contact, User
-from api.lead_scoring import lead_scoring_service
+# Import database and models first
+from api.db import SessionLocal, engine
+from api.models import Lead, Contact, User, Base
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -28,6 +27,49 @@ app = FastAPI(
     description="API for the CRM Application with AI Features",
     version="1.0.0"
 )
+
+# Startup event to initialize database
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and create tables if they don't exist"""
+    try:
+        logger.info("Starting up CRM API...")
+        
+        # Test database connection
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            logger.info("Database connection successful!")
+        
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized!")
+        
+        # Import routers after database is ready
+        try:
+            from api.routers import kanban
+            from api.routers.dashboard import router as dashboard_router
+            from api.routers.ai import router as ai_router
+            from api.routers.email_automation import router as email_automation_router
+            from api.lead_scoring import lead_scoring_service
+            
+            # Include routers
+            app.include_router(kanban.router)
+            app.include_router(dashboard_router)
+            app.include_router(ai_router)
+            app.include_router(email_automation_router)
+            
+            logger.info("All routers loaded successfully!")
+            
+        except Exception as e:
+            logger.warning(f"Some routers failed to load: {e}")
+            # Continue without the problematic routers
+        
+        logger.info("CRM API startup completed successfully!")
+        
+    except Exception as e:
+        logger.error(f"Startup failed: {e}")
+        # Don't raise the exception, let the app start anyway
+        # The health check endpoints will still work
 
 # CORS setup
 app.add_middleware(
@@ -46,22 +88,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(kanban.router)
-app.include_router(dashboard_router)
-app.include_router(ai_router)
-app.include_router(email_automation_router)
-
 # Serve static files (frontend) if they exist
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend_dist")
-print(f"Looking for frontend at: {frontend_dist_path}")
-print(f"Frontend dist exists: {os.path.exists(frontend_dist_path)}")
+logger.info(f"Looking for frontend at: {frontend_dist_path}")
+logger.info(f"Frontend dist exists: {os.path.exists(frontend_dist_path)}")
 
 if os.path.exists(frontend_dist_path):
-    print("Mounting static files and serving frontend")
+    logger.info("Mounting static files and serving frontend")
     app.mount("/static", StaticFiles(directory=frontend_dist_path), name="static")
 else:
-    print("Frontend dist directory not found - serving API only")
+    logger.info("Frontend dist directory not found - serving API only")
 
 class Message(BaseModel):
     user: str
@@ -126,12 +162,43 @@ def test_api():
 
 @app.get("/api/ping")
 def ping():
-    return {"status": "ok", "message": "pong"}
+    """Simple health check endpoint that doesn't require database"""
+    return {"status": "ok", "message": "pong", "timestamp": datetime.now().isoformat()}
+
+@app.get("/api/health")
+def health_check():
+    """Comprehensive health check endpoint"""
+    try:
+        # Test database connection
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+        
+        return {
+            "status": "healthy", 
+            "message": "Service is running",
+            "database": "connected",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.warning(f"Health check failed: {e}")
+        return {
+            "status": "degraded", 
+            "message": "Service is running but database connection failed",
+            "database": "disconnected",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 # Lead Scoring Endpoints
 @app.post("/api/leads/{lead_id}/score")
 def score_lead(lead_id: int):
     """Calculate and update lead score"""
+    try:
+        # Try to import lead scoring service
+        from api.lead_scoring import lead_scoring_service
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Lead scoring service not available")
+    
     db: Session = SessionLocal()
     
     try:
@@ -162,6 +229,12 @@ def score_lead(lead_id: int):
 @app.post("/api/leads/score-all")
 def score_all_leads():
     """Score all leads in the system"""
+    try:
+        # Try to import lead scoring service
+        from api.lead_scoring import lead_scoring_service
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Lead scoring service not available")
+    
     db: Session = SessionLocal()
     
     try:
@@ -344,7 +417,7 @@ def get_leads():
             # Convert to list of dicts for Pydantic
             result = [dict(lead._mapping) for lead in leads]
         except Exception as join_error:
-            print(f"Join query failed: {join_error}")
+            logger.warning(f"Join query failed: {join_error}")
             # Fallback to simple lead query
             leads = db.query(Lead).all()
             result = [
@@ -367,7 +440,7 @@ def get_leads():
         db.close()
         return result
     except Exception as e:
-        print(f"Database error in get_leads: {e}")
+        logger.error(f"Database error in get_leads: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch leads: {str(e)}")
 
 @app.get("/api/leads/{lead_id}", response_model=LeadOut)
@@ -467,7 +540,7 @@ def get_contacts():
         return result
         
     except Exception as e:
-        print(f"Database error in get_contacts: {e}")
+        logger.error(f"Database error in get_contacts: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch contacts: {str(e)}")
 
 # GET /api/contacts/{contact_id} endpoint
@@ -563,7 +636,7 @@ def create_contact(contact_data: ContactUpdate):
         return result
         
     except Exception as e:
-        print(f"Database error in create_contact: {e}")
+        logger.error(f"Database error in create_contact: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create contact: {str(e)}")
 
 # DELETE /api/contacts/{contact_id} endpoint

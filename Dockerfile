@@ -19,5 +19,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Start the CRM application
-CMD ["python", "main.py"]
+# Start the CRM application with proper database initialization
+CMD ["python", "start_app.py"]
