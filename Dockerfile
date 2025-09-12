@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # Start the CRM application
-CMD ["python", "simple_main.py"]
+CMD ["python", "main.py"]
