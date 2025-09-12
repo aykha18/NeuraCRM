@@ -2,6 +2,7 @@
 """
 Main entry point for the CRM application.
 This file is used for deployment to ensure proper module resolution.
+Updated: Force fresh deployment
 """
 
 import os

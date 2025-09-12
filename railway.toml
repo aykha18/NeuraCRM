@@ -1,5 +1,6 @@
 [build]
 builder = "dockerfile"
+# Force fresh build - updated 2025-01-12
 
 [deploy]
 startCommand = "python main.py"
