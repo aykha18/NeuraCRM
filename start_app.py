@@ -58,7 +58,10 @@ def main():
     
     # Import and start the FastAPI app
     try:
-        from main import app
+        # Add the current directory to Python path
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        
+        from backend.api.main import app
         import uvicorn
         
         port = int(os.environ.get("PORT", 8000))

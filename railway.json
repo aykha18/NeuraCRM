@@ -4,8 +4,8 @@
     "builder": "dockerfile"
   },
   "deploy": {
-    "startCommand": "python main.py",
-    "healthcheckPath": "/",
+    "startCommand": "python minimal_start.py",
+    "healthcheckPath": "/api/ping",
     "healthcheckTimeout": 300,
     "restartPolicyType": "on_failure"
   }
