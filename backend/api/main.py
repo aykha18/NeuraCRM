@@ -96,26 +96,6 @@ logger.info(f"Frontend dist exists: {os.path.exists(frontend_dist_path)}")
 if os.path.exists(frontend_dist_path):
     logger.info("Mounting static files and serving frontend")
     app.mount("/static", StaticFiles(directory=frontend_dist_path), name="static")
-    
-    # Serve the main index.html for all non-API routes
-    @app.get("/{path:path}")
-    async def serve_frontend(path: str):
-        """Serve the React frontend for all non-API routes"""
-        # Don't serve API routes
-        if path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        
-        # Serve static files if they exist
-        static_file_path = os.path.join(frontend_dist_path, path)
-        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
-            return FileResponse(static_file_path)
-        
-        # Serve index.html for all other routes (React Router)
-        index_path = os.path.join(frontend_dist_path, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        else:
-            raise HTTPException(status_code=404, detail="Frontend not found")
 else:
     logger.info("Frontend dist directory not found - serving API only")
 
@@ -170,6 +150,13 @@ class ContactUpdate(BaseModel):
 
 @app.get("/")
 def read_root():
+    """Serve the frontend index.html at root"""
+    if os.path.exists(frontend_dist_path):
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+    
+    # Fallback to JSON if frontend not available
     return {"message": "CRM API is running.", "status": "healthy"}
 
 @app.get("/health")
@@ -671,4 +658,25 @@ def delete_contact(contact_id: int):
     db.commit()
     db.close()
     return {"detail": "Contact deleted"}
+
+# Catch-all route for frontend (MUST BE LAST!)
+if os.path.exists(frontend_dist_path):
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        """Serve the React frontend for all non-API routes"""
+        # Don't serve API routes
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        
+        # Serve static files if they exist
+        static_file_path = os.path.join(frontend_dist_path, path)
+        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+            return FileResponse(static_file_path)
+        
+        # Serve index.html for all other routes (React Router)
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        else:
+            raise HTTPException(status_code=404, detail="Frontend not found")
 
