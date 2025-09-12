@@ -3,7 +3,7 @@ builder = "dockerfile"
 # Force fresh build - updated 2025-01-12
 
 [deploy]
-startCommand = "python minimal_start.py"
+startCommand = "python main.py"
 healthcheckPath = "/api/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # Start the CRM application with proper database initialization
-CMD ["python", "minimal_start.py"]
+CMD ["python", "main.py"]
