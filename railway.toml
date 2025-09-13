@@ -1,6 +1,6 @@
 [build]
 builder = "dockerfile"
-# Force fresh build - updated 2025-01-12
+# Force fresh build - updated 2025-01-12 - fixing frontend serving
 
 [deploy]
 startCommand = "python main.py"
