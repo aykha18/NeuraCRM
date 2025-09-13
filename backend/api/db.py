@@ -12,11 +12,24 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     print(f"Fixed DATABASE_URL: {DATABASE_URL}")
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create engine lazily to avoid connection issues during import
+engine = None
+SessionLocal = None
+
+def get_engine():
+    global engine
+    if engine is None:
+        engine = create_engine(DATABASE_URL)
+    return engine
+
+def get_session_local():
+    global SessionLocal
+    if SessionLocal is None:
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return SessionLocal
 
 def get_db():
-    db = SessionLocal()
+    db = get_session_local()()
     try:
         yield db
     finally:

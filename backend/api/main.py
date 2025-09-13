@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import database and models first
-from api.db import SessionLocal, engine
+from api.db import get_session_local, get_engine
 from api.models import Lead, Contact, User, Base
 
 # Import Pydantic models
@@ -36,6 +36,7 @@ async def startup_event():
         logger.info("Starting up CRM API...")
         
         # Test database connection
+        engine = get_engine()
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             logger.info("Database connection successful!")
@@ -177,6 +178,7 @@ def health_check():
     """Comprehensive health check endpoint"""
     try:
         # Test database connection
+        engine = get_engine()
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
         
@@ -206,7 +208,7 @@ def score_lead(lead_id: int):
     except ImportError:
         raise HTTPException(status_code=503, detail="Lead scoring service not available")
     
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     
     try:
         lead = db.query(Lead).filter(Lead.id == lead_id).first()
@@ -242,7 +244,7 @@ def score_all_leads():
     except ImportError:
         raise HTTPException(status_code=503, detail="Lead scoring service not available")
     
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     
     try:
         leads = db.query(Lead).all()
@@ -279,7 +281,7 @@ def score_all_leads():
 @app.get("/api/leads/scoring-analytics")
 def get_scoring_analytics():
     """Get lead scoring analytics"""
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     
     try:
         # Get all leads with scores
@@ -339,7 +341,7 @@ def chat_with_ai(message: Message):
 # POST /api/leads endpoint (create new lead)
 @app.post("/api/leads", response_model=LeadOut)
 def create_lead(lead_data: LeadUpdate):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     
     try:
         # Create new lead
@@ -399,7 +401,7 @@ def create_lead(lead_data: LeadUpdate):
 @app.get("/api/leads", response_model=list[LeadOut])
 def get_leads():
     try:
-        db: Session = SessionLocal()
+        db: Session = get_session_local()()
         # Try to get leads with joins, fallback to simple query if joins fail
         try:
             leads = (
@@ -452,7 +454,7 @@ def get_leads():
 
 @app.get("/api/leads/{lead_id}", response_model=LeadOut)
 def get_lead(lead_id: int):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     lead = (
         db.query(
             Lead.id,
@@ -476,7 +478,7 @@ def get_lead(lead_id: int):
 
 @app.put("/api/leads/{lead_id}", response_model=LeadOut)
 def update_lead(lead_id: int, update: LeadUpdate):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         db.close()
@@ -507,7 +509,7 @@ def update_lead(lead_id: int, update: LeadUpdate):
 
 @app.delete("/api/leads/{lead_id}")
 def delete_lead(lead_id: int):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         db.close()
@@ -521,7 +523,7 @@ def delete_lead(lead_id: int):
 @app.get("/api/contacts", response_model=list[ContactOut])
 def get_contacts():
     try:
-        db: Session = SessionLocal()
+        db: Session = get_session_local()()
         contacts = db.query(Contact).all()
         
         result = []
@@ -553,7 +555,7 @@ def get_contacts():
 # GET /api/contacts/{contact_id} endpoint
 @app.get("/api/contacts/{contact_id}", response_model=ContactOut)
 def get_contact(contact_id: int):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     contact = (
         db.query(
             Contact.id,
@@ -576,7 +578,7 @@ def get_contact(contact_id: int):
 # PUT /api/contacts/{contact_id} endpoint
 @app.put("/api/contacts/{contact_id}", response_model=ContactOut)
 def update_contact(contact_id: int, update: ContactUpdate):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         db.close()
@@ -607,7 +609,7 @@ def update_contact(contact_id: int, update: ContactUpdate):
 @app.post("/api/contacts", response_model=ContactOut)
 def create_contact(contact_data: ContactUpdate):
     try:
-        db: Session = SessionLocal()
+        db: Session = get_session_local()()
         
         # Create new contact
         new_contact = Contact(
@@ -649,7 +651,7 @@ def create_contact(contact_data: ContactUpdate):
 # DELETE /api/contacts/{contact_id} endpoint
 @app.delete("/api/contacts/{contact_id}")
 def delete_contact(contact_id: int):
-    db: Session = SessionLocal()
+    db: Session = get_session_local()()
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         db.close()
