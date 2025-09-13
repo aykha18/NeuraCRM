@@ -84,6 +84,155 @@ def dashboard():
         ]
     }
 
+# Additional API endpoints for other pages
+@app.get("/api/contacts")
+def get_contacts():
+    """Get all contacts"""
+    return [
+        {
+            "id": 1,
+            "name": "John Smith",
+            "email": "john@example.com",
+            "phone": "+1-555-0123",
+            "company": "Acme Corp",
+            "status": "active",
+            "owner_id": 1,
+            "created_at": "2024-01-15T10:30:00Z",
+            "owner_name": "Sales Rep"
+        },
+        {
+            "id": 2,
+            "name": "Jane Doe",
+            "email": "jane@example.com", 
+            "phone": "+1-555-0124",
+            "company": "Tech Solutions",
+            "status": "active",
+            "owner_id": 1,
+            "created_at": "2024-01-16T14:20:00Z",
+            "owner_name": "Sales Rep"
+        }
+    ]
+
+@app.get("/api/contacts/{contact_id}")
+def get_contact(contact_id: int):
+    """Get specific contact"""
+    return {
+        "id": contact_id,
+        "name": "John Smith",
+        "email": "john@example.com",
+        "phone": "+1-555-0123",
+        "company": "Acme Corp",
+        "status": "active",
+        "owner_id": 1,
+        "created_at": "2024-01-15T10:30:00Z",
+        "owner_name": "Sales Rep"
+    }
+
+@app.get("/api/leads")
+def get_leads():
+    """Get all leads"""
+    return [
+        {
+            "id": 1,
+            "name": "ABC Company",
+            "email": "contact@abc.com",
+            "phone": "+1-555-0100",
+            "company": "ABC Corp",
+            "status": "new",
+            "source": "website",
+            "score": 85,
+            "owner_id": 1,
+            "created_at": "2024-01-15T10:30:00Z",
+            "owner_name": "Sales Rep"
+        },
+        {
+            "id": 2,
+            "name": "XYZ Industries",
+            "email": "info@xyz.com",
+            "phone": "+1-555-0101", 
+            "company": "XYZ Corp",
+            "status": "qualified",
+            "source": "referral",
+            "score": 92,
+            "owner_id": 1,
+            "created_at": "2024-01-16T14:20:00Z",
+            "owner_name": "Sales Rep"
+        }
+    ]
+
+@app.get("/api/leads/{lead_id}")
+def get_lead(lead_id: int):
+    """Get specific lead"""
+    return {
+        "id": lead_id,
+        "name": "ABC Company",
+        "email": "contact@abc.com",
+        "phone": "+1-555-0100",
+        "company": "ABC Corp",
+        "status": "new",
+        "source": "website",
+        "score": 85,
+        "owner_id": 1,
+        "created_at": "2024-01-15T10:30:00Z",
+        "owner_name": "Sales Rep"
+    }
+
+@app.get("/api/kanban/columns")
+def get_kanban_columns():
+    """Get kanban board columns"""
+    return [
+        {
+            "id": 1,
+            "name": "New Leads",
+            "position": 0,
+            "color": "#3B82F6"
+        },
+        {
+            "id": 2,
+            "name": "Qualified",
+            "position": 1,
+            "color": "#10B981"
+        },
+        {
+            "id": 3,
+            "name": "Proposal",
+            "position": 2,
+            "color": "#F59E0B"
+        },
+        {
+            "id": 4,
+            "name": "Closed Won",
+            "position": 3,
+            "color": "#8B5CF6"
+        }
+    ]
+
+@app.get("/api/kanban/cards")
+def get_kanban_cards():
+    """Get kanban board cards"""
+    return [
+        {
+            "id": 1,
+            "title": "ABC Company Lead",
+            "description": "Potential enterprise client",
+            "column_id": 1,
+            "position": 0,
+            "assignee_id": 1,
+            "due_date": "2024-02-15",
+            "priority": "high"
+        },
+        {
+            "id": 2,
+            "title": "XYZ Industries",
+            "description": "Follow up on proposal",
+            "column_id": 2,
+            "position": 0,
+            "assignee_id": 1,
+            "due_date": "2024-02-10",
+            "priority": "medium"
+        }
+    ]
+
 # Serve frontend (AFTER all API routes)
 frontend_path = "/app/frontend_dist"
 if os.path.exists(frontend_path):
