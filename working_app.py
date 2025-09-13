@@ -12,10 +12,19 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
-from passlib.context import CryptContext
-import jwt
+from pydantic import BaseModel
 from typing import Optional
+
+# Try to import authentication dependencies
+try:
+    from pydantic import EmailStr
+    from passlib.context import CryptContext
+    import jwt
+    AUTH_AVAILABLE = True
+    print("✅ Authentication dependencies imported successfully")
+except ImportError as e:
+    print(f"⚠️ Authentication dependencies not available: {e}")
+    AUTH_AVAILABLE = False
 
 # Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
@@ -29,14 +38,21 @@ except ImportError as e:
     print(f"❌ Database import failed: {e}")
     DB_AVAILABLE = False
 
-# Authentication configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+# Authentication configuration (only if auth is available)
+if AUTH_AVAILABLE:
+    SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    ALGORITHM = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES = 30
+    
+    # Password hashing
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    security = HTTPBearer()
+else:
+    SECRET_KEY = None
+    ALGORITHM = None
+    ACCESS_TOKEN_EXPIRE_MINUTES = None
+    pwd_context = None
+    security = None
 
 # Pydantic models for authentication
 class UserCreate(BaseModel):
@@ -59,40 +75,53 @@ class UserResponse(BaseModel):
     role: Optional[str] = None
     created_at: Optional[datetime] = None
 
-# Authentication functions
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+# Authentication functions (only if auth is available)
+if AUTH_AVAILABLE:
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    def get_password_hash(password: str) -> str:
+        return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=15)
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    if not DB_AVAILABLE:
-        raise HTTPException(status_code=500, detail="Database not available")
-    
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+    def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+        if not DB_AVAILABLE:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        try:
+            token = credentials.credentials
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email: str = payload.get("sub")
+            if email is None:
+                raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        except jwt.PyJWTError:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+else:
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        raise HTTPException(status_code=500, detail="Authentication not available")
     
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+    def get_password_hash(password: str) -> str:
+        raise HTTPException(status_code=500, detail="Authentication not available")
+    
+    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+        raise HTTPException(status_code=500, detail="Authentication not available")
+    
+    def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+        raise HTTPException(status_code=500, detail="Authentication not available")
 
 app = FastAPI(title="CRM API")
 
@@ -231,72 +260,85 @@ def get_kanban_board(db: Session = Depends(get_db)):
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
-# Authentication endpoints
-@app.post("/api/auth/register", response_model=UserResponse)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user"""
-    if not DB_AVAILABLE:
-        raise HTTPException(status_code=500, detail="Database not available")
-    
-    # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
-    hashed_password = get_password_hash(user.password)
-    db_user = User(
-        name=user.name,
-        email=user.email,
-        password_hash=hashed_password,
-        role="user",
-        created_at=datetime.utcnow()
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return UserResponse(
-        id=db_user.id,
-        name=db_user.name,
-        email=db_user.email,
-        role=db_user.role,
-        created_at=db_user.created_at
-    )
-
-@app.post("/api/auth/login", response_model=Token)
-def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    """Login user and return access token"""
-    if not DB_AVAILABLE:
-        raise HTTPException(status_code=500, detail="Database not available")
-    
-    # Authenticate user
-    user = db.query(User).filter(User.email == user_credentials.email).first()
-    if not user or not verify_password(user_credentials.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+# Authentication endpoints (only if auth is available)
+if AUTH_AVAILABLE:
+    @app.post("/api/auth/register", response_model=UserResponse)
+    def register(user: UserCreate, db: Session = Depends(get_db)):
+        """Register a new user"""
+        if not DB_AVAILABLE:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        # Check if user already exists
+        existing_user = db.query(User).filter(User.email == user.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create new user
+        hashed_password = get_password_hash(user.password)
+        db_user = User(
+            name=user.name,
+            email=user.email,
+            password_hash=hashed_password,
+            role="user",
+            created_at=datetime.utcnow()
         )
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        return UserResponse(
+            id=db_user.id,
+            name=db_user.name,
+            email=db_user.email,
+            role=db_user.role,
+            created_at=db_user.created_at
+        )
 
-@app.get("/api/auth/me", response_model=UserResponse)
-def get_current_user_info(current_user: User = Depends(get_current_user)):
-    """Get current user information"""
-    return UserResponse(
-        id=current_user.id,
-        name=current_user.name,
-        email=current_user.email,
-        role=current_user.role,
-        created_at=current_user.created_at
-    )
+    @app.post("/api/auth/login", response_model=Token)
+    def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
+        """Login user and return access token"""
+        if not DB_AVAILABLE:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        # Authenticate user
+        user = db.query(User).filter(User.email == user_credentials.email).first()
+        if not user or not verify_password(user_credentials.password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    @app.get("/api/auth/me", response_model=UserResponse)
+    def get_current_user_info(current_user: User = Depends(get_current_user)):
+        """Get current user information"""
+        return UserResponse(
+            id=current_user.id,
+            name=current_user.name,
+            email=current_user.email,
+            role=current_user.role,
+            created_at=current_user.created_at
+        )
+else:
+    @app.post("/api/auth/register")
+    def register():
+        return {"error": "Authentication not available"}
+    
+    @app.post("/api/auth/login")
+    def login():
+        return {"error": "Authentication not available"}
+    
+    @app.get("/api/auth/me")
+    def get_current_user_info():
+        return {"error": "Authentication not available"}
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
