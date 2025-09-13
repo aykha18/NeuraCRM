@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 """
-Working CRM App - Actually serves the frontend
+Working CRM App - Actually serves the frontend with real database
 """
 import os
+import sys
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from datetime import datetime
+from sqlalchemy.orm import Session
+
+# Add backend to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
+
+try:
+    from api.db import get_db, get_engine
+    from api.models import Contact, Lead, Deal, Stage, User
+    DB_AVAILABLE = True
+    print("✅ Database models imported successfully")
+except ImportError as e:
+    print(f"❌ Database import failed: {e}")
+    DB_AVAILABLE = False
 
 app = FastAPI(title="CRM API")
 
@@ -28,7 +42,24 @@ def ping():
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    db_status = "unknown"
+    if DB_AVAILABLE:
+        try:
+            engine = get_engine()
+            with engine.connect() as conn:
+                conn.execute("SELECT 1")
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+    else:
+        db_status = "models_not_imported"
+    
+    return {
+        "status": "healthy", 
+        "timestamp": datetime.now().isoformat(),
+        "database": db_status,
+        "db_available": DB_AVAILABLE
+    }
 
 @app.get("/api/dashboard/")
 def dashboard():
@@ -86,32 +117,28 @@ def dashboard():
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
-def get_contacts():
-    """Get all contacts"""
-    return [
-        {
-            "id": 1,
-            "name": "John Smith",
-            "email": "john@example.com",
-            "phone": "+1-555-0123",
-            "company": "Acme Corp",
-            "status": "active",
-            "owner_id": 1,
-            "created_at": "2024-01-15T10:30:00Z",
-            "owner_name": "Sales Rep"
-        },
-        {
-            "id": 2,
-            "name": "Jane Doe",
-            "email": "jane@example.com", 
-            "phone": "+1-555-0124",
-            "company": "Tech Solutions",
-            "status": "active",
-            "owner_id": 1,
-            "created_at": "2024-01-16T14:20:00Z",
-            "owner_name": "Sales Rep"
-        }
-    ]
+def get_contacts(db: Session = Depends(get_db)):
+    """Get all contacts from database"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        contacts = db.query(Contact).all()
+        return [
+            {
+                "id": contact.id,
+                "name": contact.name,
+                "email": contact.email,
+                "phone": contact.phone,
+                "company": contact.company,
+                "owner_id": contact.owner_id,
+                "created_at": contact.created_at.isoformat() if contact.created_at else None,
+                "owner_name": contact.owner.name if contact.owner else None
+            }
+            for contact in contacts
+        ]
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @app.get("/api/contacts/{contact_id}")
 def get_contact(contact_id: int):
@@ -129,36 +156,33 @@ def get_contact(contact_id: int):
     }
 
 @app.get("/api/leads")
-def get_leads():
-    """Get all leads"""
-    return [
-        {
-            "id": 1,
-            "name": "ABC Company",
-            "email": "contact@abc.com",
-            "phone": "+1-555-0100",
-            "company": "ABC Corp",
-            "status": "new",
-            "source": "website",
-            "score": 85,
-            "owner_id": 1,
-            "created_at": "2024-01-15T10:30:00Z",
-            "owner_name": "Sales Rep"
-        },
-        {
-            "id": 2,
-            "name": "XYZ Industries",
-            "email": "info@xyz.com",
-            "phone": "+1-555-0101", 
-            "company": "XYZ Corp",
-            "status": "qualified",
-            "source": "referral",
-            "score": 92,
-            "owner_id": 1,
-            "created_at": "2024-01-16T14:20:00Z",
-            "owner_name": "Sales Rep"
-        }
-    ]
+def get_leads(db: Session = Depends(get_db)):
+    """Get all leads from database"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        leads = db.query(Lead).all()
+        return [
+            {
+                "id": lead.id,
+                "title": lead.title,
+                "contact_id": lead.contact_id,
+                "owner_id": lead.owner_id,
+                "status": lead.status,
+                "source": lead.source,
+                "score": lead.score,
+                "created_at": lead.created_at.isoformat() if lead.created_at else None,
+                "owner_name": lead.owner.name if lead.owner else None,
+                "contact_name": lead.contact.name if lead.contact else None,
+                "contact_email": lead.contact.email if lead.contact else None,
+                "contact_phone": lead.contact.phone if lead.contact else None,
+                "contact_company": lead.contact.company if lead.contact else None
+            }
+            for lead in leads
+        ]
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @app.get("/api/leads/{lead_id}")
 def get_lead(lead_id: int):
@@ -178,60 +202,50 @@ def get_lead(lead_id: int):
     }
 
 @app.get("/api/kanban/columns")
-def get_kanban_columns():
-    """Get kanban board columns"""
-    return [
-        {
-            "id": 1,
-            "name": "New Leads",
-            "position": 0,
-            "color": "#3B82F6"
-        },
-        {
-            "id": 2,
-            "name": "Qualified",
-            "position": 1,
-            "color": "#10B981"
-        },
-        {
-            "id": 3,
-            "name": "Proposal",
-            "position": 2,
-            "color": "#F59E0B"
-        },
-        {
-            "id": 4,
-            "name": "Closed Won",
-            "position": 3,
-            "color": "#8B5CF6"
-        }
-    ]
+def get_kanban_columns(db: Session = Depends(get_db)):
+    """Get kanban board columns from database"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stages = db.query(Stage).order_by(Stage.order).all()
+        return [
+            {
+                "id": stage.id,
+                "name": stage.name,
+                "position": stage.order or 0,
+                "color": "#3B82F6"  # Default color, could be added to Stage model
+            }
+            for stage in stages
+        ]
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @app.get("/api/kanban/cards")
-def get_kanban_cards():
-    """Get kanban board cards"""
-    return [
-        {
-            "id": 1,
-            "title": "ABC Company Lead",
-            "description": "Potential enterprise client",
-            "column_id": 1,
-            "position": 0,
-            "assignee_id": 1,
-            "due_date": "2024-02-15",
-            "priority": "high"
-        },
-        {
-            "id": 2,
-            "title": "XYZ Industries",
-            "description": "Follow up on proposal",
-            "column_id": 2,
-            "position": 0,
-            "assignee_id": 1,
-            "due_date": "2024-02-10",
-            "priority": "medium"
-        }
-    ]
+def get_kanban_cards(db: Session = Depends(get_db)):
+    """Get kanban board cards from database"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        deals = db.query(Deal).all()
+        return [
+            {
+                "id": deal.id,
+                "title": deal.title,
+                "description": deal.description or "",
+                "column_id": deal.stage_id or 1,
+                "position": 0,  # Could be added to Deal model
+                "assignee_id": deal.owner_id,
+                "due_date": deal.reminder_date.isoformat() if deal.reminder_date else None,
+                "priority": "medium",  # Could be added to Deal model
+                "value": deal.value,
+                "contact_name": deal.contact.name if deal.contact else None
+            }
+            for deal in deals
+        ]
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 # Serve frontend (AFTER all API routes)
 frontend_path = "/app/frontend_dist"
