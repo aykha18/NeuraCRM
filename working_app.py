@@ -115,6 +115,52 @@ def dashboard():
         ]
     }
 
+@app.get("/api/kanban/board")
+def get_kanban_board(db: Session = Depends(get_db)):
+    """Get complete kanban board data (stages + deals)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get stages
+        stages = db.query(Stage).order_by(Stage.order).all()
+        stages_data = [
+            {
+                "id": stage.id,
+                "name": stage.name,
+                "order": stage.order or 0,
+                "wip_limit": stage.wip_limit
+            }
+            for stage in stages
+        ]
+        
+        # Get deals
+        deals = db.query(Deal).all()
+        deals_data = [
+            {
+                "id": deal.id,
+                "title": deal.title,
+                "description": deal.description or "",
+                "value": deal.value or 0,
+                "stage_id": deal.stage_id or 1,
+                "owner_id": deal.owner_id,
+                "contact_id": deal.contact_id,
+                "reminder_date": deal.reminder_date.isoformat() if deal.reminder_date else None,
+                "created_at": deal.created_at.isoformat() if deal.created_at else None,
+                "owner_name": deal.owner.name if deal.owner else None,
+                "contact_name": deal.contact.name if deal.contact else None,
+                "watchers": []  # Could be populated from watchers relationship
+            }
+            for deal in deals
+        ]
+        
+        return {
+            "stages": stages_data,
+            "deals": deals_data
+        }
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
 def get_contacts(db: Session = Depends(get_db)):
