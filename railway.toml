@@ -3,7 +3,7 @@ builder = "dockerfile"
 # Force fresh build - updated 2025-01-12 - fixing frontend serving
 
 [deploy]
-startCommand = "python main.py"
+startCommand = "python working_app.py"
 healthcheckPath = "/api/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
