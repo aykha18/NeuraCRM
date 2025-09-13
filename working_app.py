@@ -21,31 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve frontend
-frontend_path = "/app/frontend_dist"
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
-    
-    @app.get("/")
-    def serve_frontend():
-        return FileResponse(os.path.join(frontend_path, "index.html"))
-    
-    @app.get("/{path:path}")
-    def serve_frontend_routes(path: str):
-        if path.startswith("api/"):
-            return {"error": "API endpoint not found"}
-        
-        file_path = os.path.join(frontend_path, path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            return FileResponse(file_path)
-        
-        return FileResponse(os.path.join(frontend_path, "index.html"))
-else:
-    @app.get("/")
-    def root():
-        return {"message": "Frontend not found"}
-
-# API endpoints
+# API endpoints (MUST be defined BEFORE catch-all routes)
 @app.get("/api/ping")
 def ping():
     return {"status": "ok", "message": "pong", "timestamp": datetime.now().isoformat()}
@@ -107,6 +83,30 @@ def dashboard():
             }
         ]
     }
+
+# Serve frontend (AFTER all API routes)
+frontend_path = "/app/frontend_dist"
+if os.path.exists(frontend_path):
+    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+    
+    @app.get("/")
+    def serve_frontend():
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+    
+    @app.get("/{path:path}")
+    def serve_frontend_routes(path: str):
+        if path.startswith("api/"):
+            return {"error": "API endpoint not found"}
+        
+        file_path = os.path.join(frontend_path, path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+else:
+    @app.get("/")
+    def root():
+        return {"message": "Frontend not found"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
