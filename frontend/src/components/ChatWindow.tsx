@@ -1,80 +1,232 @@
-import { useState } from "react";
-import MessageList from "./MessageList";
-import useWebSocket from "../hooks/useWebSocket";
-import { Paperclip, Smile, Users } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageCircle, Users, Settings, Send, Paperclip, Smile } from 'lucide-react';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { chatService, type ChatRoom, type ChatMessage, type ChatParticipant } from '../services/chat';
+import { useAuth } from '../contexts/AuthContext';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
+import ChatSidebar from './ChatSidebar';
 
-// Slack-style sample messages
-const sampleMessages = [
-  { id: 1, sender: "Alex", content: "Hey team, the client just replied!", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  { id: 2, sender: "Sam", content: "Awesome! What did they say?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 60000).toISOString() },
-  { id: 3, sender: "Alex", content: "They're ready to move forward with the proposal.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 120000).toISOString() },
-  { id: 4, sender: "Chris", content: "Great news! 🎉 I'll update the Kanban board.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 180000).toISOString() },
-  { id: 5, sender: "You", content: "Let me know if you need help with the docs.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 240000).toISOString() },
-  { id: 6, sender: "Sam", content: "Thanks! I'll ping you if anything comes up.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 300000).toISOString() },
-  { id: 7, sender: "Alex", content: "Should we schedule a call for tomorrow?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 360000).toISOString() },
-  { id: 8, sender: "You", content: "Yes, 2pm works for me.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 420000).toISOString() },
-  { id: 9, sender: "Chris", content: "Same here. Adding to the calendar now.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 + 480000).toISOString() },
-];
-
-const channelUsers = [
-  { name: "You", color: "bg-gradient-to-r from-pink-500 to-purple-500" },
-  { name: "Alex", color: "bg-gradient-to-r from-blue-500 to-indigo-500" },
-  { name: "Sam", color: "bg-gradient-to-r from-green-500 to-teal-500" },
-  { name: "Chris", color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
-];
-function getInitials(name: string) {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase();
+interface ChatWindowProps {
+  roomId?: number;
+  onRoomSelect?: (roomId: number) => void;
 }
 
-export default function ChatWindow() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>(sampleMessages);
-  const ws = useWebSocket({ onMessage: (msg: any) => setMessages((prev) => [...prev, msg]) });
+const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, onRoomSelect }) => {
+  const { user } = useAuth();
+  const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  function sendMessage() {
-    if (!input.trim()) return;
-    const msg = { id: Date.now(), sender: "You", content: input, timestamp: new Date().toISOString() };
-    setMessages((prev) => [...prev, msg]);
-    ws.send && ws.send(msg);
-    setInput("");
+  const { 
+    isConnected, 
+    connectionError, 
+    sendChatMessage, 
+    sendTypingIndicator,
+    joinRoom,
+    leaveRoom
+  } = useWebSocket({
+    roomId,
+    onMessage: handleWebSocketMessage,
+    onError: () => setError('Connection error'),
+    onOpen: () => setError(null)
+  });
+
+  function handleWebSocketMessage(message: any) {
+    switch (message.type) {
+      case 'new_message':
+        setMessages(prev => [message.message, ...prev]);
+        break;
+      case 'typing':
+        // Handle typing indicators
+        break;
+      case 'user_joined':
+      case 'user_left':
+        // Handle user presence
+        break;
+      case 'connection_established':
+        setError(null);
+        break;
+      case 'error':
+        setError(message.message);
+        break;
+    }
+  }
+
+  // Load room data when roomId changes
+  useEffect(() => {
+    if (roomId) {
+      loadRoomData(roomId);
+    } else {
+      setCurrentRoom(null);
+      setMessages([]);
+      setParticipants([]);
+    }
+  }, [roomId]);
+
+  const loadRoomData = async (id: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const [room, roomMessages, roomParticipants] = await Promise.all([
+        chatService.getRoom(id),
+        chatService.getMessages(id),
+        chatService.getParticipants(id)
+      ]);
+      
+      setCurrentRoom(room);
+      setMessages(roomMessages.reverse()); // Reverse to show oldest first
+      setParticipants(roomParticipants);
+      
+      // Join the room via WebSocket
+      joinRoom(id);
+    } catch (err) {
+      setError('Failed to load room data');
+      console.error('Error loading room data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (content: string, messageType: string = 'text', replyToId?: number) => {
+    if (!currentRoom || !content.trim()) return;
+
+    try {
+      // Send via WebSocket for real-time delivery
+      sendChatMessage(content, messageType, replyToId);
+      
+      // Also send via API for persistence
+      await chatService.sendMessage(currentRoom.id, {
+        content,
+        message_type: messageType,
+        reply_to_id: replyToId
+      });
+    } catch (err) {
+      setError('Failed to send message');
+      console.error('Error sending message:', err);
+    }
+  };
+
+  const handleTyping = (isTyping: boolean) => {
+    sendTypingIndicator(isTyping);
+  };
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  if (!roomId) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to Chat</h3>
+          <p className="text-gray-500">Select a conversation to start messaging</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading conversation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">⚠️</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={() => roomId && loadRoomData(roomId)}
+            className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col h-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow border border-gray-200 dark:border-gray-800">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 rounded-t-2xl">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-lg text-gray-900 dark:text-white"># general</span>
-          <span className="ml-2 text-xs text-gray-500 dark:text-gray-300 flex items-center gap-1"><Users className="w-4 h-4" /> {channelUsers.length} members</span>
+    <div className="flex-1 flex flex-col bg-white">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-fuchsia-600 to-pink-500 rounded-full flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{currentRoom?.name}</h2>
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Users className="w-4 h-4" />
+              <span>{participants.length} members</span>
+              {!isConnected && (
+                <span className="text-red-500">• Disconnected</span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex -space-x-2">
-          {channelUsers.map(u => (
-            <span key={u.name} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-900 shadow ${u.color}`}>{getInitials(u.name)}</span>
-          ))}
+        
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Users className="w-5 h-5" />
+          </button>
+          <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
       </div>
-      {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <MessageList messages={messages} />
-      </div>
-      {/* Input Area */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800 flex gap-2 items-center bg-gray-50 dark:bg-gray-800 rounded-b-2xl">
-        <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"><Paperclip className="w-5 h-5 text-gray-400" /></button>
-        <input
-          className="flex-1 rounded-full px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-          placeholder="Message #general"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") sendMessage(); }}
-        />
-        <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"><Smile className="w-5 h-5 text-gray-400" /></button>
-        <button
-          className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition"
-          onClick={sendMessage}
-        >
-          Send
-        </button>
+
+      {/* Chat Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Messages Area */}
+        <div className="flex-1 flex flex-col">
+          <MessageList 
+            messages={messages}
+            currentUserId={user?.id}
+            onReply={(messageId) => {
+              // Handle reply functionality
+            }}
+          />
+          <div ref={messagesEndRef} />
+          
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            onTyping={handleTyping}
+            disabled={!isConnected}
+            placeholder={`Message ${currentRoom?.name}...`}
+          />
+        </div>
+
+        {/* Sidebar */}
+        {showSidebar && (
+          <ChatSidebar
+            room={currentRoom}
+            participants={participants}
+            onClose={() => setShowSidebar(false)}
+          />
+        )}
       </div>
     </div>
   );
-} 
+};
+
+export default ChatWindow;

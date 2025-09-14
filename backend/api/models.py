@@ -29,6 +29,7 @@ class Organization(Base):
     leads = relationship('Lead', back_populates='organization')
     deals = relationship('Deal', back_populates='organization')
     subscription = relationship('Subscription', back_populates='organization', uselist=False)
+    chat_rooms = relationship('ChatRoom')
 
 class User(Base):
     __tablename__ = 'users'
@@ -48,6 +49,10 @@ class User(Base):
     activities = relationship('Activity', back_populates='user')
     messages_sent = relationship('Message', back_populates='sender', foreign_keys='Message.sender_id')
     messages_received = relationship('Message', back_populates='recipient', foreign_keys='Message.recipient_id')
+    # Chat relationships
+    chat_rooms = relationship('ChatRoom', back_populates='created_by')
+    chat_participants = relationship('ChatParticipant', back_populates='user')
+    chat_messages = relationship('ChatMessage', back_populates='sender')
     attachments = relationship('Attachment', back_populates='uploader')
     watched_deals = relationship('Deal', secondary=Watcher, back_populates='watchers')
 
@@ -260,4 +265,67 @@ class SubscriptionPlan(Base):
     features = Column(JSON)  # JSON array of feature names
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Chat Models
+class ChatRoom(Base):
+    __tablename__ = 'chat_rooms'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    room_type = Column(String, nullable=False, default='group')  # 'direct', 'group', 'channel'
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    created_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    organization = relationship('Organization')
+    created_by = relationship('User', back_populates='chat_rooms')
+    participants = relationship('ChatParticipant', back_populates='room', cascade='all, delete-orphan')
+    messages = relationship('ChatMessage', back_populates='room', cascade='all, delete-orphan')
+
+class ChatParticipant(Base):
+    __tablename__ = 'chat_participants'
+    id = Column(Integer, primary_key=True)
+    room_id = Column(Integer, ForeignKey('chat_rooms.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    role = Column(String, default='member')  # 'admin', 'moderator', 'member'
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    last_read_at = Column(DateTime)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    room = relationship('ChatRoom', back_populates='participants')
+    user = relationship('User', back_populates='chat_participants')
+
+class ChatMessage(Base):
+    __tablename__ = 'chat_messages'
+    id = Column(Integer, primary_key=True)
+    room_id = Column(Integer, ForeignKey('chat_rooms.id'), nullable=False)
+    sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    content = Column(Text, nullable=False)
+    message_type = Column(String, default='text')  # 'text', 'image', 'file', 'system'
+    reply_to_id = Column(Integer, ForeignKey('chat_messages.id'))
+    edited_at = Column(DateTime)
+    deleted_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    room = relationship('ChatRoom', back_populates='messages')
+    sender = relationship('User', back_populates='chat_messages')
+    reply_to = relationship('ChatMessage', remote_side=[id])
+    reactions = relationship('ChatReaction', back_populates='message', cascade='all, delete-orphan')
+
+class ChatReaction(Base):
+    __tablename__ = 'chat_reactions'
+    id = Column(Integer, primary_key=True)
+    message_id = Column(Integer, ForeignKey('chat_messages.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    emoji = Column(String, nullable=False)  # Unicode emoji or custom emoji code
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    message = relationship('ChatMessage', back_populates='reactions')
+    user = relationship('User') 

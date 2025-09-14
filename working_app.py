@@ -32,6 +32,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 try:
     from api.db import get_db, get_engine
     from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan
+    from api.websocket import websocket_endpoint
+    from api.routers import chat
     DB_AVAILABLE = True
     print("✅ Database models imported successfully")
 except ImportError as e:
@@ -195,6 +197,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include chat router
+if DB_AVAILABLE:
+    app.include_router(chat.router)
+
+# WebSocket endpoint
+@app.websocket("/ws/chat/{room_id}")
+async def websocket_chat_endpoint(websocket, room_id: int = None, token: str = None):
+    if DB_AVAILABLE:
+        await websocket_endpoint(websocket, room_id, token)
+    else:
+        await websocket.close(code=1008, reason="Database not available")
 
 # API endpoints (MUST be defined BEFORE catch-all routes)
 @app.get("/api/ping")
