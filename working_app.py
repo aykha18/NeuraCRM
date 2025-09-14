@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 
@@ -223,7 +224,7 @@ def health():
         try:
             engine = get_engine()
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             db_status = "connected"
         except Exception as e:
             db_status = f"error: {str(e)}"
