@@ -46,6 +46,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const storedToken = localStorage.getItem('access_token');
     if (storedToken) {
+      // Verify token is not expired (basic check)
+      try {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        if (payload.exp && payload.exp < currentTime) {
+          // Token is expired, remove it
+          console.log('Stored token is expired, removing it');
+          localStorage.removeItem('access_token');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        // Invalid token format, remove it
+        console.log('Invalid token format, removing it');
+        localStorage.removeItem('access_token');
+        setIsLoading(false);
+        return;
+      }
+      
       setToken(storedToken);
       // Verify token and get user info
       fetchUserInfo(storedToken);
@@ -67,13 +86,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
       } else {
         // Token is invalid, remove it
+        console.log('Token validation failed, clearing stored token');
         localStorage.removeItem('access_token');
         setToken(null);
+        setUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user info:', error);
       localStorage.removeItem('access_token');
       setToken(null);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
