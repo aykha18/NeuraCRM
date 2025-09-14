@@ -20,6 +20,7 @@ try:
     from pydantic import EmailStr
     from passlib.context import CryptContext
     import jwt
+    import bcrypt
     AUTH_AVAILABLE = True
     print("✅ Authentication dependencies imported successfully")
 except ImportError as e:
@@ -142,10 +143,10 @@ class UserLimitCheck(BaseModel):
 # Authentication functions (only if auth is available)
 if AUTH_AVAILABLE:
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
     def get_password_hash(password: str) -> str:
-        return pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         to_encode = data.copy()
