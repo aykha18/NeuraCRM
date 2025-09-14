@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, extract
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
-from api.dependencies import get_db
+from api.dependencies import get_db, get_current_user
 from api.models import Deal, Lead, Contact, User, Activity, Stage
 from api.schemas.dashboard import (
     DashboardMetrics,
@@ -16,22 +16,36 @@ from api.schemas.dashboard import (
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 @router.get("/metrics", response_model=DashboardMetrics)
-def get_dashboard_metrics(db: Session = Depends(get_db)):
+def get_dashboard_metrics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get dashboard metrics including active leads, closed deals, revenue, and AI score"""
     try:
         # Active leads count
-        active_leads = db.query(Lead).filter(Lead.status.in_(['new', 'contacted', 'qualified'])).count()
+        active_leads = db.query(Lead).filter(
+            Lead.status.in_(['new', 'contacted', 'qualified']),
+            Lead.organization_id == current_user.organization_id
+        ).count()
         
         # Closed deals count (deals with closed_at date)
-        closed_deals = db.query(Deal).filter(Deal.closed_at.isnot(None)).count()
+        closed_deals = db.query(Deal).filter(
+            Deal.closed_at.isnot(None),
+            Deal.organization_id == current_user.organization_id
+        ).count()
         
         # Total revenue from closed deals
-        total_revenue = db.query(func.sum(Deal.value)).filter(Deal.closed_at.isnot(None)).scalar() or 0
+        total_revenue = db.query(func.sum(Deal.value)).filter(
+            Deal.closed_at.isnot(None),
+            Deal.organization_id == current_user.organization_id
+        ).scalar() or 0
         
         # Calculate AI score based on various factors
-        total_deals = db.query(Deal).count()
-        deals_with_activities = db.query(Deal).join(Activity).distinct().count()
-        deals_with_reminders = db.query(Deal).filter(Deal.reminder_date.isnot(None)).count()
+        total_deals = db.query(Deal).filter(Deal.organization_id == current_user.organization_id).count()
+        deals_with_activities = db.query(Deal).join(Activity).filter(
+            Deal.organization_id == current_user.organization_id
+        ).distinct().count()
+        deals_with_reminders = db.query(Deal).filter(
+            Deal.reminder_date.isnot(None),
+            Deal.organization_id == current_user.organization_id
+        ).count()
         
         ai_score = 0
         if total_deals > 0:
@@ -41,7 +55,10 @@ def get_dashboard_metrics(db: Session = Depends(get_db)):
             ai_score = min(int(activity_score + reminder_score + revenue_score), 100)
         
         # Calculate quality score for leads
-        qualified_leads = db.query(Lead).filter(Lead.status == 'qualified').count()
+        qualified_leads = db.query(Lead).filter(
+            Lead.status == 'qualified',
+            Lead.organization_id == current_user.organization_id
+        ).count()
         lead_quality_score = (qualified_leads / max(active_leads, 1)) * 10
         
         # Calculate conversion rate
@@ -64,7 +81,7 @@ def get_dashboard_metrics(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error fetching dashboard metrics: {str(e)}")
 
 @router.get("/performance", response_model=List[PerformanceData])
-def get_performance_data(db: Session = Depends(get_db)):
+def get_performance_data(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get performance data for the last 6 months"""
     try:
         # Get data for last 6 months
@@ -82,7 +99,8 @@ def get_performance_data(db: Session = Depends(get_db)):
             leads_count = db.query(Lead).filter(
                 and_(
                     Lead.created_at >= month_start,
-                    Lead.created_at <= month_end
+                    Lead.created_at <= month_end,
+                    Lead.organization_id == current_user.organization_id
                 )
             ).count()
             
@@ -90,7 +108,8 @@ def get_performance_data(db: Session = Depends(get_db)):
             deals_count = db.query(Deal).filter(
                 and_(
                     Deal.created_at >= month_start,
-                    Deal.created_at <= month_end
+                    Deal.created_at <= month_end,
+                    Deal.organization_id == current_user.organization_id
                 )
             ).count()
             
@@ -98,7 +117,8 @@ def get_performance_data(db: Session = Depends(get_db)):
             revenue = db.query(func.sum(Deal.value)).filter(
                 and_(
                     Deal.closed_at >= month_start,
-                    Deal.closed_at <= month_end
+                    Deal.closed_at <= month_end,
+                    Deal.organization_id == current_user.organization_id
                 )
             ).scalar() or 0
             
@@ -117,14 +137,26 @@ def get_performance_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error fetching performance data: {str(e)}")
 
 @router.get("/lead-quality", response_model=List[LeadQualityData])
-def get_lead_quality_data(db: Session = Depends(get_db)):
+def get_lead_quality_data(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get lead quality distribution data"""
     try:
         # Count leads by status
-        qualified_count = db.query(Lead).filter(Lead.status == 'qualified').count()
-        nurturing_count = db.query(Lead).filter(Lead.status == 'contacted').count()
-        cold_count = db.query(Lead).filter(Lead.status == 'new').count()
-        hot_count = db.query(Lead).filter(Lead.status == 'hot').count()
+        qualified_count = db.query(Lead).filter(
+            Lead.status == 'qualified',
+            Lead.organization_id == current_user.organization_id
+        ).count()
+        nurturing_count = db.query(Lead).filter(
+            Lead.status == 'contacted',
+            Lead.organization_id == current_user.organization_id
+        ).count()
+        cold_count = db.query(Lead).filter(
+            Lead.status == 'new',
+            Lead.organization_id == current_user.organization_id
+        ).count()
+        hot_count = db.query(Lead).filter(
+            Lead.status == 'hot',
+            Lead.organization_id == current_user.organization_id
+        ).count()
         
         total_leads = qualified_count + nurturing_count + cold_count + hot_count
         
@@ -162,11 +194,13 @@ def get_lead_quality_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error fetching lead quality data: {str(e)}")
 
 @router.get("/activity-feed", response_model=List[ActivityFeedItem])
-def get_activity_feed(db: Session = Depends(get_db)):
+def get_activity_feed(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get recent activity feed for dashboard"""
     try:
         # Get recent activities with user and deal information
-        activities = db.query(Activity).join(User).join(Deal).order_by(
+        activities = db.query(Activity).join(User).join(Deal).filter(
+            Deal.organization_id == current_user.organization_id
+        ).order_by(
             Activity.timestamp.desc()
         ).limit(10).all()
         
@@ -221,13 +255,13 @@ def get_activity_feed(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error fetching activity feed: {str(e)}")
 
 @router.get("/", response_model=DashboardData)
-def get_dashboard_data(db: Session = Depends(get_db)):
+def get_dashboard_data(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get all dashboard data in one endpoint"""
     try:
-        metrics = get_dashboard_metrics(db)
-        performance = get_performance_data(db)
-        lead_quality = get_lead_quality_data(db)
-        activity_feed = get_activity_feed(db)
+        metrics = get_dashboard_metrics(current_user, db)
+        performance = get_performance_data(current_user, db)
+        lead_quality = get_lead_quality_data(current_user, db)
+        activity_feed = get_activity_feed(current_user, db)
         
         return DashboardData(
             metrics=metrics,

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # Import database and models first
 from api.db import get_session_local, get_engine
 from api.models import Lead, Contact, User, Base
+from api.dependencies import get_current_user
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -340,7 +341,7 @@ def chat_with_ai(message: Message):
 
 # POST /api/leads endpoint (create new lead)
 @app.post("/api/leads", response_model=LeadOut)
-def create_lead(lead_data: LeadUpdate):
+def create_lead(lead_data: LeadUpdate, current_user: User = Depends(get_current_user)):
     db: Session = get_session_local()()
     
     try:
@@ -350,7 +351,8 @@ def create_lead(lead_data: LeadUpdate):
             status=lead_data.status or "new",
             source=lead_data.source or "manual",
             contact_id=lead_data.contact_id or 1,  # Default to contact 1
-            owner_id=lead_data.owner_id or 1,  # Default to user 1
+            owner_id=lead_data.owner_id or current_user.id,  # Default to current user
+            organization_id=current_user.organization_id,  # Set to current user's organization
             created_at=datetime.now()
         )
         
@@ -399,7 +401,7 @@ def create_lead(lead_data: LeadUpdate):
 
 # GET /api/leads endpoint (with joins)
 @app.get("/api/leads", response_model=list[LeadOut])
-def get_leads():
+def get_leads(current_user: User = Depends(get_current_user)):
     try:
         db: Session = get_session_local()()
         # Try to get leads with joins, fallback to simple query if joins fail
@@ -421,6 +423,7 @@ def get_leads():
                 )
                 .outerjoin(Contact, Lead.contact_id == Contact.id)
                 .outerjoin(User, Lead.owner_id == User.id)
+                .filter(Lead.organization_id == current_user.organization_id)
                 .all()
             )
             # Convert to list of dicts for Pydantic
@@ -428,7 +431,7 @@ def get_leads():
         except Exception as join_error:
             logger.warning(f"Join query failed: {join_error}")
             # Fallback to simple lead query
-            leads = db.query(Lead).all()
+            leads = db.query(Lead).filter(Lead.organization_id == current_user.organization_id).all()
             result = [
                 {
                     "id": lead.id,
@@ -521,10 +524,10 @@ def delete_lead(lead_id: int):
 
 # GET /api/contacts endpoint
 @app.get("/api/contacts", response_model=list[ContactOut])
-def get_contacts():
+def get_contacts(current_user: User = Depends(get_current_user)):
     try:
         db: Session = get_session_local()()
-        contacts = db.query(Contact).all()
+        contacts = db.query(Contact).filter(Contact.organization_id == current_user.organization_id).all()
         
         result = []
         for contact in contacts:
@@ -607,7 +610,7 @@ def update_contact(contact_id: int, update: ContactUpdate):
 
 # POST /api/contacts endpoint (create new contact)
 @app.post("/api/contacts", response_model=ContactOut)
-def create_contact(contact_data: ContactUpdate):
+def create_contact(contact_data: ContactUpdate, current_user: User = Depends(get_current_user)):
     try:
         db: Session = get_session_local()()
         
@@ -617,7 +620,8 @@ def create_contact(contact_data: ContactUpdate):
             email=contact_data.email,
             phone=contact_data.phone,
             company=contact_data.company,
-            owner_id=1  # Default owner - you might want to get this from auth
+            owner_id=current_user.id,  # Set to current user
+            organization_id=current_user.organization_id  # Set to current user's organization
         )
         
         db.add(new_contact)
