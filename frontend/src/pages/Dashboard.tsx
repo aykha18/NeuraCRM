@@ -26,9 +26,10 @@ const iconMap: Record<string, React.ReactNode> = {
 
 // Custom dot for each line
 const CustomDot = (color: string) => (props: any) => {
-  const { cx, cy } = props;
+  const { cx, cy, index } = props;
   return (
     <circle
+      key={`dot-${index}`}
       cx={cx}
       cy={cy}
       r={7}

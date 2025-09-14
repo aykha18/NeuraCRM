@@ -1,8 +1,4 @@
-import axios from 'axios';
-
-import { API_BASE_URL } from '../config';
-
-const API_URL = `${API_BASE_URL}/api`;
+import { apiRequest } from '../utils/api';
 
 // Types
 export interface Stage {
@@ -37,58 +33,72 @@ export interface KanbanBoard {
 }
 
 export const getStages = async (): Promise<Stage[]> => {
-  const response = await axios.get<Stage[]>(`${API_URL}/kanban/stages/`);
-  return response.data;
+  return apiRequest<Stage[]>('/api/kanban/stages/');
 };
 
 export const createStage = async (stage: Omit<Stage, 'id'>): Promise<Stage> => {
-  const response = await axios.post<Stage>(`${API_URL}/kanban/stages/`, stage);
-  return response.data;
+  return apiRequest<Stage>('/api/kanban/stages/', {
+    method: 'POST',
+    body: JSON.stringify(stage),
+  });
 };
 
 export const updateStage = async (id: number, stage: Partial<Stage>): Promise<Stage> => {
-  const response = await axios.put<Stage>(`${API_URL}/kanban/stages/${id}`, stage);
-  return response.data;
+  return apiRequest<Stage>(`/api/kanban/stages/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(stage),
+  });
 };
 
 export const deleteStage = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/kanban/stages/${id}`);
+  return apiRequest<void>(`/api/kanban/stages/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 // API calls
 export const getKanbanBoard = async (): Promise<KanbanBoard> => {
-  const response = await axios.get<KanbanBoard>(`${API_URL}/kanban/board`);
-  return response.data;
+  return apiRequest<KanbanBoard>('/api/kanban/board');
 };
 
 export const createDeal = async (deal: Omit<Deal, 'id'>): Promise<Deal> => {
-  const response = await axios.post<Deal>(`${API_URL}/kanban/deals/`, deal);
-  return response.data;
+  return apiRequest<Deal>('/api/kanban/deals/', {
+    method: 'POST',
+    body: JSON.stringify(deal),
+  });
 };
 
 export const updateDeal = async (id: number, deal: Partial<Deal>): Promise<Deal> => {
-  const response = await axios.put<Deal>(`${API_URL}/kanban/deals/${id}`, deal);
-  return response.data;
+  return apiRequest<Deal>(`/api/kanban/deals/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(deal),
+  });
 };
 
 export const deleteDeal = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/kanban/deals/${id}`);
+  return apiRequest<void>(`/api/kanban/deals/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 export const moveDeal = async (dealId: number, newStageId: number, position: number): Promise<Deal> => {
-  const response = await axios.post<Deal>(`${API_URL}/kanban/deals/${dealId}/move`, {
-    to_stage_id: newStageId,
-    position,
+  return apiRequest<Deal>(`/api/kanban/deals/${dealId}/move`, {
+    method: 'POST',
+    body: JSON.stringify({
+      to_stage_id: newStageId,
+      position,
+    }),
   });
-  return response.data;
 };
 
 export const watchDeal = async (dealId: number): Promise<Deal> => {
-  const response = await axios.post<Deal>(`${API_URL}/kanban/deals/${dealId}/watch`);
-  return response.data;
+  return apiRequest<Deal>(`/api/kanban/deals/${dealId}/watch`, {
+    method: 'POST',
+  });
 };
 
 export const unwatchDeal = async (dealId: number): Promise<Deal> => {
-  const response = await axios.delete<Deal>(`${API_URL}/kanban/deals/${dealId}/watch`);
-  return response.data;
+  return apiRequest<Deal>(`/api/kanban/deals/${dealId}/watch`, {
+    method: 'DELETE',
+  });
 };

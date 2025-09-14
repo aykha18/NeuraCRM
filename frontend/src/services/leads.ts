@@ -1,41 +1,46 @@
-import { API_BASE_URL } from '../config';
+import { apiRequest } from '../utils/api';
 
-export async function fetchLeads() {
-  const res = await fetch(`${API_BASE_URL}/api/leads`);
-  if (!res.ok) throw new Error("Failed to fetch leads");
-  return res.json();
+export interface Lead {
+  id: number;
+  name: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  status?: string;
+  priority?: string;
+  estimated_value?: number;
+  notes?: string;
+  owner_id?: number;
+  organization_id?: number;
+  created_at?: string;
+  owner_name?: string;
 }
 
-export async function getLead(id: number) {
-  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch lead");
-  return res.json();
+export async function fetchLeads(): Promise<Lead[]> {
+  return apiRequest<Lead[]>('/api/leads');
 }
 
-export async function createLead(data: any) {
-  const res = await fetch(`${API_BASE_URL}/api/leads`, {
+export async function getLead(id: number): Promise<Lead> {
+  return apiRequest<Lead>(`/api/leads/${id}`);
+}
+
+export async function createLead(data: Partial<Lead>): Promise<Lead> {
+  return apiRequest<Lead>('/api/leads', {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create lead");
-  return res.json();
 }
 
-export async function updateLead(id: number, data: any) {
-  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`, {
+export async function updateLead(id: number, data: Partial<Lead>): Promise<Lead> {
+  return apiRequest<Lead>(`/api/leads/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update lead");
-  return res.json();
 }
 
-export async function deleteLead(id: number) {
-  const res = await fetch(`${API_BASE_URL}/api/leads/${id}`, {
+export async function deleteLead(id: number): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(`/api/leads/${id}`, {
     method: "DELETE"
   });
-  if (!res.ok) throw new Error("Failed to delete lead");
-  return res.json();
 } 

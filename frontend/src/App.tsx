@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
@@ -10,6 +10,8 @@ import EmailAutomation from "./pages/EmailAutomation";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
+import Logout from "./pages/Logout";
+import OrganizationSignup from "./pages/OrganizationSignup";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { UserProvider } from "./contexts/UserContext";
@@ -31,7 +33,9 @@ function App() {
             {/* Public routes (no layout) */}
             <Route path="/" element={<Landing />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/organization-signup" element={<OrganizationSignup />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/logout" element={<Logout />} />
             
             {/* Protected routes (with layout) */}
             <Route path="/dashboard" element={
@@ -83,6 +87,9 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            
+            {/* Catch-all route for unknown paths */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </UserProvider>

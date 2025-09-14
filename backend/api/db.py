@@ -3,7 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Use environment variable for database URL (Railway provides DATABASE_URL)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://neura:neura25@localhost/postgres")
+# Default to local PostgreSQL if no DATABASE_URL is set
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:aykha123@localhost/postgres")
 
 print(f"Original DATABASE_URL: {DATABASE_URL}")
 

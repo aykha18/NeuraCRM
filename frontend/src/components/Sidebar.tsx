@@ -4,7 +4,7 @@ import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
 const navItems = [
-  { name: "Dashboard", icon: <LayoutDashboard />, path: "/" },
+  { name: "Dashboard", icon: <LayoutDashboard />, path: "/dashboard" },
   { name: "Leads", icon: <Users />, path: "/leads" },
   { name: "Contacts", icon: <Contact />, path: "/contacts" },
   { name: "Pipeline", icon: <Kanban />, path: "/kanban" },
@@ -45,7 +45,6 @@ export default function Sidebar({ open: _open, onClose }: { open: boolean; onClo
                 <li key={item.name} className="relative z-10">
                   <NavLink
                     to={item.path}
-                    end={item.path === "/"}
                     className={({ isActive }) =>
                       `flex items-center gap-3 pl-6 pr-6 py-2 my-1 font-medium text-base transition-all duration-300 w-[90%] mx-auto relative ${
                         isActive

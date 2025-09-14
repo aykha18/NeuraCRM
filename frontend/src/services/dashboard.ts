@@ -35,36 +35,24 @@ export interface DashboardData {
   activity_feed: ActivityFeedItem[];
 }
 
-import { API_BASE_URL } from '../config';
-
-const API_BASE = `${API_BASE_URL}/api`;
+import { apiRequest } from '../utils/api';
 
 export async function fetchDashboardData(): Promise<DashboardData> {
-  const res = await fetch(`${API_BASE}/dashboard/`);
-  if (!res.ok) throw new Error("Failed to fetch dashboard data");
-  return res.json();
+  return apiRequest<DashboardData>('/api/dashboard/');
 }
 
 export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
-  const res = await fetch(`${API_BASE}/dashboard/metrics`);
-  if (!res.ok) throw new Error("Failed to fetch dashboard metrics");
-  return res.json();
+  return apiRequest<DashboardMetrics>('/api/dashboard/metrics');
 }
 
 export async function fetchPerformanceData(): Promise<PerformanceData[]> {
-  const res = await fetch(`${API_BASE}/dashboard/performance`);
-  if (!res.ok) throw new Error("Failed to fetch performance data");
-  return res.json();
+  return apiRequest<PerformanceData[]>('/api/dashboard/performance');
 }
 
 export async function fetchLeadQualityData(): Promise<LeadQualityData[]> {
-  const res = await fetch(`${API_BASE}/dashboard/lead-quality`);
-  if (!res.ok) throw new Error("Failed to fetch lead quality data");
-  return res.json();
+  return apiRequest<LeadQualityData[]>('/api/dashboard/lead-quality');
 }
 
 export async function fetchActivityFeed(): Promise<ActivityFeedItem[]> {
-  const res = await fetch(`${API_BASE}/dashboard/activity-feed`);
-  if (!res.ok) throw new Error("Failed to fetch activity feed");
-  return res.json();
+  return apiRequest<ActivityFeedItem[]>('/api/dashboard/activity-feed');
 } 

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config';
+import { apiRequest } from '../utils/api';
 
 // Lead Scoring Service
 // API calls for lead scoring functionality

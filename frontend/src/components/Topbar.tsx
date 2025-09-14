@@ -2,6 +2,8 @@ import { Bell, Sun, Moon, Search, Bot, Menu, LogOut, User } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import OrganizationSelector from "./OrganizationSelector";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -19,6 +21,8 @@ interface TopbarProps {
 export default function Topbar({ onMenuClick, onToggleDarkMode, darkMode, onToggleAI, aiSidebarOpen }: TopbarProps) {
   const { user } = useUser();
   const { logout, user: authUser } = useAuth();
+  const navigate = useNavigate();
+  const [currentOrgId, setCurrentOrgId] = useState<number | undefined>(authUser?.organization_id);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +93,14 @@ export default function Topbar({ onMenuClick, onToggleDarkMode, darkMode, onTogg
           {darkMode ? <Sun className="w-6 h-6 text-yellow-300" /> : <Moon className="w-6 h-6 text-blue-200" />}
         </button>
         
+        {/* Organization Selector */}
+        {authUser && (
+          <OrganizationSelector
+            currentOrgId={currentOrgId}
+            onOrganizationChange={setCurrentOrgId}
+          />
+        )}
+        
         {/* Notifications */}
         <button className="relative p-2 rounded-full bg-white/20 hover:bg-white/30 transition">
           <Bell className="w-6 h-6 text-blue-200" />
@@ -125,8 +137,8 @@ export default function Topbar({ onMenuClick, onToggleDarkMode, darkMode, onTogg
               
               <button 
                 onClick={() => {
-                  logout();
                   setShowUserMenu(false);
+                  navigate('/logout');
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
               >

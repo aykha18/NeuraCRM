@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Table, Text, JSON
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -16,15 +16,32 @@ Watcher = Table(
     Column('user_id', Integer, ForeignKey('users.id'), primary_key=True)
 )
 
+class Organization(Base):
+    __tablename__ = 'organizations'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    domain = Column(String, unique=True)  # Optional: company domain
+    settings = Column(String)  # JSON string for org-specific settings
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Relationships
+    users = relationship('User', back_populates='organization')
+    contacts = relationship('Contact', back_populates='organization')
+    leads = relationship('Lead', back_populates='organization')
+    deals = relationship('Deal', back_populates='organization')
+    subscription = relationship('Subscription', back_populates='organization', uselist=False)
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, nullable=False)  # Remove unique constraint - now unique per org
     password_hash = Column(String, nullable=False)
     avatar_url = Column(String)
-    role = Column(String)
-    created_at = Column(DateTime)
+    role = Column(String)  # admin, manager, agent within organization
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Relationships
+    organization = relationship('Organization', back_populates='users')
     # Relationships
     deals = relationship('Deal', back_populates='owner')
     leads = relationship('Lead', back_populates='owner')
@@ -42,9 +59,11 @@ class Contact(Base):
     phone = Column(String)
     company = Column(String)
     owner_id = Column(Integer, ForeignKey('users.id'))
-    created_at = Column(DateTime)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
     # Relationships
     owner = relationship('User')
+    organization = relationship('Organization', back_populates='contacts')
     leads = relationship('Lead', back_populates='contact')
     deals = relationship('Deal', back_populates='contact')
 
@@ -54,9 +73,10 @@ class Lead(Base):
     title = Column(String, nullable=False)
     contact_id = Column(Integer, ForeignKey('contacts.id'))
     owner_id = Column(Integer, ForeignKey('users.id'))
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     status = Column(String)
     source = Column(String)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
     # Lead Scoring Fields
     score = Column(Integer, default=0)  # 0-100 score
     score_updated_at = Column(DateTime)
@@ -65,6 +85,7 @@ class Lead(Base):
     # Relationships
     contact = relationship('Contact', back_populates='leads')
     owner = relationship('User', back_populates='leads')
+    organization = relationship('Organization', back_populates='leads')
 
 class Deal(Base):
     __tablename__ = 'deals'
@@ -73,8 +94,9 @@ class Deal(Base):
     value = Column(Float)
     owner_id = Column(Integer, ForeignKey('users.id'))
     stage_id = Column(Integer, ForeignKey('stages.id'))
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     description = Column(String)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
     closed_at = Column(DateTime)
     reminder_date = Column(DateTime)
     contact_id = Column(Integer, ForeignKey('contacts.id'))
@@ -82,6 +104,7 @@ class Deal(Base):
     owner = relationship('User', back_populates='deals')
     stage = relationship('Stage', back_populates='deals')
     contact = relationship('Contact', back_populates='deals')
+    organization = relationship('Organization', back_populates='deals')
     activities = relationship('Activity', back_populates='deal')
     attachments = relationship('Attachment', back_populates='deal')
     tags = relationship('Tag', secondary=DealTag, back_populates='deals')
@@ -203,4 +226,38 @@ class EmailLog(Base):
     clicked_at = Column(DateTime)
     error_message = Column(String)
     # Relationships
-    campaign = relationship('EmailCampaign', back_populates='logs') 
+    campaign = relationship('EmailCampaign', back_populates='logs')
+
+# SaaS Subscription Models
+class Subscription(Base):
+    __tablename__ = 'subscriptions'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, unique=True)
+    plan = Column(String, nullable=False)  # 'free', 'pro', 'enterprise'
+    status = Column(String, nullable=False, default='active')  # 'active', 'cancelled', 'expired', 'trial'
+    billing_cycle = Column(String, default='monthly')  # 'monthly', 'yearly'
+    user_limit = Column(Integer, nullable=False)
+    features = Column(JSON)  # JSON object of enabled features
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = Column(DateTime)
+    trial_ends_at = Column(DateTime)
+    # Billing info
+    stripe_customer_id = Column(String)
+    stripe_subscription_id = Column(String)
+    # Relationships
+    organization = relationship('Organization', back_populates='subscription')
+
+class SubscriptionPlan(Base):
+    __tablename__ = 'subscription_plans'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)  # 'free', 'pro', 'enterprise'
+    display_name = Column(String, nullable=False)  # 'Free', 'Professional', 'Enterprise'
+    description = Column(Text)
+    price_monthly = Column(Float, default=0.0)
+    price_yearly = Column(Float, default=0.0)
+    user_limit = Column(Integer, nullable=False)
+    features = Column(JSON)  # JSON array of feature names
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 

@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan
     DB_AVAILABLE = True
     print("✅ Database models imported successfully")
 except ImportError as e:
@@ -59,6 +59,7 @@ class UserCreate(BaseModel):
     name: str
     email: str
     password: str
+    organization_id: Optional[int] = None  # Optional for backward compatibility
 
 class UserLogin(BaseModel):
     email: str
@@ -73,7 +74,68 @@ class UserResponse(BaseModel):
     name: str
     email: str
     role: Optional[str] = None
+    organization_id: Optional[int] = None
     created_at: Optional[datetime] = None
+
+class OrganizationCreate(BaseModel):
+    name: str
+    domain: Optional[str] = None
+
+class OrganizationResponse(BaseModel):
+    id: int
+    name: str
+    domain: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+# SaaS Organization Signup Schemas
+class OrganizationSignupRequest(BaseModel):
+    """Request schema for organization signup"""
+    organization_name: str
+    organization_domain: Optional[str] = None
+    admin_name: str
+    admin_email: str
+    admin_password: str
+    plan: str = "free"  # free, pro, enterprise
+
+class OrganizationSignupResponse(BaseModel):
+    """Response schema for organization signup"""
+    organization: dict
+    admin_user: dict
+    subscription: dict
+    access_token: str
+    token_type: str = "bearer"
+
+class SubscriptionPlanResponse(BaseModel):
+    """Response schema for subscription plans"""
+    id: int
+    name: str
+    display_name: str
+    description: str
+    price_monthly: float
+    price_yearly: float
+    user_limit: int
+    features: list
+    is_active: bool
+
+class SubscriptionResponse(BaseModel):
+    """Response schema for organization subscription"""
+    id: int
+    organization_id: int
+    plan: str
+    status: str
+    billing_cycle: str
+    user_limit: int
+    features: dict
+    created_at: datetime
+    expires_at: Optional[datetime]
+    trial_ends_at: Optional[datetime]
+
+class UserLimitCheck(BaseModel):
+    """Response schema for user limit check"""
+    current_users: int
+    user_limit: int
+    can_add_user: bool
+    plan: str
 
 # Authentication functions (only if auth is available)
 if AUTH_AVAILABLE:
@@ -86,9 +148,9 @@ if AUTH_AVAILABLE:
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         to_encode = data.copy()
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=15)
+            expire = datetime.now() + timedelta(minutes=15)
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
@@ -215,13 +277,13 @@ def dashboard():
     }
 
 @app.get("/api/kanban/board")
-def get_kanban_board(db: Session = Depends(get_db)):
-    """Get complete kanban board data (stages + deals)"""
+def get_kanban_board(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get complete kanban board data (stages + deals) for current user's organization"""
     if not DB_AVAILABLE:
         return {"error": "Database not available"}
     
     try:
-        # Get stages
+        # Get stages (assuming stages are organization-specific, or use default stages)
         stages = db.query(Stage).order_by(Stage.order).all()
         stages_data = [
             {
@@ -233,8 +295,9 @@ def get_kanban_board(db: Session = Depends(get_db)):
             for stage in stages
         ]
         
-        # Get deals
-        deals = db.query(Deal).all()
+        # Get deals for current user's organization
+        org_id = current_user.organization_id or 1
+        deals = db.query(Deal).filter(Deal.organization_id == org_id).all()
         deals_data = [
             {
                 "id": deal.id,
@@ -244,6 +307,7 @@ def get_kanban_board(db: Session = Depends(get_db)):
                 "stage_id": deal.stage_id or 1,
                 "owner_id": deal.owner_id,
                 "contact_id": deal.contact_id,
+                "organization_id": deal.organization_id,
                 "reminder_date": deal.reminder_date.isoformat() if deal.reminder_date else None,
                 "created_at": deal.created_at.isoformat() if deal.created_at else None,
                 "owner_name": deal.owner.name if deal.owner else None,
@@ -260,6 +324,49 @@ def get_kanban_board(db: Session = Depends(get_db)):
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
+@app.post("/api/deals")
+def create_deal(deal_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new deal for current user's organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        new_deal = Deal(
+            title=deal_data.get("title"),
+            value=deal_data.get("value", 0),
+            stage=deal_data.get("stage", "Prospecting"),
+            probability=deal_data.get("probability", 0),
+            close_date=datetime.fromisoformat(deal_data.get("close_date", datetime.now().isoformat())) if deal_data.get("close_date") else datetime.now(),
+            contact_name=deal_data.get("contact_name"),
+            contact_email=deal_data.get("contact_email"),
+            notes=deal_data.get("notes"),
+            organization_id=current_user.organization_id or 1,
+            owner_id=current_user.id,
+            created_at=datetime.now()
+        )
+        db.add(new_deal)
+        db.commit()
+        db.refresh(new_deal)
+        
+        return {
+            "id": new_deal.id,
+            "title": new_deal.title,
+            "value": new_deal.value,
+            "stage": new_deal.stage,
+            "probability": new_deal.probability,
+            "close_date": new_deal.close_date.isoformat() if new_deal.close_date else None,
+            "contact_name": new_deal.contact_name,
+            "contact_email": new_deal.contact_email,
+            "notes": new_deal.notes,
+            "owner_id": new_deal.owner_id,
+            "organization_id": new_deal.organization_id,
+            "created_at": new_deal.created_at.isoformat() if new_deal.created_at else None
+        }
+    except Exception as e:
+        print(f"Error creating deal: {e}")
+        db.rollback()
+        return {"error": "Failed to create deal"}
+
 # Authentication endpoints (only if auth is available)
 if AUTH_AVAILABLE:
     @app.post("/api/auth/register", response_model=UserResponse)
@@ -268,10 +375,29 @@ if AUTH_AVAILABLE:
         if not DB_AVAILABLE:
             raise HTTPException(status_code=500, detail="Database not available")
         
-        # Check if user already exists
-        existing_user = db.query(User).filter(User.email == user.email).first()
+        # Use provided organization_id or default to 1 (Default Organization)
+        organization_id = user.organization_id or 1
+        
+        # Check if user already exists in this organization
+        existing_user = db.query(User).filter(
+            User.email == user.email,
+            User.organization_id == organization_id
+        ).first()
         if existing_user:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(status_code=400, detail="Email already registered in this organization")
+        
+        # Check user limit for organization
+        subscription = db.query(Subscription).filter(
+            Subscription.organization_id == organization_id
+        ).first()
+        
+        if subscription:
+            current_users = db.query(User).filter(User.organization_id == organization_id).count()
+            if current_users >= subscription.user_limit:
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"User limit reached for {subscription.plan} plan ({subscription.user_limit} users). Please upgrade your plan to add more users."
+                )
         
         # Create new user
         hashed_password = get_password_hash(user.password)
@@ -280,7 +406,8 @@ if AUTH_AVAILABLE:
             email=user.email,
             password_hash=hashed_password,
             role="user",
-            created_at=datetime.utcnow()
+            organization_id=organization_id,
+            created_at=datetime.now()
         )
         db.add(db_user)
         db.commit()
@@ -291,6 +418,7 @@ if AUTH_AVAILABLE:
             name=db_user.name,
             email=db_user.email,
             role=db_user.role,
+            organization_id=db_user.organization_id,
             created_at=db_user.created_at
         )
 
@@ -300,7 +428,7 @@ if AUTH_AVAILABLE:
         if not DB_AVAILABLE:
             raise HTTPException(status_code=500, detail="Database not available")
         
-        # Authenticate user
+        # Authenticate user (email is unique per organization now)
         user = db.query(User).filter(User.email == user_credentials.email).first()
         if not user or not verify_password(user_credentials.password, user.password_hash):
             raise HTTPException(
@@ -309,10 +437,15 @@ if AUTH_AVAILABLE:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Create access token
+        # Create access token with organization info
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.email}, expires_delta=access_token_expires
+            data={
+                "sub": user.email,
+                "user_id": user.id,
+                "organization_id": user.organization_id
+            }, 
+            expires_delta=access_token_expires
         )
         
         return {"access_token": access_token, "token_type": "bearer"}
@@ -325,6 +458,7 @@ if AUTH_AVAILABLE:
             name=current_user.name,
             email=current_user.email,
             role=current_user.role,
+            organization_id=current_user.organization_id or 1,
             created_at=current_user.created_at
         )
 else:
@@ -340,15 +474,222 @@ else:
     def get_current_user_info():
         return {"error": "Authentication not available"}
 
+# Organization Management Endpoints
+@app.post("/api/organizations", response_model=OrganizationResponse)
+def create_organization(org: OrganizationCreate, db: Session = Depends(get_db)):
+    """Create a new organization (for new clients)"""
+    if not DB_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    # Create new organization
+    db_org = Organization(
+        name=org.name,
+        domain=org.domain,
+        created_at=datetime.now()
+    )
+    db.add(db_org)
+    db.commit()
+    db.refresh(db_org)
+    
+    return OrganizationResponse(
+        id=db_org.id,
+        name=db_org.name,
+        domain=db_org.domain,
+        created_at=db_org.created_at
+    )
+
+@app.get("/api/organizations", response_model=list[OrganizationResponse])
+def get_organizations(db: Session = Depends(get_db)):
+    """Get all organizations (admin only)"""
+    if not DB_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    organizations = db.query(Organization).all()
+    return [
+        OrganizationResponse(
+            id=org.id,
+            name=org.name,
+            domain=org.domain,
+            created_at=org.created_at
+        )
+        for org in organizations
+    ]
+
+@app.get("/api/organizations/{org_id}/users", response_model=list[UserResponse])
+def get_organization_users(org_id: int, db: Session = Depends(get_db)):
+    """Get all users in an organization"""
+    if not DB_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    users = db.query(User).filter(User.organization_id == org_id).all()
+    return [
+        UserResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            organization_id=user.organization_id,
+            created_at=user.created_at
+        )
+        for user in users
+    ]
+
+# SaaS Organization Signup Endpoints
+@app.post("/api/organizations/signup", response_model=OrganizationSignupResponse)
+def signup_organization(signup_data: OrganizationSignupRequest, db: Session = Depends(get_db)):
+    """Self-service organization signup with admin user creation"""
+    if not DB_AVAILABLE or not AUTH_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database or authentication not available")
+    
+    try:
+        # Check if organization domain already exists (if provided)
+        if signup_data.organization_domain:
+            existing_org = db.query(Organization).filter(
+                Organization.domain == signup_data.organization_domain
+            ).first()
+            if existing_org:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Organization with this domain already exists"
+                )
+        
+        # Get subscription plan details
+        plan = db.query(SubscriptionPlan).filter(
+            SubscriptionPlan.name == signup_data.plan
+        ).first()
+        if not plan:
+            raise HTTPException(status_code=400, detail="Invalid subscription plan")
+        
+        # Create organization
+        db_org = Organization(
+            name=signup_data.organization_name,
+            domain=signup_data.organization_domain,
+            created_at=datetime.now()
+        )
+        db.add(db_org)
+        db.flush()  # Get the organization ID
+        
+        # Create subscription
+        subscription = Subscription(
+            organization_id=db_org.id,
+            plan=signup_data.plan,
+            status='active',
+            user_limit=plan.user_limit,
+            features=plan.features,
+            created_at=datetime.now()
+        )
+        db.add(subscription)
+        
+        # Create admin user
+        hashed_password = get_password_hash(signup_data.admin_password)
+        admin_user = User(
+            name=signup_data.admin_name,
+            email=signup_data.admin_email,
+            password_hash=hashed_password,
+            role="admin",
+            organization_id=db_org.id,
+            created_at=datetime.now()
+        )
+        db.add(admin_user)
+        db.flush()  # Get the user ID
+        
+        # Create access token for admin user
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": signup_data.admin_email, "user_id": admin_user.id, "organization_id": db_org.id},
+            expires_delta=access_token_expires
+        )
+        
+        db.commit()
+        
+        return OrganizationSignupResponse(
+            organization={
+                "id": db_org.id,
+                "name": db_org.name,
+                "domain": db_org.domain,
+                "created_at": db_org.created_at.isoformat()
+            },
+            admin_user={
+                "id": admin_user.id,
+                "name": admin_user.name,
+                "email": admin_user.email,
+                "role": admin_user.role,
+                "organization_id": admin_user.organization_id,
+                "created_at": admin_user.created_at.isoformat()
+            },
+            subscription={
+                "id": subscription.id,
+                "plan": subscription.plan,
+                "status": subscription.status,
+                "user_limit": subscription.user_limit,
+                "features": subscription.features,
+                "created_at": subscription.created_at.isoformat()
+            },
+            access_token=access_token,
+            token_type="bearer"
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create organization: {str(e)}")
+
+@app.get("/api/subscription-plans", response_model=list[SubscriptionPlanResponse])
+def get_subscription_plans(db: Session = Depends(get_db)):
+    """Get available subscription plans"""
+    if not DB_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    plans = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active == True).all()
+    return [
+        SubscriptionPlanResponse(
+            id=plan.id,
+            name=plan.name,
+            display_name=plan.display_name,
+            description=plan.description,
+            price_monthly=plan.price_monthly,
+            price_yearly=plan.price_yearly,
+            user_limit=plan.user_limit,
+            features=plan.features,
+            is_active=plan.is_active
+        )
+        for plan in plans
+    ]
+
+@app.get("/api/organizations/{org_id}/user-limit", response_model=UserLimitCheck)
+def check_user_limit(org_id: int, db: Session = Depends(get_db)):
+    """Check if organization can add more users"""
+    if not DB_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    # Get organization subscription
+    subscription = db.query(Subscription).filter(
+        Subscription.organization_id == org_id
+    ).first()
+    
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Organization subscription not found")
+    
+    # Count current users
+    current_users = db.query(User).filter(User.organization_id == org_id).count()
+    
+    return UserLimitCheck(
+        current_users=current_users,
+        user_limit=subscription.user_limit,
+        can_add_user=current_users < subscription.user_limit,
+        plan=subscription.plan
+    )
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
-def get_contacts(db: Session = Depends(get_db)):
-    """Get all contacts from database"""
+def get_contacts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all contacts from database for current user's organization"""
     if not DB_AVAILABLE:
         return {"error": "Database not available"}
     
     try:
-        contacts = db.query(Contact).all()
+        # Handle users with null organization_id by using a default organization (ID 1)
+        org_id = current_user.organization_id or 1
+        contacts = db.query(Contact).filter(Contact.organization_id == org_id).all()
         return [
             {
                 "id": contact.id,
@@ -357,6 +698,7 @@ def get_contacts(db: Session = Depends(get_db)):
                 "phone": contact.phone,
                 "company": contact.company,
                 "owner_id": contact.owner_id,
+                "organization_id": contact.organization_id,
                 "created_at": contact.created_at.isoformat() if contact.created_at else None,
                 "owner_name": contact.owner.name if contact.owner else None
             }
@@ -364,6 +706,47 @@ def get_contacts(db: Session = Depends(get_db)):
         ]
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
+
+@app.post("/api/contacts")
+def create_contact(contact_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new contact for current user's organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        new_contact = Contact(
+            name=contact_data.get("name"),
+            email=contact_data.get("email"),
+            phone=contact_data.get("phone"),
+            company=contact_data.get("company"),
+            title=contact_data.get("title"),
+            industry=contact_data.get("industry"),
+            notes=contact_data.get("notes"),
+            organization_id=current_user.organization_id or 1,
+            owner_id=current_user.id,
+            created_at=datetime.now()
+        )
+        db.add(new_contact)
+        db.commit()
+        db.refresh(new_contact)
+        
+        return {
+            "id": new_contact.id,
+            "name": new_contact.name,
+            "email": new_contact.email,
+            "phone": new_contact.phone,
+            "company": new_contact.company,
+            "title": new_contact.title,
+            "industry": new_contact.industry,
+            "notes": new_contact.notes,
+            "owner_id": new_contact.owner_id,
+            "organization_id": new_contact.organization_id,
+            "created_at": new_contact.created_at.isoformat() if new_contact.created_at else None
+        }
+    except Exception as e:
+        print(f"Error creating contact: {e}")
+        db.rollback()
+        return {"error": "Failed to create contact"}
 
 @app.get("/api/contacts/{contact_id}")
 def get_contact(contact_id: int):
@@ -381,19 +764,22 @@ def get_contact(contact_id: int):
     }
 
 @app.get("/api/leads")
-def get_leads(db: Session = Depends(get_db)):
-    """Get all leads from database"""
+def get_leads(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all leads from database for current user's organization"""
     if not DB_AVAILABLE:
         return {"error": "Database not available"}
     
     try:
-        leads = db.query(Lead).all()
+        # Handle users with null organization_id by using a default organization (ID 1)
+        org_id = current_user.organization_id or 1
+        leads = db.query(Lead).filter(Lead.organization_id == org_id).all()
         return [
             {
                 "id": lead.id,
                 "title": lead.title,
                 "contact_id": lead.contact_id,
                 "owner_id": lead.owner_id,
+                "organization_id": lead.organization_id,
                 "status": lead.status,
                 "source": lead.source,
                 "score": lead.score,
@@ -408,6 +794,51 @@ def get_leads(db: Session = Depends(get_db)):
         ]
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
+
+@app.post("/api/leads")
+def create_lead(lead_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new lead for current user's organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        new_lead = Lead(
+            name=lead_data.get("name"),
+            company=lead_data.get("company"),
+            email=lead_data.get("email"),
+            phone=lead_data.get("phone"),
+            source=lead_data.get("source"),
+            status=lead_data.get("status", "New"),
+            priority=lead_data.get("priority", "Medium"),
+            estimated_value=lead_data.get("estimated_value", 0),
+            notes=lead_data.get("notes"),
+            organization_id=current_user.organization_id or 1,
+            owner_id=current_user.id,
+            created_at=datetime.now()
+        )
+        db.add(new_lead)
+        db.commit()
+        db.refresh(new_lead)
+        
+        return {
+            "id": new_lead.id,
+            "name": new_lead.name,
+            "company": new_lead.company,
+            "email": new_lead.email,
+            "phone": new_lead.phone,
+            "source": new_lead.source,
+            "status": new_lead.status,
+            "priority": new_lead.priority,
+            "estimated_value": new_lead.estimated_value,
+            "notes": new_lead.notes,
+            "owner_id": new_lead.owner_id,
+            "organization_id": new_lead.organization_id,
+            "created_at": new_lead.created_at.isoformat() if new_lead.created_at else None
+        }
+    except Exception as e:
+        print(f"Error creating lead: {e}")
+        db.rollback()
+        return {"error": "Failed to create lead"}
 
 @app.get("/api/leads/{lead_id}")
 def get_lead(lead_id: int):
@@ -492,9 +923,8 @@ if os.path.exists(frontend_path):
         
         return FileResponse(os.path.join(frontend_path, "index.html"))
 else:
-    @app.get("/")
-    def root():
-        return {"message": "Frontend not found"}
+    # Frontend serving is handled above in the if FRONTEND_AVAILABLE block
+    pass
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

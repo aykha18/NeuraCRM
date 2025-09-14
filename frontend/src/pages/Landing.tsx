@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { 
   ArrowRight, 
   BarChart3, 
@@ -14,9 +14,16 @@ import {
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Landing: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Redirect authenticated users to dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const features = [
     {
@@ -350,7 +357,7 @@ const Landing: React.FC = () => {
             Join thousands of sales teams already using NeuraCRM to close more deals
           </p>
           <Link
-            to="/signup"
+            to="/organization-signup"
             className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center gap-2"
           >
             Start Your Free Trial
