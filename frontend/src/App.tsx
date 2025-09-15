@@ -7,6 +7,7 @@ import Kanban from "./pages/Kanban";
 import Chat from "./pages/Chat";
 import Ai from "./pages/Ai";
 import EmailAutomation from "./pages/EmailAutomation";
+import PredictiveAnalytics from "./pages/PredictiveAnalytics";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -84,6 +85,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <EmailAutomation />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/predictive-analytics" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PredictiveAnalytics />
                 </Layout>
               </ProtectedRoute>
             } />

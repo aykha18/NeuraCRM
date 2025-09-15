@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
@@ -10,6 +10,7 @@ const navItems = [
   { name: "Pipeline", icon: <Kanban />, path: "/kanban" },
   { name: "Chat", icon: <MessageCircle />, path: "/chat" },
   { name: "AI Features", icon: <Bot />, path: "/ai" },
+  { name: "Predictive Analytics", icon: <Brain />, path: "/predictive-analytics" },
   { name: "Email Automation", icon: <Mail />, path: "/email-automation" },
 ];
 

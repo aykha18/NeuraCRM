@@ -37,6 +37,7 @@ try:
     from api.routers.email_automation import router as email_automation_router
     from api.routers.auth import router as auth_router
     from api.routers.chat import router as chat_router
+    from api.routers.predictive_analytics import router as predictive_analytics_router
     
     # Include routers
     app.include_router(auth_router)
@@ -45,6 +46,7 @@ try:
     app.include_router(chat_router)
     app.include_router(ai_router)
     app.include_router(email_automation_router)
+    app.include_router(predictive_analytics_router)
     
     logger.info("All routers loaded successfully!")
     
