@@ -1,4 +1,5 @@
 import { apiRequest } from '../utils/api';
+import { API_BASE_URL } from '../config';
 
 // Email Automation Service
 // API calls for email templates, campaigns, and automation

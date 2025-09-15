@@ -22,10 +22,10 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 def get_dashboard_metrics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get dashboard metrics including active leads, closed deals, revenue, and AI score"""
     try:
-        # Active leads count
+        # Active leads count (case-insensitive and includes more statuses)
         try:
             active_leads = db.query(Lead).filter(
-                Lead.status.in_(['new', 'contacted', 'qualified']),
+                Lead.status.in_(['new', 'New', 'contacted', 'Contacted', 'qualified', 'Qualified', 'Proposal Sent', 'Negotiation']),
                 Lead.organization_id == current_user.organization_id
             ).count()
         except Exception as e:
@@ -179,7 +179,7 @@ def get_lead_quality_data(current_user: User = Depends(get_current_user), db: Se
     try:
         try:
             qualified_count = db.query(Lead).filter(
-                Lead.status == 'qualified',
+                Lead.status.in_(['qualified', 'Qualified', 'Proposal Sent']),
                 Lead.organization_id == current_user.organization_id
             ).count()
         except Exception as e:
@@ -187,7 +187,7 @@ def get_lead_quality_data(current_user: User = Depends(get_current_user), db: Se
             qualified_count = 0
         try:
             nurturing_count = db.query(Lead).filter(
-                Lead.status == 'contacted',
+                Lead.status.in_(['contacted', 'Contacted', 'Negotiation']),
                 Lead.organization_id == current_user.organization_id
             ).count()
         except Exception as e:
@@ -195,7 +195,7 @@ def get_lead_quality_data(current_user: User = Depends(get_current_user), db: Se
             nurturing_count = 0
         try:
             cold_count = db.query(Lead).filter(
-                Lead.status == 'new',
+                Lead.status.in_(['new', 'New']),
                 Lead.organization_id == current_user.organization_id
             ).count()
         except Exception as e:
@@ -203,7 +203,7 @@ def get_lead_quality_data(current_user: User = Depends(get_current_user), db: Se
             cold_count = 0
         try:
             hot_count = db.query(Lead).filter(
-                Lead.status == 'hot',
+                Lead.status.in_(['hot', 'Hot', 'Won']),
                 Lead.organization_id == current_user.organization_id
             ).count()
         except Exception as e:

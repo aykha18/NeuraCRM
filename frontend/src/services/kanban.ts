@@ -32,6 +32,42 @@ export interface KanbanBoard {
   deals: Deal[];
 }
 
+// Stage management interfaces
+export interface StageCreate {
+  name: string;
+  order: number;
+  wip_limit?: number;
+}
+
+export interface StageUpdate {
+  name?: string;
+  order?: number;
+  wip_limit?: number;
+}
+
+// Stage management API calls
+export const stageService = {
+  // Get all stages
+  async getStages(): Promise<Stage[]> {
+    return apiRequest<Stage[]>('/stages', 'GET');
+  },
+
+  // Create a new stage
+  async createStage(stageData: StageCreate): Promise<Stage> {
+    return apiRequest<Stage>('/stages', 'POST', stageData);
+  },
+
+  // Update a stage
+  async updateStage(stageId: number, stageData: StageUpdate): Promise<Stage> {
+    return apiRequest<Stage>(`/stages/${stageId}`, 'PUT', stageData);
+  },
+
+  // Delete a stage
+  async deleteStage(stageId: number): Promise<void> {
+    return apiRequest<void>(`/stages/${stageId}`, 'DELETE');
+  }
+};
+
 export const getStages = async (): Promise<Stage[]> => {
   return apiRequest<Stage[]>('/api/kanban/stages/');
 };

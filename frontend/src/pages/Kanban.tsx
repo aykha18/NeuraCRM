@@ -9,6 +9,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
+import StageManagementModal from '../components/StageManagementModal';
 import { Plus, Eye, Calendar } from 'lucide-react';
 // import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
@@ -135,7 +136,7 @@ export default function Kanban() {
   // State for UI
   const [selectedDeal, setSelectedDeal] = useState<FrontendDeal | null>(null);
   const [isDealModalOpen, setIsDealModalOpen] = useState(false);
-  // const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
+  const [isManageStagesOpen, setIsManageStagesOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'board' | 'analytics'>('board');
   
   // State for filtering
@@ -623,7 +624,7 @@ export default function Kanban() {
       <div className="flex justify-end mb-2">
         <button
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white font-semibold shadow hover:from-fuchsia-700 hover:to-pink-600 transition"
-          onClick={() => {/* setIsManageStagesOpen(true) */}}
+          onClick={() => setIsManageStagesOpen(true)}
         >
           <Plus className="w-4 h-4" /> Manage Stages
         </button>
@@ -1280,6 +1281,16 @@ export default function Kanban() {
                   </div>
             </div>
       </DetailModal>
+
+      {/* Stage Management Modal */}
+      <StageManagementModal
+        isOpen={isManageStagesOpen}
+        onClose={() => setIsManageStagesOpen(false)}
+        onStagesUpdated={() => {
+          // Refresh the kanban data when stages are updated
+          queryClient.invalidateQueries({ queryKey: ['kanban-board'] });
+        }}
+      />
     </div>
   );
 } 

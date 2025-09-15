@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Import database and models first
 from api.db import get_session_local, get_engine
-from api.models import Lead, Contact, User, Organization, Base
+from api.models import Lead, Contact, User, Organization, Base, Stage, Deal
 from api.dependencies import get_current_user
 
 # Import Pydantic models
@@ -429,6 +429,118 @@ def create_lead(lead_data: LeadUpdate, current_user: User = Depends(get_current_
         db.rollback()
         db.close()
         raise HTTPException(status_code=500, detail=f"Failed to create lead: {str(e)}")
+
+# POST /api/leads/{lead_id}/convert-to-deal endpoint
+@app.post("/api/leads/{lead_id}/convert-to-deal")
+def convert_lead_to_deal(lead_id: int, current_user: User = Depends(get_current_user)):
+    """Convert a lead to a deal and add it to the Kanban board"""
+    db: Session = get_session_local()()
+    
+    try:
+        # Get the lead
+        lead = db.query(Lead).filter(
+            Lead.id == lead_id,
+            Lead.organization_id == current_user.organization_id
+        ).first()
+        
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead not found")
+        
+        # Get the first stage (usually "Prospecting" or "New")
+        first_stage = db.query(Stage).order_by(Stage.order).first()
+        if not first_stage:
+            raise HTTPException(status_code=500, detail="No stages found in the system")
+        
+        # Create a new deal from the lead
+        new_deal = Deal(
+            title=lead.title,
+            description=f"Converted from lead: {lead.title}",
+            value=0.0,  # Default value, can be updated later
+            contact_id=lead.contact_id,
+            owner_id=lead.owner_id,
+            stage_id=first_stage.id,
+            organization_id=lead.organization_id,
+            created_at=datetime.now()
+        )
+        
+        db.add(new_deal)
+        
+        # Update lead status to "converted"
+        lead.status = "converted"
+        
+        db.commit()
+        db.refresh(new_deal)
+        
+        # Return the created deal
+        return {
+            "id": new_deal.id,
+            "title": new_deal.title,
+            "description": new_deal.description,
+            "value": new_deal.value,
+            "stage_id": new_deal.stage_id,
+            "stage_name": first_stage.name,
+            "contact_id": new_deal.contact_id,
+            "owner_id": new_deal.owner_id,
+            "created_at": new_deal.created_at,
+            "message": f"Lead '{lead.title}' successfully converted to deal"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to convert lead to deal: {str(e)}")
+    finally:
+        db.close()
+
+# POST /api/contacts/{contact_id}/convert-to-lead endpoint
+@app.post("/api/contacts/{contact_id}/convert-to-lead")
+def convert_contact_to_lead(contact_id: int, current_user: User = Depends(get_current_user)):
+    """Convert a contact to a lead"""
+    db: Session = get_session_local()()
+    
+    try:
+        # Get the contact
+        contact = db.query(Contact).filter(
+            Contact.id == contact_id,
+            Contact.organization_id == current_user.organization_id
+        ).first()
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        # Create a new lead from the contact
+        new_lead = Lead(
+            title=f"{contact.name} - {contact.company}",
+            status="new",
+            source="contact_conversion",
+            contact_id=contact.id,
+            owner_id=current_user.id,
+            organization_id=current_user.organization_id,
+            created_at=datetime.now()
+        )
+        
+        db.add(new_lead)
+        db.commit()
+        db.refresh(new_lead)
+        
+        # Return the created lead
+        return {
+            "id": new_lead.id,
+            "title": new_lead.title,
+            "status": new_lead.status,
+            "source": new_lead.source,
+            "contact_id": new_lead.contact_id,
+            "owner_id": new_lead.owner_id,
+            "created_at": new_lead.created_at,
+            "message": f"Lead created from contact: {contact.name}"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        raise HTTPException(status_code=500, detail=f"Failed to convert contact to lead: {str(e)}")
+    finally:
+        db.close()
 
 # GET /api/leads endpoint (with joins)
 @app.get("/api/leads", response_model=list[LeadOut])

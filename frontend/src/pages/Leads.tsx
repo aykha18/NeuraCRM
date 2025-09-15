@@ -4,12 +4,13 @@
  * - Column sorting, pagination, bulk actions, row highlight, inline editing
  */
 import { useEffect, useState } from "react";
-import { Search, Filter, Eye, Trash2, X, ChevronUp, ChevronDown, Download, Plus, Zap, BarChart3, TrendingUp } from "lucide-react";
+import { Search, Filter, Eye, Trash2, X, ChevronUp, ChevronDown, Download, Plus, Zap, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
-import { fetchLeads, getLead, createLead, updateLead, deleteLead } from "../services/leads";
+import { fetchLeads, getLead, createLead, updateLead, deleteLead, convertLeadToDeal } from "../services/leads";
 import { scoreAllLeads, getScoringAnalytics } from "../services/leadScoring";
 import DetailModal from "../components/DetailModal";
 import LeadScore from "../components/LeadScore";
+import { AnimatedModal } from "../components/AnimatedModal";
 
 const statusColors: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
@@ -79,6 +80,7 @@ export default function LeadsPage() {
   const [scoringAnalytics, setScoringAnalytics] = useState<any>(null);
   const [showScoringModal, setShowScoringModal] = useState(false);
   const [scoringLoading, setScoringLoading] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     fetchLeads()
@@ -348,6 +350,20 @@ export default function LeadsPage() {
 
   const cancelDelete = () => setConfirmDeleteId(null);
 
+  // Convert lead to deal handler
+  const handleConvertToDeal = async (id: number) => {
+    setActionLoading(true);
+    try {
+      const result = await convertLeadToDeal(id);
+      setLeads(await fetchLeads()); // Refresh the list
+      setToast(`Lead converted to deal: ${result.message}`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (e) {
+      alert("Failed to convert lead to deal");
+    }
+    setActionLoading(false);
+  };
+
   // Create lead handlers
   const handleCreateLead = async () => {
     if (!newLead.title.trim()) {
@@ -446,7 +462,7 @@ export default function LeadsPage() {
             {/* Create Lead Button */}
             <button
               className="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold shadow-lg hover:from-pink-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
-              onClick={() => setShowCreateModal(true)}
+              onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreateModal(true); }}
             >
               <Plus className="w-5 h-5" />
               Create Lead
@@ -729,14 +745,16 @@ export default function LeadsPage() {
                   >
                     <Eye />
                   </button>
-                  {/* <button
-                    className="text-yellow-500 hover:text-yellow-700"
-                    title="Edit"
-                    onClick={() => handleEdit(lead.id)}
-                    disabled={actionLoading}
-                  >
-                    <Edit />
-                  </button> */}
+                  {lead.status !== "converted" && (
+                    <button
+                      className="text-green-500 hover:text-green-700"
+                      title="Convert to Deal"
+                      onClick={() => handleConvertToDeal(lead.id)}
+                      disabled={actionLoading}
+                    >
+                      <ArrowRight />
+                    </button>
+                  )}
                   <button
                     className="text-red-500 hover:text-red-700"
                     title="Delete"
@@ -757,7 +775,7 @@ export default function LeadsPage() {
         {/* Mobile Create Button */}
         <button
           className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold shadow hover:from-pink-600 hover:to-purple-600 transition flex items-center justify-center gap-2"
-          onClick={() => setShowCreateModal(true)}
+          onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreateModal(true); }}
         >
           <Plus className="w-5 h-5" />
           Create New Lead
@@ -786,6 +804,16 @@ export default function LeadsPage() {
                 >
                   <Eye className="w-5 h-5 text-blue-500" />
                 </button>
+                {lead.status !== "converted" && (
+                  <button
+                    className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-900 transition"
+                    title="Convert to Deal"
+                    onClick={() => handleConvertToDeal(lead.id)}
+                    disabled={actionLoading}
+                  >
+                    <ArrowRight className="w-5 h-5 text-green-500" />
+                  </button>
+                )}
                 <button
                   className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
                   title="Delete"
@@ -888,90 +916,82 @@ export default function LeadsPage() {
         </div>
       </DetailModal>
       {/* Create Lead Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
-            <button
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() => {
-                setShowCreateModal(false);
-                resetCreateForm();
-              }}
-              title="Close"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Create New Lead</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Lead Title *
-                </label>
-                <input
-                  type="text"
-                  value={newLead.title}
-                  onChange={(e) => setNewLead({ ...newLead, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  placeholder="Enter lead title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Status
-                </label>
-                <select
-                  value={newLead.status}
-                  onChange={(e) => setNewLead({ ...newLead, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="proposal">Proposal</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Source
-                </label>
-                <select
-                  value={newLead.source}
-                  onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="manual">Manual</option>
-                  <option value="website">Website</option>
-                  <option value="referral">Referral</option>
-                  <option value="social">Social Media</option>
-                  <option value="email">Email Campaign</option>
-                </select>
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button
-                  className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetCreateForm();
-                  }}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold hover:from-pink-600 hover:to-purple-600 transition"
-                  onClick={handleCreateLead}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "Creating..." : "Create Lead"}
-                </button>
-              </div>
+      <AnimatedModal open={showCreateModal} onClose={() => { setShowCreateModal(false); resetCreateForm(); }} anchorRect={anchorRect}>
+        <div className="p-8 w-full max-w-md relative">
+          <button
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
+            title="Close"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Create New Lead</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Lead Title *
+              </label>
+              <input
+                type="text"
+                value={newLead.title}
+                onChange={(e) => setNewLead({ ...newLead, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                placeholder="Enter lead title"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Status
+              </label>
+              <select
+                value={newLead.status}
+                onChange={(e) => setNewLead({ ...newLead, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Source
+              </label>
+              <select
+                value={newLead.source}
+                onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="manual">Manual</option>
+                <option value="website">Website</option>
+                <option value="referral">Referral</option>
+                <option value="social">Social Media</option>
+                <option value="email">Email Campaign</option>
+              </select>
+            </div>
+            <div className="flex gap-4 pt-4">
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+                onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold hover:from-pink-600 hover:to-purple-600 transition"
+                onClick={handleCreateLead}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Creating..." : "Create Lead"}
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </AnimatedModal>
 
       {/* Scoring Analytics Modal */}
       {showScoringModal && scoringAnalytics && (

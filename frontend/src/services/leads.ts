@@ -43,4 +43,10 @@ export async function deleteLead(id: number): Promise<{ message: string }> {
   return apiRequest<{ message: string }>(`/api/leads/${id}`, {
     method: "DELETE"
   });
+}
+
+export async function convertLeadToDeal(id: number): Promise<any> {
+  return apiRequest<any>(`/api/leads/${id}/convert-to-deal`, {
+    method: "POST",
+  });
 } 

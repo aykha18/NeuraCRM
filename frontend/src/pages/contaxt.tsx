@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Eye, Plus, Trash2, X, Download } from 'lucide-react';
+import { Search, Eye, Plus, Trash2, X, Download, ArrowRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { fetchContacts, getContact, createContact, updateContact, deleteContact } from '../services/contacts';
+import { createLead } from '../services/leads';
 import DetailModal from '../components/DetailModal';
+import { AnimatedModal } from '../components/AnimatedModal';
 
 interface Contact {
   id: number;
@@ -41,6 +43,7 @@ export default function Contacts() {
     company: '',
     owner_id: 1,
   });
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     fetchContacts()
@@ -108,6 +111,27 @@ export default function Contacts() {
       setToast('Failed to delete contact');
       setTimeout(() => setToast(null), 3000);
     }
+  };
+
+  // Convert contact to lead
+  const handleConvertToLead = async (contact: Contact) => {
+    setActionLoading(true);
+    try {
+      const leadData = {
+        title: `${contact.name} - ${contact.company}`,
+        status: 'new',
+        source: 'contact_conversion',
+        contact_id: contact.id,
+        owner_id: contact.owner_id || 1
+      };
+      
+      await createLead(leadData);
+      setToast(`Lead created from contact: ${contact.name}`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (e) {
+      alert('Failed to create lead from contact');
+    }
+    setActionLoading(false);
   };
 
   // Inline edit handlers
@@ -230,7 +254,7 @@ export default function Contacts() {
             <Download className='w-4 h-4' /> Export XLS
           </button>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreate(true); }}
             className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
           >
             <Plus className='w-4 h-4' /> Add Contact
@@ -335,13 +359,23 @@ export default function Contacts() {
                       className='text-blue-600 hover:text-blue-800' 
                       onClick={() => handleView(c.id)}
                       disabled={actionLoading}
+                      title="View Contact"
                     >
                       <Eye className='w-4 h-4' />
+                    </button>
+                    <button 
+                      className='text-green-600 hover:text-green-800' 
+                      onClick={() => handleConvertToLead(c)}
+                      disabled={actionLoading}
+                      title="Create Lead"
+                    >
+                      <ArrowRight className='w-4 h-4' />
                     </button>
                     <button 
                       className='text-red-600 hover:text-red-800' 
                       onClick={() => handleDelete(c.id)}
                       disabled={actionLoading}
+                      title="Delete Contact"
                     >
                       <Trash2 className='w-4 h-4' />
                     </button>
@@ -353,67 +387,65 @@ export default function Contacts() {
         </table>
       </div>
 
-      {showCreate && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-          <div className='bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-md mx-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h2 className='text-xl font-bold'>Create Contact</h2>
-              <button className='p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg' onClick={() => setShowCreate(false)}>
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
+      <AnimatedModal open={showCreate} onClose={() => setShowCreate(false)} anchorRect={anchorRect}>
+        <div className='p-6 w-full max-w-md'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-xl font-bold'>Create Contact</h2>
+            <button className='p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg' onClick={() => setShowCreate(false)}>
+              <X className='w-5 h-5 text-gray-500' />
+            </button>
+          </div>
+          <div className='space-y-4'>
+            <div>
+              <label className='block text-sm font-medium mb-1'>Name *</label>
+              <input
+                value={newContact.name}
+                onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
+                placeholder='Full name'
+              />
             </div>
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Name *</label>
-                <input
-                  value={newContact.name}
-                  onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                  className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
-                  placeholder='Full name'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Email</label>
-                <input
-                  type='email'
-                  value={newContact.email}
-                  onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                  className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
-                  placeholder='name@company.com'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Phone</label>
-                <input
-                  value={newContact.phone}
-                  onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                  className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
-                  placeholder='+1 555 123 4567'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Company</label>
-                <input
-                  value={newContact.company}
-                  onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
-                  className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
-                  placeholder='Company name'
-                />
-              </div>
+            <div>
+              <label className='block text-sm font-medium mb-1'>Email</label>
+              <input
+                type='email'
+                value={newContact.email}
+                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
+                placeholder='name@company.com'
+              />
             </div>
-            <div className='flex gap-3 mt-6'>
-              <button className='flex-1 px-4 py-2 border rounded-lg' onClick={() => setShowCreate(false)}>Cancel</button>
-              <button
-                className='flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50'
-                onClick={handleCreate}
-                disabled={creating || !newContact.name.trim()}
-              >
-                {creating ? 'Creating…' : 'Create Contact'}
-              </button>
+            <div>
+              <label className='block text-sm font-medium mb-1'>Phone</label>
+              <input
+                value={newContact.phone}
+                onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
+                placeholder='+1 555 123 4567'
+              />
+            </div>
+            <div>
+              <label className='block text-sm font-medium mb-1'>Company</label>
+              <input
+                value={newContact.company}
+                onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                className='w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800'
+                placeholder='Company name'
+              />
             </div>
           </div>
+          <div className='flex gap-3 mt-6'>
+            <button className='flex-1 px-4 py-2 border rounded-lg' onClick={() => setShowCreate(false)}>Cancel</button>
+            <button
+              className='flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50'
+              onClick={handleCreate}
+              disabled={creating || !newContact.name.trim()}
+            >
+              {creating ? 'Creating…' : 'Create Contact'}
+            </button>
+          </div>
         </div>
-      )}
+      </AnimatedModal>
 
       <DetailModal open={!!detailContact} onClose={() => setDetailContact(null)} title='Contact Details'>
         {detailContact && (
