@@ -97,7 +97,7 @@ const MessageList: React.FC<MessageListProps> = ({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
       {messages.map((message, index) => {
         const previousMessage = index > 0 ? messages[index - 1] : undefined;
         const nextMessage = index < messages.length - 1 ? messages[index + 1] : undefined;

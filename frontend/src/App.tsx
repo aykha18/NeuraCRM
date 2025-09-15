@@ -8,6 +8,7 @@ import Chat from "./pages/Chat";
 import Ai from "./pages/Ai";
 import EmailAutomation from "./pages/EmailAutomation";
 import PredictiveAnalytics from "./pages/PredictiveAnalytics";
+import UserManagement from "./pages/UserManagement";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -92,6 +93,14 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <PredictiveAnalytics />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/user-management" element={
+              <ProtectedRoute>
+                <Layout>
+                  <UserManagement />
                 </Layout>
               </ProtectedRoute>
             } />

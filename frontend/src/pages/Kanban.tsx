@@ -437,12 +437,10 @@ export default function Kanban() {
       const dealToMove = oldData.deals.find(d => d.id === dealId);
       if (!dealToMove) return oldData;
       
-      const updatedDeals = oldData.deals
-        .filter(d => d.id !== dealId)
-        .map(d => ({
-          ...d,
-          stage_id: d.id === dealId ? destStageId : d.stage_id,
-        }));
+      const updatedDeals = oldData.deals.map(d => ({
+        ...d,
+        stage_id: d.id === dealId ? destStageId : d.stage_id,
+      }));
       
       return {
         ...oldData,
@@ -451,10 +449,16 @@ export default function Kanban() {
     });
     
     // Call API to update deal stage
-    moveDeal(dealId, destStageId, destination.index).catch(() => {
-      // Revert on error
-      queryClient.invalidateQueries({ queryKey: ['kanban'] });
-    });
+    moveDeal(dealId, destStageId, destination.index)
+      .then(() => {
+        // Success - the optimistic update is already applied
+        console.log(`Deal ${dealId} moved to stage ${destStageId}`);
+      })
+      .catch((error) => {
+        console.error('Failed to move deal:', error);
+        // Revert on error
+        queryClient.invalidateQueries({ queryKey: ['kanban'] });
+      });
   }, [queryClient]);
 
   // Compute filtered deals by stage

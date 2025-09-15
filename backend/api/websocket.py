@@ -96,15 +96,36 @@ async def websocket_endpoint(websocket: WebSocket, room_id: Optional[int] = None
             await websocket.close(code=1008, reason="Authentication required")
             return
             
-        # Here you would validate the JWT token and get the user
-        # For now, we'll use a simple approach
+        # Validate the JWT token and get the user
         db = next(get_db())
         try:
-            # This is a simplified authentication - in production, use proper JWT validation
-            user = db.query(User).filter(User.id == 1).first()  # Demo user
-            if not user:
+            import jwt
+            import os
+            
+            SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+            ALGORITHM = "HS256"
+            
+            # Decode the JWT token
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            
+            # Get user_id from the token
+            user_id = payload.get("sub")
+            if not user_id or not str(user_id).isdigit():
+                user_id = payload.get("user_id")
+            
+            if not user_id:
                 await websocket.close(code=1008, reason="Invalid token")
                 return
+            
+            # Get the user from database
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if not user:
+                await websocket.close(code=1008, reason="User not found")
+                return
+                
+        except jwt.PyJWTError:
+            await websocket.close(code=1008, reason="Invalid token")
+            return
         except Exception as e:
             await websocket.close(code=1008, reason="Authentication failed")
             return

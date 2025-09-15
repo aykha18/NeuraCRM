@@ -1,5 +1,4 @@
 import { apiRequest } from '../utils/api';
-import { API_BASE_URL } from '../config';
 
 // Email Automation Service
 // API calls for email templates, campaigns, and automation
@@ -74,9 +73,7 @@ export async function getEmailTemplates(category?: string, activeOnly: boolean =
   if (category) params.append('category', category);
   params.append('active_only', activeOnly.toString());
   
-  const res = await fetch(`${API_BASE_URL}/api/email/templates?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch email templates");
-  return res.json();
+  return apiRequest<EmailTemplate[]>(`/api/email/templates?${params}`, 'GET');
 }
 
 export async function createEmailTemplate(data: {
@@ -85,13 +82,7 @@ export async function createEmailTemplate(data: {
   body: string;
   category?: string;
 }): Promise<EmailTemplate> {
-  const res = await fetch(`${API_BASE_URL}/api/email/templates`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create email template");
-  return res.json();
+  return apiRequest<EmailTemplate>('/api/email/templates', 'POST', data);
 }
 
 export async function updateEmailTemplate(id: number, data: Partial<{
@@ -101,43 +92,23 @@ export async function updateEmailTemplate(id: number, data: Partial<{
   category: string;
   is_active: boolean;
 }>): Promise<EmailTemplate> {
-  const res = await fetch(`${API_BASE_URL}/api/email/templates/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update email template");
-  return res.json();
+  return apiRequest<EmailTemplate>(`/api/email/templates/${id}`, 'PUT', data);
 }
 
 export async function deleteEmailTemplate(id: number): Promise<{ message: string }> {
-  const res = await fetch(`${API_BASE_URL}/api/email/templates/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete email template");
-  return res.json();
+  return apiRequest<{ message: string }>(`/api/email/templates/${id}`, 'DELETE');
 }
 
 export async function previewTemplate(templateId: number, recipientType: string, recipientId: number): Promise<TemplatePreview> {
-  const res = await fetch(`${API_BASE_URL}/api/email/templates/preview`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      template_id: templateId,
-      recipient_type: recipientType,
-      recipient_id: recipientId
-    }),
+  return apiRequest<TemplatePreview>('/api/email/templates/preview', 'POST', {
+    template_id: templateId,
+    recipient_type: recipientType,
+    recipient_id: recipientId
   });
-  if (!res.ok) throw new Error("Failed to preview template");
-  return res.json();
 }
 
 export async function createSampleTemplates(): Promise<{ message: string }> {
-  const res = await fetch(`${API_BASE_URL}/api/email/templates/sample`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to create sample templates");
-  return res.json();
+  return apiRequest<{ message: string }>('/api/email/templates/sample', 'POST');
 }
 
 // Campaign API calls
@@ -145,9 +116,7 @@ export async function getEmailCampaigns(status?: string): Promise<EmailCampaign[
   const params = new URLSearchParams();
   if (status) params.append('status', status);
   
-  const res = await fetch(`${API_BASE_URL}/api/email/campaigns?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch email campaigns");
-  return res.json();
+  return apiRequest<EmailCampaign[]>(`/api/email/campaigns?${params}`, 'GET');
 }
 
 export async function createEmailCampaign(data: {
@@ -159,13 +128,7 @@ export async function createEmailCampaign(data: {
   target_ids: number[];
   scheduled_at?: string;
 }): Promise<EmailCampaign> {
-  const res = await fetch(`${API_BASE_URL}/api/email/campaigns`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create email campaign");
-  return res.json();
+  return apiRequest<EmailCampaign>('/api/email/campaigns', 'POST', data);
 }
 
 export async function sendCampaign(campaignId: number): Promise<{
@@ -173,11 +136,11 @@ export async function sendCampaign(campaignId: number): Promise<{
   sent_count: number;
   total_recipients: number;
 }> {
-  const res = await fetch(`${API_BASE_URL}/api/email/campaigns/${campaignId}/send`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to send campaign");
-  return res.json();
+  return apiRequest<{
+    message: string;
+    sent_count: number;
+    total_recipients: number;
+  }>(`/api/email/campaigns/${campaignId}/send`, 'POST');
 }
 
 // Email logs API calls
@@ -187,15 +150,11 @@ export async function getEmailLogs(campaignId?: number, status?: string, limit: 
   if (status) params.append('status', status);
   params.append('limit', limit.toString());
   
-  const res = await fetch(`${API_BASE_URL}/api/email/logs?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch email logs");
-  return res.json();
+  return apiRequest<EmailLog[]>(`/api/email/logs?${params}`, 'GET');
 }
 
 export async function getEmailAnalytics(): Promise<EmailAnalytics> {
-  const res = await fetch(`${API_BASE_URL}/api/email/logs/analytics`);
-  if (!res.ok) throw new Error("Failed to fetch email analytics");
-  return res.json();
+  return apiRequest<EmailAnalytics>('/api/email/logs/analytics', 'GET');
 }
 
 // Helper functions

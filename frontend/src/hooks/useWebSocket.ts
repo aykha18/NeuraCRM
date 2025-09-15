@@ -139,11 +139,13 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
 
   // Connect when roomId changes or component mounts
   useEffect(() => {
-    connect();
+    if (roomId) {
+      connect();
+    }
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [roomId]); // Only depend on roomId, not the functions
 
   // Cleanup on unmount
   useEffect(() => {
