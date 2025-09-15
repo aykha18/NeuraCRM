@@ -89,12 +89,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleFileUpload = () => {
     // TODO: Implement file upload
-    console.log('File upload clicked');
+    // file upload clicked
   };
 
   const handleEmojiClick = () => {
     // TODO: Implement emoji picker
-    console.log('Emoji picker clicked');
+    // emoji picker clicked
   };
 
   return (

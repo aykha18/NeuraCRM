@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Import database and models first
 from api.db import get_session_local, get_engine
-from api.models import Lead, Contact, User, Base
+from api.models import Lead, Contact, User, Organization, Base
 from api.dependencies import get_current_user
 
 # Import Pydantic models
@@ -28,6 +28,29 @@ app = FastAPI(
     description="API for the CRM Application with AI Features",
     version="1.0.0"
 )
+
+# Import and include routers immediately
+try:
+    from api.routers import kanban
+    from api.routers.dashboard import router as dashboard_router
+    from api.routers.ai import router as ai_router
+    from api.routers.email_automation import router as email_automation_router
+    from api.routers.auth import router as auth_router
+    from api.routers.chat import router as chat_router
+    
+    # Include routers
+    app.include_router(auth_router)
+    app.include_router(kanban.router)
+    app.include_router(dashboard_router)
+    app.include_router(chat_router)
+    app.include_router(ai_router)
+    app.include_router(email_automation_router)
+    
+    logger.info("All routers loaded successfully!")
+    
+except Exception as e:
+    logger.warning(f"Some routers failed to load: {e}")
+    # Continue without the problematic routers
 
 # Startup event to initialize database
 @app.on_event("startup")
@@ -46,25 +69,13 @@ async def startup_event():
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized!")
         
-        # Import routers after database is ready
+        # Import lead scoring service after database is ready
         try:
-            from api.routers import kanban
-            from api.routers.dashboard import router as dashboard_router
-            from api.routers.ai import router as ai_router
-            from api.routers.email_automation import router as email_automation_router
             from api.lead_scoring import lead_scoring_service
-            
-            # Include routers
-            app.include_router(kanban.router)
-            app.include_router(dashboard_router)
-            app.include_router(ai_router)
-            app.include_router(email_automation_router)
-            
-            logger.info("All routers loaded successfully!")
-            
+            logger.info("Lead scoring service loaded successfully!")
         except Exception as e:
-            logger.warning(f"Some routers failed to load: {e}")
-            # Continue without the problematic routers
+            logger.warning(f"Lead scoring service failed to load: {e}")
+            # Continue without the lead scoring service
         
         logger.info("CRM API startup completed successfully!")
         
@@ -83,7 +94,7 @@ app.add_middleware(
         "https://neuracrm.up.railway.app",  # Your Railway backend
         "https://*.railway.app",  # Allow Railway domains
         "https://*.up.railway.app",  # Allow Railway domains
-        "*"  # Allow all origins in production (you can restrict this later)
+        # Removed "*" to ensure credentials work and proper CORS headers are sent
     ],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -150,6 +161,13 @@ class ContactUpdate(BaseModel):
     company: str | None = None
     owner_id: int | None = None
 
+# Pydantic schema for Organization output
+class OrganizationOut(BaseModel):
+    id: int
+    name: str
+    class Config:
+        from_attributes = True
+
 @app.get("/")
 def read_root():
     """Serve the frontend index.html at root"""
@@ -198,6 +216,19 @@ def health_check():
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
+
+# Organizations endpoint (for OrganizationSelector)
+@app.get("/api/organizations", response_model=list[OrganizationOut])
+def list_organizations(current_user: User = Depends(get_current_user)):
+    """Return the current user's organization. In multi-tenant mode we do not expose other orgs."""
+    db: Session = get_session_local()()
+    try:
+        org = db.query(Organization).filter(Organization.id == current_user.organization_id).first()
+        if not org:
+            return []
+        return [org]
+    finally:
+        db.close()
 
 # Lead Scoring Endpoints
 @app.post("/api/leads/{lead_id}/score")
@@ -403,6 +434,8 @@ def create_lead(lead_data: LeadUpdate, current_user: User = Depends(get_current_
 @app.get("/api/leads", response_model=list[LeadOut])
 def get_leads(current_user: User = Depends(get_current_user)):
     try:
+        logger.info(f"=== LEADS API CALLED ===")
+        logger.info(f"User {current_user.id} (org {current_user.organization_id}) requesting leads")
         db: Session = get_session_local()()
         # Try to get leads with joins, fallback to simple query if joins fail
         try:
@@ -426,6 +459,7 @@ def get_leads(current_user: User = Depends(get_current_user)):
                 .filter(Lead.organization_id == current_user.organization_id)
                 .all()
             )
+            logger.info(f"Found {len(leads)} leads for organization {current_user.organization_id}")
             # Convert to list of dicts for Pydantic
             result = [dict(lead._mapping) for lead in leads]
         except Exception as join_error:
@@ -666,23 +700,24 @@ def delete_contact(contact_id: int):
     return {"detail": "Contact deleted"}
 
 # Catch-all route for frontend (MUST BE LAST!)
-if os.path.exists(frontend_dist_path):
-    @app.get("/{path:path}")
-    async def serve_frontend(path: str):
-        """Serve the React frontend for all non-API routes"""
-        # Don't serve API routes
-        if path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        
-        # Serve static files if they exist
-        static_file_path = os.path.join(frontend_dist_path, path)
-        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
-            return FileResponse(static_file_path)
-        
-        # Serve index.html for all other routes (React Router)
-        index_path = os.path.join(frontend_dist_path, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        else:
-            raise HTTPException(status_code=404, detail="Frontend not found")
+# Temporarily disabled to test API routes
+# if os.path.exists(frontend_dist_path):
+#     @app.get("/{path:path}")
+#     async def serve_frontend(path: str):
+#         """Serve the React frontend for all non-API routes"""
+#         # Don't serve API routes - check if path starts with api/
+#         if path.startswith("api/"):
+#             raise HTTPException(status_code=404, detail="API endpoint not found")
+#         
+#         # Serve static files if they exist
+#         static_file_path = os.path.join(frontend_dist_path, path)
+#         if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+#             return FileResponse(static_file_path)
+#         
+#         # Serve index.html for all other routes (React Router)
+#         index_path = os.path.join(frontend_dist_path, "index.html")
+#         if os.path.exists(index_path):
+#             return FileResponse(index_path)
+#         else:
+#             raise HTTPException(status_code=404, detail="Frontend not found")
 

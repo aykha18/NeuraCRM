@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Building2 } from 'lucide-react';
+import { apiRequest } from '../utils/api';
 
 interface Organization {
   id: number;
@@ -34,17 +35,14 @@ const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
 
   const fetchOrganizations = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/organizations`);
-      if (response.ok) {
-        const orgs = await response.json();
-        setOrganizations(orgs);
-        if (orgs.length > 0 && !selectedOrg) {
-          setSelectedOrg(orgs[0]);
-          onOrganizationChange(orgs[0].id);
-        }
+      const orgs = await apiRequest<Organization[]>('/api/organizations');
+      setOrganizations(orgs);
+      if (orgs.length > 0 && !selectedOrg) {
+        setSelectedOrg(orgs[0]);
+        onOrganizationChange(orgs[0].id);
       }
     } catch (error) {
-      console.error('Failed to fetch organizations:', error);
+      // failed to fetch organizations
     } finally {
       setLoading(false);
     }

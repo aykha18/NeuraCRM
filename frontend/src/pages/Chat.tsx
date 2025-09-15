@@ -31,7 +31,7 @@ const Chat: React.FC = () => {
       }
     } catch (err) {
       setError('Failed to load chat rooms');
-      console.error('Error loading rooms:', err);
+      // error loading rooms
     } finally {
       setLoading(false);
     }
@@ -47,9 +47,9 @@ const Chat: React.FC = () => {
     setShowCreateModal(false);
   };
 
-  const filteredRooms = rooms.filter(room =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRooms = rooms
+    .filter((room: any) => room && typeof room === 'object')
+    .filter(room => (room.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
   const getRoomIcon = (roomType: string) => {
     switch (roomType) {
@@ -134,9 +134,12 @@ const Chat: React.FC = () => {
           )}
 
           <div className="space-y-1 p-2">
-            {filteredRooms.map((room) => (
+            {filteredRooms.map((room, idx) => {
+              const updated = room.updated_at || room.created_at;
+              const dateText = updated ? (() => { const d = new Date(updated as any); return isNaN(d.getTime()) ? '' : d.toLocaleDateString(); })() : '';
+              return (
               <button
-                key={room.id}
+                key={room.id ?? idx}
                 onClick={() => handleRoomSelect(room.id)}
                 className={`w-full text-left p-3 rounded-lg transition-colors ${
                   selectedRoomId === room.id
@@ -151,7 +154,7 @@ const Chat: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {room.name}
+                        {room.name || 'Untitled room'}
                       </h3>
                       {room.room_type === 'direct' && (
                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -162,13 +165,15 @@ const Chat: React.FC = () => {
                         {room.description}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400">
-                      {room.room_type} • {new Date(room.updated_at).toLocaleDateString()}
-                    </p>
+                    {dateText && (
+                      <p className="text-xs text-gray-400">
+                        {room.room_type} • {dateText}
+                      </p>
+                    )}
                   </div>
                 </div>
               </button>
-            ))}
+            )})}
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ from api.schemas.kanban import (
     DealBase, DealCreate, DealUpdate, DealOut,
     DealMoveRequest, KanbanBoard
 )
-from api.dependencies import get_db
+from api.dependencies import get_db, get_current_user
 from api.models import Deal, User
 
 router = APIRouter(
@@ -21,11 +21,11 @@ router = APIRouter(
 )
 
 @router.get("/board", response_model=KanbanBoard)
-def get_board(db: Session = Depends(get_db)):
+def get_board(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Get the complete Kanban board with all stages and deals
     """
-    board = get_kanban_board(db)
+    board = get_kanban_board(db, organization_id=current_user.organization_id)
     return board
 
 # Stage endpoints

@@ -83,8 +83,7 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads()
       .then(data => {
-        console.log('Leads loaded:', data.length, 'leads');
-        console.log('Sample lead statuses:', data.slice(0, 5).map((l: any) => ({ id: l.id, title: l.title, status: l.status })));
+        // loaded
         setLeads(data);
         setLoading(false);
       })
@@ -113,14 +112,7 @@ export default function LeadsPage() {
           lead.status === statusFilter
         ));
       
-      if (statusFilter) {
-        console.log('Status filtering:', { 
-          leadStatus: lead.status, 
-          statusFilter, 
-          matches: statusMatch,
-          leadTitle: lead.title
-        });
-      }
+      // statusFilter diagnostics removed
       
 
       
@@ -186,14 +178,7 @@ export default function LeadsPage() {
   const totalPages = Math.ceil(leadsToDisplay.length / pageSize);
   const pagedLeads = leadsToDisplay.slice((page - 1) * pageSize, page * pageSize);
 
-  console.log('Filtering results:', {
-    totalLeads: leads.length,
-    filteredLeads: leadsToDisplay.length,
-    pagedLeads: pagedLeads.length,
-    search,
-    statusFilter,
-    scoreFilter
-  });
+  // filtering summary removed
 
   // Handle column sort
   const handleSort = (col: string) => {
@@ -422,7 +407,7 @@ export default function LeadsPage() {
       return ["new", "qualified", "lost", "converted", "contacted"];
     }
     const statuses = [...new Set(leads.map(lead => lead.status).filter(Boolean))];
-    console.log('Available statuses:', statuses);
+    // available statuses
     return statuses.length > 0 ? statuses : ["new", "qualified", "lost", "converted", "contacted"];
   };
 

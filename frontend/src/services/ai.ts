@@ -24,7 +24,7 @@ export const sendAIMessage = async (request: AIChatRequest): Promise<AIChatRespo
       body: JSON.stringify(request),
     });
   } catch (error: any) {
-    console.error('AI API Error:', error);
+    // AI API error
     if (error.message.includes('timeout')) {
       throw new Error('Request timed out. Please try again.');
     }

@@ -54,7 +54,7 @@ export default function Topbar({ onMenuClick, onToggleDarkMode, darkMode, onTogg
         
         <div>
           <div className="text-2xl font-extrabold text-white mb-1">
-            Welcome back, {user?.name?.split(' ')[0] || 'User'}!
+            Welcome back, {authUser?.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'User'}!
           </div>
           <div className="text-blue-200 text-sm">Your AI assistant is ready to help</div>
         </div>

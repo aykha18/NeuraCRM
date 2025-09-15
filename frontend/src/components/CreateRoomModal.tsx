@@ -30,7 +30,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onRoomCreate
       const users = await chatService.getOrganizationUsers(user!.organization_id);
       setOrganizationUsers(users.filter(u => u.id !== user!.id)); // Exclude current user
     } catch (err) {
-      console.error('Error loading organization users:', err);
+      // error loading organization users
     }
   };
 
@@ -54,7 +54,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onRoomCreate
       onRoomCreated(newRoom);
     } catch (err) {
       setError('Failed to create room');
-      console.error('Error creating room:', err);
+      // error creating room
     } finally {
       setLoading(false);
     }

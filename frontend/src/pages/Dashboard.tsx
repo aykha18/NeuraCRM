@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { fetchDashboardData } from "../services/dashboard";
 import type { DashboardData } from "../services/dashboard";
+import { useAuth } from "../contexts/AuthContext";
 
 // Icon mapping for activity feed
 const iconMap: Record<string, React.ReactNode> = {
@@ -108,6 +109,8 @@ const CompactTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  
   // Fetch dashboard data using React Query
   const { data: dashboardData, isLoading, error } = useQuery<DashboardData>({
     queryKey: ['dashboard'],

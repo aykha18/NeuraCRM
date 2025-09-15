@@ -34,7 +34,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(mockUser);
       } catch (error) {
-        console.error('Failed to fetch user:', error);
+        // failed to fetch user
       } finally {
         setLoading(false);
       }

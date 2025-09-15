@@ -52,14 +52,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const currentTime = Date.now() / 1000;
         if (payload.exp && payload.exp < currentTime) {
           // Token is expired, remove it
-          console.log('Stored token is expired, removing it');
           localStorage.removeItem('access_token');
           setIsLoading(false);
           return;
         }
       } catch (error) {
         // Invalid token format, remove it
-        console.log('Invalid token format, removing it');
         localStorage.removeItem('access_token');
         setIsLoading(false);
         return;
@@ -86,13 +84,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
       } else {
         // Token is invalid, remove it
-        console.log('Token validation failed, clearing stored token');
         localStorage.removeItem('access_token');
         setToken(null);
         setUser(null);
       }
     } catch (error) {
-      console.error('Failed to fetch user info:', error);
+      // Silent fail: reset auth state
       localStorage.removeItem('access_token');
       setToken(null);
       setUser(null);

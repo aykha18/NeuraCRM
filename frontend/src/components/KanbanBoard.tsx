@@ -20,7 +20,7 @@ export default function KanbanBoard() {
       setBoard(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to load kanban board:', err);
+      // failed to load kanban board
       setError('Failed to load kanban board');
     } finally {
       setLoading(false);
@@ -42,7 +42,7 @@ export default function KanbanBoard() {
       await moveDeal(draggedDeal.deal.id, targetStageId, position);
       await loadBoard(); // Refresh the board after moving
     } catch (err) {
-      console.error('Failed to move deal:', err);
+      // failed to move deal
       setError('Failed to move deal');
     }
   };

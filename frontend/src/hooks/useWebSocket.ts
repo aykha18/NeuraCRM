@@ -56,7 +56,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
           const message: WebSocketMessage = JSON.parse(event.data);
           onMessage?.(message);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          // failed to parse WebSocket message
         }
       };
 
@@ -103,7 +103,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket is not connected');
+      // websocket not connected
     }
   }, []);
 

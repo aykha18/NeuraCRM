@@ -4,7 +4,7 @@ from datetime import datetime
 from ..models import Deal, Stage, Contact, User
 from ..schemas.kanban import DealCreate, DealUpdate, StageCreate, StageUpdate
 
-def get_kanban_board(db: Session):
+def get_kanban_board(db: Session, organization_id: int):
     """
     Get all stages with their associated deals for the Kanban board
     """
@@ -21,6 +21,7 @@ def get_kanban_board(db: Session):
         .join(Contact, Deal.contact_id == Contact.id, isouter=True)
         .join(User, Deal.owner_id == User.id, isouter=True)
         .join(Stage, Deal.stage_id == Stage.id, isouter=True)
+        .filter(Deal.organization_id == organization_id)
         .all()
     )
     
