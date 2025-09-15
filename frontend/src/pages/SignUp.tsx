@@ -57,7 +57,7 @@ const SignUp: React.FC = () => {
     }
 
     if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'You must agree to the terms and conditions';
+      newErrors.agreeToTerms = true;
     }
 
     setErrors(newErrors);

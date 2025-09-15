@@ -48,7 +48,7 @@ export default function Contacts() {
   useEffect(() => {
     fetchContacts()
       .then((data) => {
-        setContacts(data);
+        setContacts(data as any);
         setLoading(false);
       })
       .catch(() => {
@@ -77,7 +77,7 @@ export default function Contacts() {
     setCreating(true);
     try {
       const created = await createContact(newContact);
-      setContacts((prev) => [created, ...prev]);
+      setContacts((prev) => [created as any, ...prev]);
       setShowCreate(false);
       setNewContact({ name: '', email: '', phone: '', company: '', owner_id: 1 });
       setToast('Contact created successfully!');
@@ -93,7 +93,7 @@ export default function Contacts() {
   const handleView = async (id: number) => {
     try {
       const full = await getContact(id);
-      setDetailContact(full);
+      setDetailContact(full as any);
     } catch {
       setToast('Failed to fetch contact details');
       setTimeout(() => setToast(null), 3000);
@@ -122,7 +122,7 @@ export default function Contacts() {
         status: 'new',
         source: 'contact_conversion',
         contact_id: contact.id,
-        owner_id: contact.owner_id || 1
+        owner_id: (contact as any).owner_id || 1
       };
       
       await createLead(leadData);

@@ -85,10 +85,10 @@ class PredictiveAnalyticsService:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=90)  # Last 90 days
             
-            # Get all contacts with their recent activity
+            # Get contacts with their recent activity (limit to 100 for performance)
             contacts = db.query(Contact).filter(
                 Contact.organization_id == organization_id
-            ).all()
+            ).limit(100).all()
             
             churn_risks = []
             
@@ -269,10 +269,10 @@ class PredictiveAnalyticsService:
     def get_market_opportunity_analysis(self, db: Session, organization_id: int) -> Dict[str, Any]:
         """Analyze market opportunities and trends"""
         try:
-            # Analyze lead sources
+            # Analyze lead sources (limit to 500 for performance)
             leads = db.query(Lead).filter(
                 Lead.organization_id == organization_id
-            ).all()
+            ).limit(500).all()
             
             if not leads:
                 return {'error': 'No leads found for analysis'}

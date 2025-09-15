@@ -15,7 +15,7 @@ export const authenticatedFetch = async (
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
@@ -33,8 +33,24 @@ export const authenticatedFetch = async (
 // Generic API request function
 export const apiRequest = async <T>(
   endpoint: string,
-  options: RequestInit = {}
+  optionsOrMethod: RequestInit | string = 'GET',
+  data?: any
 ): Promise<T> => {
+  let options: RequestInit;
+
+  if (typeof optionsOrMethod === 'string') {
+    // New calling pattern: apiRequest(endpoint, method, data)
+    options = {
+      method: optionsOrMethod,
+    };
+    if (data && optionsOrMethod !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+  } else {
+    // Old calling pattern: apiRequest(endpoint, options)
+    options = optionsOrMethod;
+  }
+
   const response = await authenticatedFetch(endpoint, options);
   
   if (!response.ok) {

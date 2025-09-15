@@ -36,6 +36,7 @@ try:
     from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan
     from api.websocket import websocket_endpoint
     from api.routers import chat
+    from api.routers.predictive_analytics import router as predictive_analytics_router
     DB_AVAILABLE = True
     print("✅ Database models imported successfully")
 except ImportError as e:
@@ -200,9 +201,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include chat router
+# Include routers
 if DB_AVAILABLE:
     app.include_router(chat.router)
+    app.include_router(predictive_analytics_router)
 
 # WebSocket endpoint
 @app.websocket("/ws/chat/{room_id}")
@@ -919,6 +921,220 @@ def get_kanban_cards(db: Session = Depends(get_db)):
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
+# Stage Management Endpoints
+@app.get("/stages")
+def get_stages_simple(db: Session = Depends(get_db)):
+    """Get all stages (simple endpoint)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stages = db.query(Stage).order_by(Stage.order).all()
+        return [
+            {
+                "id": stage.id,
+                "name": stage.name,
+                "order": stage.order,
+                "wip_limit": getattr(stage, 'wip_limit', None)
+            }
+            for stage in stages
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch stages: {str(e)}"}
+
+@app.get("/api/kanban/stages/")
+def get_stages(db: Session = Depends(get_db)):
+    """Get all stages"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stages = db.query(Stage).order_by(Stage.order).all()
+        return [
+            {
+                "id": stage.id,
+                "name": stage.name,
+                "order": stage.order,
+                "wip_limit": getattr(stage, 'wip_limit', None)
+            }
+            for stage in stages
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch stages: {str(e)}"}
+
+@app.post("/api/kanban/stages/")
+def create_stage(stage_data: dict, db: Session = Depends(get_db)):
+    """Create a new stage"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the next order number
+        max_order = db.query(Stage).count()
+        new_order = max_order + 1
+        
+        new_stage = Stage(
+            name=stage_data.get("name"),
+            order=new_order,
+            wip_limit=stage_data.get("wip_limit")
+        )
+        
+        db.add(new_stage)
+        db.commit()
+        db.refresh(new_stage)
+        
+        return {
+            "id": new_stage.id,
+            "name": new_stage.name,
+            "order": new_stage.order,
+            "wip_limit": getattr(new_stage, 'wip_limit', None)
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create stage: {str(e)}"}
+
+@app.put("/api/kanban/stages/{stage_id}")
+def update_stage(stage_id: int, stage_data: dict, db: Session = Depends(get_db)):
+    """Update a stage"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stage = db.query(Stage).filter(Stage.id == stage_id).first()
+        if not stage:
+            return {"error": "Stage not found"}
+        
+        if "name" in stage_data:
+            stage.name = stage_data["name"]
+        if "order" in stage_data:
+            stage.order = stage_data["order"]
+        if "wip_limit" in stage_data:
+            stage.wip_limit = stage_data["wip_limit"]
+        
+        db.commit()
+        db.refresh(stage)
+        
+        return {
+            "id": stage.id,
+            "name": stage.name,
+            "order": stage.order,
+            "wip_limit": getattr(stage, 'wip_limit', None)
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update stage: {str(e)}"}
+
+@app.delete("/api/kanban/stages/{stage_id}")
+def delete_stage(stage_id: int, db: Session = Depends(get_db)):
+    """Delete a stage"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stage = db.query(Stage).filter(Stage.id == stage_id).first()
+        if not stage:
+            return {"error": "Stage not found"}
+        
+        # Move deals from this stage to the first stage
+        first_stage = db.query(Stage).order_by(Stage.order).first()
+        if first_stage and first_stage.id != stage_id:
+            db.query(Deal).filter(Deal.stage_id == stage_id).update({Deal.stage_id: first_stage.id})
+        
+        db.delete(stage)
+        db.commit()
+        
+        return {"message": "Stage deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete stage: {str(e)}"}
+
+# Simple Stage Management Endpoints (for frontend compatibility)
+@app.post("/stages")
+def create_stage_simple(stage_data: dict, db: Session = Depends(get_db)):
+    """Create a new stage (simple endpoint)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the next order number
+        max_order = db.query(Stage).count()
+        new_order = max_order + 1
+        
+        new_stage = Stage(
+            name=stage_data.get("name"),
+            order=new_order,
+            wip_limit=stage_data.get("wip_limit")
+        )
+        
+        db.add(new_stage)
+        db.commit()
+        db.refresh(new_stage)
+        
+        return {
+            "id": new_stage.id,
+            "name": new_stage.name,
+            "order": new_stage.order,
+            "wip_limit": getattr(new_stage, 'wip_limit', None)
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create stage: {str(e)}"}
+
+@app.put("/stages/{stage_id}")
+def update_stage_simple(stage_id: int, stage_data: dict, db: Session = Depends(get_db)):
+    """Update a stage (simple endpoint)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stage = db.query(Stage).filter(Stage.id == stage_id).first()
+        if not stage:
+            return {"error": "Stage not found"}
+        
+        if "name" in stage_data:
+            stage.name = stage_data["name"]
+        if "order" in stage_data:
+            stage.order = stage_data["order"]
+        if "wip_limit" in stage_data:
+            stage.wip_limit = stage_data["wip_limit"]
+        
+        db.commit()
+        db.refresh(stage)
+        
+        return {
+            "id": stage.id,
+            "name": stage.name,
+            "order": stage.order,
+            "wip_limit": getattr(stage, 'wip_limit', None)
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update stage: {str(e)}"}
+
+@app.delete("/stages/{stage_id}")
+def delete_stage_simple(stage_id: int, db: Session = Depends(get_db)):
+    """Delete a stage (simple endpoint)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        stage = db.query(Stage).filter(Stage.id == stage_id).first()
+        if not stage:
+            return {"error": "Stage not found"}
+        
+        # Move deals from this stage to the first stage
+        first_stage = db.query(Stage).order_by(Stage.order).first()
+        if first_stage and first_stage.id != stage_id:
+            db.query(Deal).filter(Deal.stage_id == stage_id).update({Deal.stage_id: first_stage.id})
+        
+        db.delete(stage)
+        db.commit()
+        
+        return {"message": "Stage deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete stage: {str(e)}"}
+
 # Serve frontend (AFTER all API routes)
 frontend_path = "/app/frontend_dist"
 if os.path.exists(frontend_path):
@@ -931,6 +1147,10 @@ if os.path.exists(frontend_path):
     @app.get("/{path:path}")
     def serve_frontend_routes(path: str):
         if path.startswith("api/"):
+            return {"error": "API endpoint not found"}
+        
+        # Exclude API endpoints that don't start with api/
+        if path in ["stages"] or path.startswith("stages/"):
             return {"error": "API endpoint not found"}
         
         file_path = os.path.join(frontend_path, path)

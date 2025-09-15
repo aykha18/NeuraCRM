@@ -103,7 +103,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, onRoomSelect }) => {
       // Also send via API for persistence
       await chatService.sendMessage(currentRoom.id, {
         content,
-        message_type: messageType,
+        message_type: messageType as 'text' | 'image' | 'file' | 'system',
         reply_to_id: replyToId
       });
     } catch (err) {

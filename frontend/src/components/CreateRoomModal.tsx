@@ -27,7 +27,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onRoomCreate
 
   const loadOrganizationUsers = async () => {
     try {
-      const users = await chatService.getOrganizationUsers(user!.organization_id);
+      const users = await chatService.getOrganizationUsers(user!.organization_id!);
       setOrganizationUsers(users.filter(u => u.id !== user!.id)); // Exclude current user
     } catch (err) {
       // error loading organization users
