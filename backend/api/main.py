@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 from api.db import get_session_local, get_engine
 from api.models import Lead, Contact, User, Organization, Base, Stage, Deal
 from api.dependencies import get_current_user
+from api.routers.auth import login as auth_login
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -209,7 +210,36 @@ def read_root():
     # Fallback to JSON if frontend not available
     return {"message": "CRM API is running.", "status": "healthy"}
 
+# SPA catch‑all to serve client routes like /signin, without touching /api/*
+# Temporarily disabled to fix API routing issues
+# if os.path.exists(frontend_dist_path):
+#     @app.get("/{full_path:path}")
+#     def serve_spa_routes(full_path: str):
+#         # Do not intercept API calls - let them pass through to the API routes
+#         if full_path.startswith("api/"):
+#             raise HTTPException(status_code=404, detail="API endpoint not found")
+#         # Serve static file if it exists
+#         candidate = os.path.join(frontend_dist_path, full_path)
+#         if os.path.exists(candidate) and os.path.isfile(candidate):
+#             return FileResponse(candidate)
+#         # Otherwise, return index.html for SPA routing
+#         index_path = os.path.join(frontend_dist_path, "index.html")
+#         if os.path.exists(index_path):
+#             return FileResponse(index_path)
+#         raise HTTPException(status_code=404, detail="Not Found")
+
 # Removed SPA catch-all to avoid conflicting with /api/* methods during POST
+
+@app.post("/login")
+async def legacy_login_compat(request: Request):
+    """Compatibility endpoint for clients calling POST /login.
+    Forwards to the actual auth login handler.
+    """
+    db = get_session_local()()
+    try:
+        return await auth_login(None, request, db)  # reuse auth logic
+    finally:
+        db.close()
 
 @app.get("/health")
 def health_check():
