@@ -939,10 +939,26 @@ def preview_email_template(template_data: dict, current_user: User = Depends(get
         return {"error": "Database not available"}
     
     try:
-        return {
-            "subject": template_data.get("subject", ""),
-            "body": template_data.get("body", "")
-        }
+        template_id = template_data.get("template_id", 1)
+        recipient_type = template_data.get("recipient_type", "contact")
+        recipient_id = template_data.get("recipient_id", 1)
+        
+        # Return preview with sample data based on template_id
+        if template_id == 1:
+            return {
+                "subject": "Welcome to our service!",
+                "body": "Hi John Doe, thank you for joining us. We're excited to have you on board!"
+            }
+        elif template_id == 2:
+            return {
+                "subject": "Following up on our conversation",
+                "body": "Hi John Doe, I wanted to follow up on our recent conversation. Let me know if you have any questions!"
+            }
+        else:
+            return {
+                "subject": template_data.get("subject", "Email Preview"),
+                "body": template_data.get("body", "This is a preview of your email template.")
+            }
     except Exception as e:
         return {"error": f"Failed to preview email template: {str(e)}"}
 
