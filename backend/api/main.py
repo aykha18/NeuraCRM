@@ -111,6 +111,7 @@ app.add_middleware(
         "http://localhost:5173", 
         "http://localhost:3000", 
         "http://127.0.0.1:5173",
+        "http://192.168.1.36:5173",  # local LAN dev origin
         "https://neuracrm.up.railway.app",  # Your Railway backend
         "https://*.railway.app",  # Allow Railway domains
         "https://*.up.railway.app",  # Allow Railway domains
