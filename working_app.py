@@ -805,6 +805,130 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     except Exception as e:
         return {"error": f"Failed to delete user: {str(e)}"}
 
+# Email Automation endpoints
+@app.get("/api/email/templates")
+def get_email_templates(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all email templates for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # For now, return sample templates since we don't have EmailTemplate model in working_app.py
+        return [
+            {
+                "id": 1,
+                "name": "Welcome Email",
+                "subject": "Welcome to our service!",
+                "body": "Thank you for joining us. We're excited to have you on board!",
+                "category": "welcome",
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00Z"
+            },
+            {
+                "id": 2,
+                "name": "Follow-up Email",
+                "subject": "Following up on our conversation",
+                "body": "Hi there, I wanted to follow up on our recent conversation. Let me know if you have any questions!",
+                "category": "follow-up",
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00Z"
+            }
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch email templates: {str(e)}"}
+
+@app.post("/api/email/templates")
+def create_email_template(template_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new email template"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # For now, return a mock created template
+        return {
+            "id": 999,
+            "name": template_data.get("name", "New Template"),
+            "subject": template_data.get("subject", ""),
+            "body": template_data.get("body", ""),
+            "category": template_data.get("category", "general"),
+            "is_active": True,
+            "created_at": "2024-01-01T00:00:00Z"
+        }
+    except Exception as e:
+        return {"error": f"Failed to create email template: {str(e)}"}
+
+@app.get("/api/email/campaigns")
+def get_email_campaigns(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all email campaigns for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Return sample campaigns
+        return [
+            {
+                "id": 1,
+                "name": "Welcome Campaign",
+                "template_id": 1,
+                "status": "draft",
+                "created_at": "2024-01-01T00:00:00Z"
+            },
+            {
+                "id": 2,
+                "name": "Follow-up Campaign",
+                "template_id": 2,
+                "status": "sent",
+                "created_at": "2024-01-01T00:00:00Z"
+            }
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch email campaigns: {str(e)}"}
+
+@app.post("/api/email/campaigns")
+def create_email_campaign(campaign_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new email campaign"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Return a mock created campaign
+        return {
+            "id": 999,
+            "name": campaign_data.get("name", "New Campaign"),
+            "template_id": campaign_data.get("template_id", 1),
+            "status": "draft",
+            "created_at": "2024-01-01T00:00:00Z"
+        }
+    except Exception as e:
+        return {"error": f"Failed to create email campaign: {str(e)}"}
+
+@app.get("/api/email/logs")
+def get_email_logs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get email logs for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Return sample email logs
+        return [
+            {
+                "id": 1,
+                "recipient_email": "test@example.com",
+                "subject": "Welcome Email",
+                "status": "sent",
+                "sent_at": "2024-01-01T00:00:00Z"
+            },
+            {
+                "id": 2,
+                "recipient_email": "test2@example.com",
+                "subject": "Follow-up Email",
+                "status": "delivered",
+                "sent_at": "2024-01-01T00:00:00Z"
+            }
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch email logs: {str(e)}"}
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
 def get_contacts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
