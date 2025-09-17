@@ -208,22 +208,7 @@ def read_root():
     # Fallback to JSON if frontend not available
     return {"message": "CRM API is running.", "status": "healthy"}
 
-# Catch-all for client-side routes and asset paths
-if os.path.exists(frontend_dist_path):
-    @app.get("/{path:path}")
-    def serve_frontend_catch_all(path: str):
-        # Never intercept API routes
-        if path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        # Serve asset files directly if they exist
-        candidate = os.path.join(frontend_dist_path, path)
-        if os.path.exists(candidate) and os.path.isfile(candidate):
-            return FileResponse(candidate)
-        # Otherwise serve index.html for SPA routing
-        index_path = os.path.join(frontend_dist_path, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        raise HTTPException(status_code=404, detail="Not Found")
+# Removed SPA catch-all to avoid conflicting with /api/* methods during POST
 
 @app.get("/health")
 def health_check():
