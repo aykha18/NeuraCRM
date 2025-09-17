@@ -10,7 +10,7 @@ import { fetchLeads, getLead, createLead, updateLead, deleteLead, convertLeadToD
 import { scoreAllLeads, getScoringAnalytics } from "../services/leadScoring";
 import DetailModal from "../components/DetailModal";
 import LeadScore from "../components/LeadScore";
-import { AnimatedModal } from "../components/AnimatedModal";
+import AnimatedModal from "../components/AnimatedModal";
 
 const statusColors: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",

@@ -105,6 +105,10 @@ class Deal(Base):
     closed_at = Column(DateTime)
     reminder_date = Column(DateTime)
     contact_id = Column(Integer, ForeignKey('contacts.id'))
+    # Post-sale workflow fields
+    status = Column(String, default='open')  # open, won, lost
+    outcome_reason = Column(String)  # reason for won/lost
+    customer_account_id = Column(Integer, ForeignKey('customer_accounts.id'), nullable=True)
     # Relationships
     owner = relationship('User', back_populates='deals')
     stage = relationship('Stage', back_populates='deals')
@@ -114,6 +118,7 @@ class Deal(Base):
     attachments = relationship('Attachment', back_populates='deal')
     tags = relationship('Tag', secondary=DealTag, back_populates='deals')
     watchers = relationship('User', secondary=Watcher, back_populates='watched_deals')
+    # customer_account = relationship('CustomerAccount', back_populates='deal', uselist=False)
 
 class Stage(Base):
     __tablename__ = 'stages'
@@ -328,4 +333,23 @@ class ChatReaction(Base):
     
     # Relationships
     message = relationship('ChatMessage', back_populates='reactions')
-    user = relationship('User') 
+    user = relationship('User')
+
+class CustomerAccount(Base):
+    __tablename__ = 'customer_accounts'
+    id = Column(Integer, primary_key=True)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=False)
+    account_name = Column(String, nullable=False)
+    contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
+    account_type = Column(String, default='standard')  # standard, premium, enterprise
+    onboarding_status = Column(String, default='pending')  # pending, in_progress, completed, failed
+    success_manager_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    health_score = Column(Float, default=0.0)  # 0-100
+    engagement_level = Column(String, default='low')  # low, medium, high
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    # deal = relationship('Deal', back_populates='customer_account')
+    contact = relationship('Contact')
+    success_manager = relationship('User') 

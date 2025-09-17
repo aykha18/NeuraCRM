@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { fetchContacts, getContact, createContact, updateContact, deleteContact } from '../services/contacts';
 import { createLead } from '../services/leads';
 import DetailModal from '../components/DetailModal';
-import { AnimatedModal } from '../components/AnimatedModal';
+import AnimatedModal from '../components/AnimatedModal';
 
 interface Contact {
   id: number;

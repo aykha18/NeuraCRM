@@ -8,11 +8,12 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
+import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, updateDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
 import StageManagementModal from '../components/StageManagementModal';
 import { Plus, Eye, Calendar } from 'lucide-react';
 // import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
+import AnimatedModal from '../components/AnimatedModal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 // import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
@@ -145,6 +146,7 @@ export default function Kanban() {
   // State for modals
   const [editingDeal, setEditingDeal] = useState<FrontendDeal | null>(null);
   const [editForm, setEditForm] = useState<Partial<FrontendDeal>>({ watchers: [] });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const dealToDelete = useRef<FrontendDeal | null>(null);
   
@@ -304,32 +306,51 @@ export default function Kanban() {
     setEditForm(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const saveEdit = useCallback(() => {
+  const saveEdit = useCallback(async () => {
     if (!editingDeal) return;
     
-    // Update local state
-    queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
-      if (!oldData) return oldData;
+    setSavingEdit(true);
+    try {
+      // Prepare the update data
+      const updateData: any = {};
+      if (editForm.title) updateData.title = editForm.title;
+      if (editForm.description !== undefined) updateData.description = editForm.description;
+      if (editForm.value) updateData.value = editForm.value;
+      if (editForm.reminderDate) updateData.reminder_date = editForm.reminderDate;
       
-      return {
-        ...oldData,
-        deals: oldData.deals.map(d => 
-          d.id === parseInt(editingDeal.id) 
-            ? { 
-                ...d, 
-                title: editForm.title || d.title,
-                description: editForm.description || d.description,
-                value: editForm.value ? parseFloat(editForm.value.replace(/[^\d.]/g, "")) : d.value,
-                reminder_date: editForm.reminderDate || d.reminder_date,
-              }
-            : d
-        )
-      };
-    });
-    
-    logActivity(editingDeal.id, "edit", "Updated deal details");
-    setEditingDeal(null);
-    setEditForm({});
+      // Call the API to update the deal
+      await updateDeal(parseInt(editingDeal.id), updateData);
+      
+      // Update local state
+      queryClient.setQueryData<ApiKanbanBoard>(['kanban'], (oldData) => {
+        if (!oldData) return oldData;
+        
+        return {
+          ...oldData,
+          deals: oldData.deals.map(d => 
+            d.id === parseInt(editingDeal.id) 
+              ? { 
+                  ...d, 
+                  title: editForm.title || d.title,
+                  description: editForm.description || d.description,
+                  value: editForm.value ? parseFloat(editForm.value.replace(/[^\d.]/g, "")) : d.value,
+                  reminder_date: editForm.reminderDate || d.reminder_date,
+                }
+              : d
+          )
+        };
+      });
+      
+      logActivity(editingDeal.id, "edit", "Updated deal details");
+      setEditingDeal(null);
+      setEditForm({});
+    } catch (error) {
+      console.error('Failed to update deal:', error);
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['kanban'] });
+    } finally {
+      setSavingEdit(false);
+    }
   }, [editingDeal, editForm, queryClient, logActivity]);
 
   const confirmDeleteDeal = useCallback((deal: FrontendDeal) => {
@@ -654,10 +675,10 @@ export default function Kanban() {
         {activeTab === 'board' && (
           // Kanban Board with Drag-and-Drop
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex gap-4 overflow-x-auto pb-4">
+            <div className="flex gap-4 pb-4" style={{ overflowX: 'auto', scrollbarWidth: 'thin' }}>
               {stages.map((stage) => (
                 <div key={stage.id} className="flex-shrink-0 w-72">
-                  <div className={`flex-shrink-0 w-72 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col max-h-[80vh] transition`}>
+                  <div className={`flex-shrink-0 w-72 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col transition`}>
                     <div className="font-bold text-lg mb-3 text-gray-700 dark:text-gray-200 flex items-center gap-2">
                       {/* Stage color tag */}
                       <span className={`inline-block w-3 h-3 rounded-full mr-2 ${stageColors[stage.name] || 'bg-gray-500'}`}></span>
@@ -671,7 +692,7 @@ export default function Kanban() {
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="flex-1 space-y-4 overflow-y-auto pr-1"
+                          className="flex-1 space-y-4 pr-1 min-h-0"
                         >
                           {filteredDealsByStage[stage.id]?.length === 0 && (
                             <div className="text-gray-400 dark:text-gray-600 text-sm text-center mt-8">No deals</div>
@@ -683,7 +704,7 @@ export default function Kanban() {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   {...dragProvided.dragHandleProps}
-                                  className={`rounded-xl bg-white dark:bg-gray-800 shadow p-4 border border-gray-100 dark:border-gray-800 hover:shadow-lg transition cursor-pointer ${dragSnapshot.isDragging ? "ring-2 ring-blue-400" : ""}`}
+                                  className={`rounded-xl bg-white dark:bg-gray-800 shadow p-4 border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer transform ${dragSnapshot.isDragging ? "ring-2 ring-blue-400 scale-105" : ""}`}
                                   onClick={() => setSelectedDeal(deal)}
                                 >
                                   {/* Compact Deal Card Content */}
@@ -758,14 +779,14 @@ export default function Kanban() {
                                   <div className="flex items-center justify-between">
                                     <div className="flex gap-2">
                                       <button 
-                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition" 
+                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
                                         onClick={e => {e.stopPropagation(); setSelectedDeal(deal); setIsDealModalOpen(true);}}
                                         title="View Details"
                                       >
                                         View
                                       </button>
                                       <button 
-                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-pink-500 text-white text-xs font-semibold shadow hover:from-yellow-500 hover:to-pink-600 transition" 
+                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-pink-500 text-white text-xs font-semibold shadow hover:from-yellow-500 hover:to-pink-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
                                         onClick={e => {e.stopPropagation(); setEditingDeal(deal);}}
                                         title="Edit Deal"
                                       >
@@ -916,10 +937,12 @@ export default function Kanban() {
               </div>
 
       {/* Deal Detail Modal */}
-      <DetailModal
+      <AnimatedModal
         open={isDealModalOpen}
         onClose={() => setIsDealModalOpen(false)}
         title={selectedDeal ? `Deal: ${selectedDeal.title}` : 'Deal Details'}
+        animationType="slideUp"
+        size="lg"
       >
         {selectedDeal && (
           <div className="space-y-6">
@@ -1097,13 +1120,15 @@ export default function Kanban() {
                   </div>
                   </div>
         )}
-      </DetailModal>
+      </AnimatedModal>
 
       {/* Edit Deal Modal */}
-      <DetailModal
+      <AnimatedModal
         open={!!editingDeal}
         onClose={() => setEditingDeal(null)}
         title={editingDeal ? `Edit Deal: ${editingDeal.title}` : 'Edit Deal'}
+        animationType="scale"
+        size="md"
       >
         {editingDeal && (
                   <form onSubmit={e => { e.preventDefault(); saveEdit(); }}>
@@ -1201,9 +1226,10 @@ export default function Kanban() {
               <div className="flex gap-2 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                  disabled={savingEdit}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 hover:scale-105 hover:shadow-lg transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  Save Changes
+                  {savingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   type="button"
@@ -1211,7 +1237,7 @@ export default function Kanban() {
                     setEditingDeal(null);
                     setEditForm({});
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition"
+                  className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition-all duration-300 hover:scale-105 hover:shadow-lg transform"
                 >
                   Cancel
                 </button>
@@ -1230,13 +1256,15 @@ export default function Kanban() {
                     </button>
             </div>
         )}
-      </DetailModal>
+      </AnimatedModal>
 
       {/* Delete confirmation dialog */}
-      <DetailModal
+      <AnimatedModal
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         title="Delete Deal"
+        animationType="slideDown"
+        size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-700 dark:text-gray-200">
@@ -1257,13 +1285,15 @@ export default function Kanban() {
                             </button>
                       </div>
                   </div>
-      </DetailModal>
+      </AnimatedModal>
 
       {/* Delete Stage Confirmation Dialog */}
-      <DetailModal
+      <AnimatedModal
         open={!!deleteStage}
         onClose={() => setDeleteStage(null)}
         title="Delete Stage"
+        animationType="fade"
+        size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-700 dark:text-gray-200">
@@ -1284,7 +1314,7 @@ export default function Kanban() {
                     </button>
                   </div>
             </div>
-      </DetailModal>
+      </AnimatedModal>
 
       {/* Stage Management Modal */}
       <StageManagementModal

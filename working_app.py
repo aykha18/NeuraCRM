@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -1165,6 +1165,184 @@ def get_email_analytics(current_user: User = Depends(get_current_user), db: Sess
     except Exception as e:
         return {"error": f"Failed to fetch email analytics: {str(e)}"}
 
+# Kanban Update Deal Endpoint
+@app.put("/api/kanban/deals/{deal_id}")
+def update_deal(deal_id: int, deal_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update a deal"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id,
+            Deal.organization_id == current_user.organization_id
+        ).first()
+        
+        if not deal:
+            return {"error": "Deal not found"}
+        
+        # Update deal fields
+        if "title" in deal_data and deal_data["title"]:
+            deal.title = deal_data["title"]
+        if "value" in deal_data and deal_data["value"]:
+            # Handle value field - remove currency symbols and convert to float
+            value_str = str(deal_data["value"]).replace("$", "").replace(",", "").strip()
+            if value_str and value_str != "":
+                try:
+                    deal.value = float(value_str)
+                except ValueError:
+                    pass  # Skip invalid values
+        if "description" in deal_data:
+            deal.description = deal_data["description"]
+        if "stage_id" in deal_data and deal_data["stage_id"]:
+            deal.stage_id = deal_data["stage_id"]
+        if "owner_id" in deal_data and deal_data["owner_id"]:
+            deal.owner_id = deal_data["owner_id"]
+        if "contact_id" in deal_data and deal_data["contact_id"]:
+            deal.contact_id = deal_data["contact_id"]
+        
+        db.commit()
+        
+        return {
+            "message": "Deal updated successfully",
+            "deal": {
+                "id": deal.id,
+                "title": deal.title,
+                "value": deal.value,
+                "description": deal.description,
+                "stage_id": deal.stage_id,
+                "owner_id": deal.owner_id,
+                "contact_id": deal.contact_id
+            }
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update deal: {str(e)}"}
+
+# Kanban Move Deal Endpoint
+@app.post("/api/kanban/deals/{deal_id}/move")
+def move_deal(deal_id: int, move_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Move a deal to a different stage and trigger post-sale workflow if moved to Won"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id,
+            Deal.organization_id == current_user.organization_id
+        ).first()
+        
+        if not deal:
+            return {"error": "Deal not found"}
+        
+        new_stage_id = move_data.get("to_stage_id") or move_data.get("stage_id")
+        if not new_stage_id:
+            return {"error": "to_stage_id or stage_id is required"}
+        
+        # Get the stage name to check if it's "Won"
+        stage = db.query(Stage).filter(Stage.id == new_stage_id).first()
+        if not stage:
+            return {"error": "Stage not found"}
+        
+        # Update deal stage
+        old_stage_id = deal.stage_id
+        deal.stage_id = new_stage_id
+        print(f"DEBUG: Moving deal {deal_id} from stage {old_stage_id} to stage {new_stage_id} (stage name: '{stage.name}')")
+        
+        # If moved to "Won" stage, trigger post-sale workflow
+        if stage.name.lower() == "won":
+            deal.status = "won"
+            deal.outcome_reason = "Deal moved to Won stage"
+            deal.closed_at = datetime.now()
+            
+            # Create customer account in database
+            customer_account = CustomerAccount(
+                deal_id=deal_id,
+                account_name=f"{deal.contact.name if deal.contact else 'Customer'} Account",
+                contact_id=deal.contact_id,
+                account_type="standard",
+                onboarding_status="pending",
+                success_manager_id=deal.owner_id,
+                health_score=75.0,  # Default health score
+                engagement_level="medium"  # Default engagement level
+            )
+            
+            db.add(customer_account)
+            db.flush()  # Flush to get the ID
+            
+            # Update deal with customer account ID
+            deal.customer_account_id = customer_account.id
+            
+            account_response = {
+                "id": customer_account.id,
+                "deal_id": deal_id,
+                "account_name": customer_account.account_name,
+                "contact_id": deal.contact_id,
+                "account_type": customer_account.account_type,
+                "onboarding_status": customer_account.onboarding_status,
+                "success_manager_id": deal.owner_id,
+                "health_score": customer_account.health_score,
+                "engagement_level": customer_account.engagement_level,
+                "created_at": customer_account.created_at.isoformat(),
+                "updated_at": customer_account.updated_at.isoformat() if customer_account.updated_at else None
+            }
+            
+            db.commit()
+            
+            return {
+                "message": "Deal moved to Won stage and customer account created",
+                "deal": {
+                    "id": deal.id,
+                    "title": deal.title,
+                    "stage_id": deal.stage_id,
+                    "status": deal.status,
+                    "closed_at": deal.closed_at.isoformat(),
+                    "outcome_reason": deal.outcome_reason
+                },
+                "customer_account": account_response
+            }
+        elif stage.name.lower() == "lost":
+            # If moved to "Lost" stage
+            deal.status = "lost"
+            deal.outcome_reason = "Deal moved to Lost stage"
+            deal.closed_at = datetime.now()
+            
+            db.commit()
+            
+            return {
+                "message": "Deal moved to Lost stage",
+                "deal": {
+                    "id": deal.id,
+                    "title": deal.title,
+                    "stage_id": deal.stage_id,
+                    "status": deal.status,
+                    "closed_at": deal.closed_at.isoformat(),
+                    "outcome_reason": deal.outcome_reason
+                }
+            }
+        else:
+            # Regular stage move
+            print(f"DEBUG: Committing regular stage move for deal {deal_id}")
+            db.commit()
+            print(f"DEBUG: Successfully committed deal {deal_id} to stage {new_stage_id}")
+            
+            return {
+                "message": "Deal moved successfully",
+                "deal": {
+                    "id": deal.id,
+                    "title": deal.title,
+                    "stage_id": deal.stage_id,
+                    "status": getattr(deal, 'status', 'open')
+                }
+            }
+            
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to move deal: {str(e)}"}
+
 # Post-Sale Workflow Endpoints
 @app.put("/api/deals/{deal_id}/status")
 def update_deal_status(deal_id: int, status_data: DealStatusUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -1253,37 +1431,32 @@ def get_customer_accounts(current_user: User = Depends(get_current_user), db: Se
         return {"error": "Database not available"}
     
     try:
-        # For now, return mock customer accounts
-        # In a real implementation, this would query a customer_accounts table
+        # Get customer accounts from database
+        # First get all deals for the organization
+        org_deals = db.query(Deal).filter(Deal.organization_id == current_user.organization_id).all()
+        deal_ids = [deal.id for deal in org_deals]
+        
+        # Then get customer accounts for those deals
+        customer_accounts = db.query(CustomerAccount).filter(
+            CustomerAccount.deal_id.in_(deal_ids)
+        ).all()
+        
         return [
             {
-                "id": 1,
-                "deal_id": 1,
-                "account_name": "Acme Corp Account",
-                "contact_id": 1,
-                "account_type": "premium",
-                "onboarding_status": "completed",
-                "success_manager_id": 1,
-                "created_at": "2024-01-01T00:00:00Z",
-                "updated_at": "2024-01-15T00:00:00Z",
-                "health_score": 85,
-                "engagement_level": "high",
-                "renewal_probability": 90
-            },
-            {
-                "id": 2,
-                "deal_id": 2,
-                "account_name": "TechStart Inc Account",
-                "contact_id": 2,
-                "account_type": "standard",
-                "onboarding_status": "in_progress",
-                "success_manager_id": 2,
-                "created_at": "2024-01-10T00:00:00Z",
-                "updated_at": "2024-01-20T00:00:00Z",
-                "health_score": 70,
-                "engagement_level": "medium",
-                "renewal_probability": 75
+                "id": account.id,
+                "deal_id": account.deal_id,
+                "account_name": account.account_name,
+                "contact_id": account.contact_id,
+                "account_type": account.account_type,
+                "onboarding_status": account.onboarding_status,
+                "success_manager_id": account.success_manager_id,
+                "health_score": account.health_score,
+                "engagement_level": account.engagement_level,
+                "created_at": account.created_at.isoformat(),
+                "updated_at": account.updated_at.isoformat() if account.updated_at else None,
+                "renewal_probability": 85  # Default value for now
             }
+            for account in customer_accounts
         ]
     except Exception as e:
         return {"error": f"Failed to fetch customer accounts: {str(e)}"}

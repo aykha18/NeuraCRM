@@ -126,7 +126,7 @@ const aiFeatures: AIFeature[] = [
     title: "Predictive Analytics",
     description: "Forecast sales trends, identify opportunities, and predict customer behavior using AI algorithms.",
     icon: <TrendingUp className="w-8 h-8" />,
-    status: "upcoming",
+    status: "implemented",
     category: "analytics",
     details: {
       howItWorks: "Advanced machine learning models analyze historical sales data, customer behavior patterns, market trends, and external factors to predict future outcomes. The system provides actionable insights and recommendations.",

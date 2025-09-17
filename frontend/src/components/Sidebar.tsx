@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2 } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
@@ -13,6 +13,7 @@ const navItems = [
   { name: "AI Help Guide", icon: <BookOpen />, path: "/ai-help" },
   { name: "Predictive Analytics", icon: <Brain />, path: "/predictive-analytics" },
   { name: "Email Automation", icon: <Mail />, path: "/email-automation" },
+  { name: "Customer Accounts", icon: <Building2 />, path: "/customer-accounts" },
   { name: "User Management", icon: <UserCog />, path: "/user-management" },
 ];
 

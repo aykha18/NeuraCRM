@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService, type User, type CreateUserRequest } from '../services/users';
 import { Plus, Trash2, Eye, Users, UserPlus, Search } from 'lucide-react';
-import { AnimatedModal } from '../components/AnimatedModal';
+import AnimatedModal from '../components/AnimatedModal';
 
 export default function UserManagement() {
   const { user } = useAuth();

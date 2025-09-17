@@ -1,62 +1,135 @@
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { Dialog, Transition } from "@headlessui/react";
+import { X } from "lucide-react";
+import React, { Fragment } from "react";
 
-export type AnimatedModalProps = {
+interface AnimatedModalProps {
   open: boolean;
   onClose: () => void;
-  anchorRect: DOMRect | null;
+  title: string;
   children: React.ReactNode;
-};
+  animationType?: 'slideUp' | 'scale' | 'fade' | 'slideDown';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
 
-export function AnimatedModal({ open, onClose, anchorRect, children }: AnimatedModalProps) {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 0;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 0;
-  const centerX = vw / 2;
-  const centerY = vh / 2;
+const AnimatedModal: React.FC<AnimatedModalProps> = ({ 
+  open, 
+  onClose, 
+  title, 
+  children, 
+  animationType = 'scale',
+  size = 'md'
+}) => {
+  const sizeClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl'
+  };
 
-  const { initX, initY } = anchorRect
-    ? {
-        initX: anchorRect.left + anchorRect.width / 2 - centerX,
-        initY: anchorRect.top + anchorRect.height / 2 - centerY,
-      }
-    : { initX: 0, initY: 0 };
+  const getAnimationClasses = () => {
+    switch (animationType) {
+      case 'slideUp':
+        return {
+          enter: 'transform transition-all duration-300 ease-out',
+          enterFrom: 'translate-y-full opacity-0',
+          enterTo: 'translate-y-0 opacity-100',
+          leave: 'transform transition-all duration-200 ease-in',
+          leaveFrom: 'translate-y-0 opacity-100',
+          leaveTo: 'translate-y-full opacity-0'
+        };
+      case 'scale':
+        return {
+          enter: 'transform transition-all duration-300 ease-out',
+          enterFrom: 'scale-95 opacity-0',
+          enterTo: 'scale-100 opacity-100',
+          leave: 'transform transition-all duration-200 ease-in',
+          leaveFrom: 'scale-100 opacity-100',
+          leaveTo: 'scale-95 opacity-0'
+        };
+      case 'fade':
+        return {
+          enter: 'transition-opacity duration-300 ease-out',
+          enterFrom: 'opacity-0',
+          enterTo: 'opacity-100',
+          leave: 'transition-opacity duration-200 ease-in',
+          leaveFrom: 'opacity-100',
+          leaveTo: 'opacity-0'
+        };
+      case 'slideDown':
+        return {
+          enter: 'transform transition-all duration-300 ease-out',
+          enterFrom: '-translate-y-full opacity-0',
+          enterTo: 'translate-y-0 opacity-100',
+          leave: 'transform transition-all duration-200 ease-in',
+          leaveFrom: 'translate-y-0 opacity-100',
+          leaveTo: '-translate-y-full opacity-0'
+        };
+      default:
+        return {
+          enter: 'transform transition-all duration-300 ease-out',
+          enterFrom: 'scale-95 opacity-0',
+          enterTo: 'scale-100 opacity-100',
+          leave: 'transform transition-all duration-200 ease-in',
+          leaveFrom: 'scale-100 opacity-100',
+          leaveTo: 'scale-95 opacity-0'
+        };
+    }
+  };
 
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  const animationClasses = getAnimationClasses();
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 1 }}
-        >
-          <motion.div
-            className="absolute inset-0 bg-black/50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-
-          <motion.div
-            className="relative z-10 w-[min(92vw,640px)] max-h-[85vh] overflow-auto rounded-2xl bg-white dark:bg-gray-900 shadow-2xl"
-            initial={{ x: initX, y: initY, scale: 0.2, opacity: 0, borderRadius: 999 }}
-            animate={{ x: 0, y: 0, scale: 1, opacity: 1, borderRadius: 16 }}
-            exit={{ x: initX, y: initY, scale: 0.2, opacity: 0, borderRadius: 999 }}
-            transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="fixed z-50 inset-0 overflow-y-auto" onClose={onClose}>
+        <div className="flex items-center justify-center min-h-screen px-4">
+          {/* Backdrop */}
+          <Transition.Child
+            as={Fragment}
+            enter="transition-opacity duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-opacity duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+          </Transition.Child>
+
+          {/* Modal Panel */}
+          <Transition.Child
+            as={Fragment}
+            enter={animationClasses.enter}
+            enterFrom={animationClasses.enterFrom}
+            enterTo={animationClasses.enterTo}
+            leave={animationClasses.leave}
+            leaveFrom={animationClasses.leaveFrom}
+            leaveTo={animationClasses.leaveTo}
+          >
+            <div className={`relative bg-white dark:bg-gray-900 rounded-2xl p-8 ${sizeClasses[size]} w-full mx-auto z-10 shadow-2xl border border-gray-200 dark:border-gray-800`}>
+              {/* Close Button */}
+              <button
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 group"
+                onClick={onClose}
+                title="Close"
+              >
+                <X className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-200" />
+              </button>
+              
+              {/* Title */}
+              <Dialog.Title className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+                {title}
+              </Dialog.Title>
+              
+              {/* Content */}
+              <div className="space-y-2 text-lg">
+                {children}
+              </div>
+            </div>
+          </Transition.Child>
+        </div>
+      </Dialog>
+    </Transition>
   );
-}
+};
+
+export default AnimatedModal;
