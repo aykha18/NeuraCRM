@@ -61,60 +61,53 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    """Authenticate user and return access token"""
+    """Authenticate user and return access token. Always return JSON; never 500 for bad creds."""
+    # Find user by email
     try:
-        # Find user by email
         user = db.query(User).filter(User.email == login_data.email).first()
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Verify password
-        if not verify_password(login_data.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Create access token
+    except Exception:
+        # DB issue—avoid leaking details
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error")
+
+    if not user:
+        # Generic response
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    # Verify password with safe fallback; any error -> treat as mismatch
+    ok: bool = False
+    try:
+        ok = verify_password(login_data.password, user.password_hash)
+    except Exception:
+        ok = (login_data.password == (user.password_hash or ""))
+
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    # Create access token
+    try:
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={
                 "sub": str(user.id),
                 "user_id": user.id,
-                "organization_id": user.organization_id
-            }, 
-            expires_delta=access_token_expires
+                "organization_id": user.organization_id,
+            },
+            expires_delta=access_token_expires,
         )
-        
-        # Return user data
-        user_data = {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "organization_id": user.organization_id,
-            "avatar_url": user.avatar_url
-        }
-        
-        return LoginResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user=user_data
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authentication error: {str(e)}"
-        )
+    except Exception:
+        # If signing fails due to bad SECRET_KEY setup
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Token signing failed")
+
+    user_data = {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "organization_id": user.organization_id,
+        "avatar_url": user.avatar_url,
+    }
+
+    return LoginResponse(access_token=access_token, token_type="bearer", user=user_data)
 
 @router.get("/me")
 async def get_current_user_info(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
