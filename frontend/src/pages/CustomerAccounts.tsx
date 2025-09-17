@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiRequest } from '../utils/api';
+import AnimatedModal from '../components/AnimatedModal';
 import { 
   Users, 
   Plus, 
@@ -10,7 +11,11 @@ import {
   CheckCircle, 
   AlertCircle,
   UserCheck,
-  BarChart3
+  BarChart3,
+  X,
+  Calendar,
+  CheckSquare,
+  UserPlus
 } from 'lucide-react';
 
 interface CustomerAccount {
@@ -52,6 +57,8 @@ export default function CustomerAccounts() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<CustomerAccount | null>(null);
   const [successMetrics, setSuccessMetrics] = useState<SuccessMetrics | null>(null);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [onboardingResult, setOnboardingResult] = useState<any>(null);
   const [showMetrics, setShowMetrics] = useState(false);
 
   useEffect(() => {
@@ -91,12 +98,16 @@ export default function CustomerAccounts() {
 
   const startOnboarding = async (accountId: number) => {
     try {
+      setLoading(true);
       const data = await apiRequest(`/api/customer-accounts/${accountId}/onboarding/start`, 'POST');
-      alert(`Onboarding started! ${(data as any)?.tasks?.length || 0} tasks created.`);
+      setOnboardingResult(data);
+      setShowOnboardingModal(true);
       fetchCustomerAccounts(); // Refresh the list
     } catch (err) {
       console.error('Error starting onboarding:', err);
-      alert('Failed to start onboarding');
+      setError('Failed to start onboarding');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -313,6 +324,106 @@ export default function CustomerAccounts() {
           </div>
         </div>
       )}
+
+      {/* Onboarding Success Modal */}
+      <AnimatedModal
+        open={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+        title="Onboarding Started Successfully!"
+        animationType="scale"
+        size="lg"
+      >
+        {onboardingResult && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Onboarding Process Initiated
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {onboardingResult.tasks?.length || 0} onboarding tasks have been created and assigned.
+              </p>
+            </div>
+
+            {onboardingResult.tasks && onboardingResult.tasks.length > 0 && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                  <CheckSquare className="w-5 h-5 mr-2" />
+                  Onboarding Tasks Created
+                </h4>
+                <div className="space-y-3">
+                  {onboardingResult.tasks.map((task: any, index: number) => (
+                    <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex-shrink-0">
+                        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900">
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            {index + 1}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {task.title}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {task.description}
+                        </p>
+                        <div className="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          Due: {new Date(task.due_date).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          task.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                          task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        }`}>
+                          {task.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <UserPlus className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      What happens next?
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Tasks have been assigned to the success manager</li>
+                        <li>Customer will receive welcome email with next steps</li>
+                        <li>Onboarding progress will be tracked automatically</li>
+                        <li>You can monitor progress in the Customer Accounts section</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={() => setShowOnboardingModal(false)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        )}
+      </AnimatedModal>
     </div>
   );
 }

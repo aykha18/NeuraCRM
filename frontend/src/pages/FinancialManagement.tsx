@@ -367,7 +367,7 @@ const FinancialManagement: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(dashboard.revenue_metrics.total_revenue)}
+                        {formatCurrency(dashboard.revenue_metrics?.total_revenue || 0)}
                       </p>
                     </div>
                     <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -377,7 +377,7 @@ const FinancialManagement: React.FC = () => {
                   <div className="mt-4 flex items-center text-sm">
                     <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                     <span className="text-green-600 dark:text-green-400">
-                      +{dashboard.revenue_metrics.revenue_growth}% from last month
+                      +{dashboard.revenue_metrics?.revenue_growth || 0}% from last month
                     </span>
                   </div>
                 </div>
@@ -387,7 +387,7 @@ const FinancialManagement: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Outstanding Amount</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(dashboard.outstanding_amounts.total_outstanding)}
+                        {formatCurrency(dashboard.outstanding_amounts?.total_outstanding || 0)}
                       </p>
                     </div>
                     <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
@@ -395,7 +395,7 @@ const FinancialManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                    {dashboard.invoice_metrics.overdue_invoices} overdue invoices
+                    {dashboard.invoice_metrics?.overdue_invoices || 0} overdue invoices
                   </div>
                 </div>
 
@@ -404,7 +404,7 @@ const FinancialManagement: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Collection Rate</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {dashboard.invoice_metrics.collection_rate.toFixed(1)}%
+                        {(dashboard.invoice_metrics?.collection_rate || 0).toFixed(1)}%
                       </p>
                     </div>
                     <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -412,7 +412,7 @@ const FinancialManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                    {dashboard.invoice_metrics.paid_invoices} of {dashboard.invoice_metrics.total_invoices} invoices paid
+                    {dashboard.invoice_metrics?.paid_invoices || 0} of {dashboard.invoice_metrics?.total_invoices || 0} invoices paid
                   </div>
                 </div>
 
@@ -421,7 +421,7 @@ const FinancialManagement: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Payment Success Rate</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {dashboard.payment_metrics.payment_success_rate.toFixed(1)}%
+                        {(dashboard.payment_metrics?.payment_success_rate || 0).toFixed(1)}%
                       </p>
                     </div>
                     <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
@@ -429,7 +429,7 @@ const FinancialManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                    Avg. {dashboard.payment_metrics.average_payment_time} days to payment
+                    Avg. {dashboard.payment_metrics?.average_payment_time || 0} days to payment
                   </div>
                 </div>
               </div>
