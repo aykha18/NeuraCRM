@@ -721,6 +721,90 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
     except Exception as e:
         return {"error": f"AI assistant error: {str(e)}"}
 
+# User Management endpoints
+@app.get("/api/users")
+def list_users(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return all users in the current user's organization."""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        users = db.query(User).filter(User.organization_id == current_user.organization_id).all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "organization_id": user.organization_id
+            }
+            for user in users
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch users: {str(e)}"}
+
+@app.post("/api/users")
+def create_user(payload: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a user in the current organization."""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Basic duplicate email check within org
+        existing = (
+            db.query(User)
+            .filter(User.organization_id == current_user.organization_id, User.email == payload.get("email"))
+            .first()
+        )
+        if existing:
+            return {"error": "A user with this email already exists in the organization"}
+        
+        # Create new user
+        new_user = User(
+            name=payload.get("name"),
+            email=payload.get("email"),
+            password_hash=payload.get("password"),  # In production, hash this
+            role="member",
+            organization_id=current_user.organization_id,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        return {
+            "id": new_user.id,
+            "name": new_user.name,
+            "email": new_user.email,
+            "role": new_user.role,
+            "organization_id": new_user.organization_id
+        }
+    except Exception as e:
+        return {"error": f"Failed to create user: {str(e)}"}
+
+@app.delete("/api/users/{user_id}")
+def delete_user(user_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a user in the same organization (cannot delete yourself)."""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        if user_id == current_user.id:
+            return {"error": "You cannot delete yourself"}
+        
+        user = (
+            db.query(User)
+            .filter(User.id == user_id, User.organization_id == current_user.organization_id)
+            .first()
+        )
+        if not user:
+            return {"error": "User not found"}
+        
+        db.delete(user)
+        db.commit()
+        return {"message": "User deleted successfully"}
+    except Exception as e:
+        return {"error": f"Failed to delete user: {str(e)}"}
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
 def get_contacts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
