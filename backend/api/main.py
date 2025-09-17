@@ -874,24 +874,23 @@ def delete_contact(contact_id: int):
     return {"detail": "Contact deleted"}
 
 # Catch-all route for frontend (MUST BE LAST!)
-# Temporarily disabled to test API routes
-# if os.path.exists(frontend_dist_path):
-#     @app.get("/{path:path}")
-#     async def serve_frontend(path: str):
-#         """Serve the React frontend for all non-API routes"""
-#         # Don't serve API routes - check if path starts with api/
-#         if path.startswith("api/"):
-#             raise HTTPException(status_code=404, detail="API endpoint not found")
-#         
-#         # Serve static files if they exist
-#         static_file_path = os.path.join(frontend_dist_path, path)
-#         if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
-#             return FileResponse(static_file_path)
-#         
-#         # Serve index.html for all other routes (React Router)
-#         index_path = os.path.join(frontend_dist_path, "index.html")
-#         if os.path.exists(index_path):
-#             return FileResponse(index_path)
-#         else:
-#             raise HTTPException(status_code=404, detail="Frontend not found")
+if os.path.exists(frontend_dist_path):
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        """Serve the React frontend for all non-API routes"""
+        # Don't serve API routes - let them pass through to the API routes
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        
+        # Serve static files if they exist
+        static_file_path = os.path.join(frontend_dist_path, path)
+        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+            return FileResponse(static_file_path)
+        
+        # Serve index.html for all other routes (React Router)
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        else:
+            raise HTTPException(status_code=404, detail="Frontend not found")
 
