@@ -20,5 +20,10 @@ export default defineConfig({
         assetFileNames: `assets/[name]-${Date.now()}.[ext]`
       }
     }
+  },
+  define: {
+    'import.meta.env.PROD': JSON.stringify(true),
+    'import.meta.env.DEV': JSON.stringify(false),
+    'import.meta.env.VITE_API_URL': JSON.stringify('https://neuracrm.up.railway.app')
   }
 })
