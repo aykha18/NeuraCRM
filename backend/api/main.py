@@ -128,7 +128,16 @@ logger.info(f"Frontend dist exists: {os.path.exists(frontend_dist_path)}")
 
 if os.path.exists(frontend_dist_path):
     logger.info("Mounting static files and serving frontend")
+    # Serve the built frontend. The Vite build expects assets under /assets and vite.svg at /vite.svg
     app.mount("/static", StaticFiles(directory=frontend_dist_path), name="static")
+    assets_dir = os.path.join(frontend_dist_path, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    vite_svg_path = os.path.join(frontend_dist_path, "vite.svg")
+    if os.path.exists(vite_svg_path):
+        @app.get("/vite.svg")
+        async def vite_svg():
+            return FileResponse(vite_svg_path)
 else:
     logger.info("Frontend dist directory not found - serving API only")
 
@@ -198,6 +207,20 @@ def read_root():
     
     # Fallback to JSON if frontend not available
     return {"message": "CRM API is running.", "status": "healthy"}
+
+# Catch-all for client-side routes and asset paths
+if os.path.exists(frontend_dist_path):
+    @app.get("/{path:path}")
+    def serve_frontend_catch_all(path: str):
+        # Serve asset files directly if they exist
+        candidate = os.path.join(frontend_dist_path, path)
+        if os.path.exists(candidate) and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        # Otherwise serve index.html for SPA routing
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Not Found")
 
 @app.get("/health")
 def health_check():
