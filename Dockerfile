@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
+# Expose default app port (Railway will set $PORT at runtime)
 EXPOSE 8000
 
-# Start the CRM application with proper database initialization
-CMD ["python", "working_app.py"]
+# Start FastAPI via uvicorn (bind to $PORT if provided)
+CMD ["sh", "-c", "python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
