@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -60,8 +60,21 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 @router.post("/login", response_model=LoginResponse)
-async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+async def login(login_data: LoginRequest | None = None, request: Request | None = None, db: Session = Depends(get_db)):
     """Authenticate user and return access token. Always return JSON; never 500 for bad creds."""
+    # Accept JSON or form-encoded bodies to be resilient to client differences
+    if login_data is None:
+        try:
+            payload = await request.json()
+            login_data = LoginRequest(**payload)
+        except Exception:
+            try:
+                form = await request.form()
+                payload = {"email": form.get("email"), "password": form.get("password")}
+                login_data = LoginRequest(**payload)
+            except Exception:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid login payload")
+
     # Find user by email
     try:
         user = db.query(User).filter(User.email == login_data.email).first()
