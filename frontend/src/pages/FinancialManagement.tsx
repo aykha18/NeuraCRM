@@ -96,6 +96,25 @@ interface FinancialDashboard {
   };
 }
 
+interface Deal {
+  id: number;
+  title: string;
+  value: number;
+  status: string;
+  contact_id?: number;
+  contact_name?: string;
+  customer_account_id?: number;
+  customer_account_name?: string;
+}
+
+interface CustomerAccount {
+  id: number;
+  account_name: string;
+  deal_id: number;
+  contact_id?: number;
+  contact_name?: string;
+}
+
 const FinancialManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'payments' | 'revenue' | 'reports'>('dashboard');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -104,6 +123,12 @@ const FinancialManagement: React.FC = () => {
   const [dashboard, setDashboard] = useState<FinancialDashboard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Data for dropdowns
+  const [wonDeals, setWonDeals] = useState<Deal[]>([]);
+  const [customerAccounts, setCustomerAccounts] = useState<CustomerAccount[]>([]);
+  const [filteredDeals, setFilteredDeals] = useState<Deal[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<CustomerAccount[]>([]);
   
   // Modal states
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
@@ -123,6 +148,14 @@ const FinancialManagement: React.FC = () => {
     terms_conditions: ''
   });
   
+  // Search states for dropdowns
+  const [dealSearchTerm, setDealSearchTerm] = useState('');
+  const [accountSearchTerm, setAccountSearchTerm] = useState('');
+  const [showDealDropdown, setShowDealDropdown] = useState(false);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<CustomerAccount | null>(null);
+  
   const [paymentForm, setPaymentForm] = useState({
     invoice_id: '',
     amount: '',
@@ -134,6 +167,24 @@ const FinancialManagement: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchWonDeals();
+    fetchCustomerAccounts();
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.dropdown-container')) {
+        setShowDealDropdown(false);
+        setShowAccountDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -157,6 +208,115 @@ const FinancialManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchWonDeals = async () => {
+    try {
+      const data = await apiRequest('/api/kanban/board') as any;
+      if (data && data.stages) {
+        // Find deals in "Won" stage
+        const wonStage = data.stages.find((stage: any) => 
+          stage.name.toLowerCase() === 'won' || stage.name.toLowerCase() === 'closed won'
+        );
+        if (wonStage && wonStage.deals) {
+          const deals = wonStage.deals.map((deal: any) => ({
+            id: deal.id,
+            title: deal.title,
+            value: deal.value || 0,
+            status: deal.status || 'won',
+            contact_id: deal.contact_id,
+            contact_name: deal.contact_name,
+            customer_account_id: deal.customer_account_id,
+            customer_account_name: deal.customer_account_name
+          }));
+          setWonDeals(deals);
+          setFilteredDeals(deals);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching won deals:', err);
+    }
+  };
+
+  const fetchCustomerAccounts = async () => {
+    try {
+      const data = await apiRequest('/api/customer-accounts') as CustomerAccount[];
+      if (Array.isArray(data)) {
+        setCustomerAccounts(data);
+        setFilteredAccounts(data);
+      }
+    } catch (err) {
+      console.error('Error fetching customer accounts:', err);
+    }
+  };
+
+  // Search functionality
+  const handleDealSearch = (term: string) => {
+    setDealSearchTerm(term);
+    const filtered = wonDeals.filter(deal => 
+      deal.title.toLowerCase().includes(term.toLowerCase()) ||
+      deal.id.toString().includes(term) ||
+      (deal.contact_name && deal.contact_name.toLowerCase().includes(term.toLowerCase()))
+    );
+    setFilteredDeals(filtered);
+  };
+
+  const handleAccountSearch = (term: string) => {
+    setAccountSearchTerm(term);
+    const filtered = customerAccounts.filter(account => 
+      account.account_name.toLowerCase().includes(term.toLowerCase()) ||
+      account.id.toString().includes(term) ||
+      (account.contact_name && account.contact_name.toLowerCase().includes(term.toLowerCase()))
+    );
+    setFilteredAccounts(filtered);
+  };
+
+  const selectDeal = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setDealSearchTerm(`${deal.title} ($${formatCurrency(deal.value)})`);
+    setShowDealDropdown(false);
+    
+    // Auto-populate customer account if available
+    if (deal.customer_account_id) {
+      const account = customerAccounts.find(acc => acc.id === deal.customer_account_id);
+      if (account) {
+        setSelectedAccount(account);
+        setAccountSearchTerm(account.account_name);
+        setInvoiceForm(prev => ({
+          ...prev,
+          deal_id: deal.id.toString(),
+          customer_account_id: account.id.toString()
+        }));
+      } else {
+        setInvoiceForm(prev => ({
+          ...prev,
+          deal_id: deal.id.toString()
+        }));
+      }
+    } else {
+      setInvoiceForm(prev => ({
+        ...prev,
+        deal_id: deal.id.toString()
+      }));
+    }
+    
+    // Auto-populate subtotal with deal value
+    if (deal.value > 0) {
+      setInvoiceForm(prev => ({
+        ...prev,
+        subtotal: deal.value.toString()
+      }));
+    }
+  };
+
+  const selectAccount = (account: CustomerAccount) => {
+    setSelectedAccount(account);
+    setAccountSearchTerm(account.account_name);
+    setShowAccountDropdown(false);
+    setInvoiceForm(prev => ({
+      ...prev,
+      customer_account_id: account.id.toString()
+    }));
   };
 
   const fetchInvoices = async () => {
@@ -198,6 +358,25 @@ const FinancialManagement: React.FC = () => {
     }
   };
 
+  const resetInvoiceForm = () => {
+    setInvoiceForm({
+      deal_id: '',
+      customer_account_id: '',
+      due_date: '',
+      subtotal: '',
+      tax_rate: '',
+      description: '',
+      notes: '',
+      terms_conditions: ''
+    });
+    setDealSearchTerm('');
+    setAccountSearchTerm('');
+    setSelectedDeal(null);
+    setSelectedAccount(null);
+    setShowDealDropdown(false);
+    setShowAccountDropdown(false);
+  };
+
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -207,16 +386,7 @@ const FinancialManagement: React.FC = () => {
         body: JSON.stringify(invoiceForm)
       });
       setShowCreateInvoice(false);
-      setInvoiceForm({
-        deal_id: '',
-        customer_account_id: '',
-        due_date: '',
-        subtotal: '',
-        tax_rate: '',
-        description: '',
-        notes: '',
-        terms_conditions: ''
-      });
+      resetInvoiceForm();
       fetchInvoices();
     } catch (err) {
       console.error('Error creating invoice:', err);
@@ -745,35 +915,102 @@ const FinancialManagement: React.FC = () => {
       {/* Create Invoice Modal */}
       <AnimatedModal
         open={showCreateInvoice}
-        onClose={() => setShowCreateInvoice(false)}
+        onClose={() => {
+          setShowCreateInvoice(false);
+          resetInvoiceForm();
+        }}
         title="Create Invoice"
         animationType="scale"
         size="lg"
       >
         <form onSubmit={handleCreateInvoice} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="relative dropdown-container">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Deal ID
+                Won Deal *
               </label>
-              <input
-                type="number"
-                value={invoiceForm.deal_id}
-                onChange={(e) => setInvoiceForm({ ...invoiceForm, deal_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={dealSearchTerm}
+                  onChange={(e) => {
+                    handleDealSearch(e.target.value);
+                    setShowDealDropdown(true);
+                  }}
+                  onFocus={() => setShowDealDropdown(true)}
+                  placeholder="Search won deals..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  required
+                />
+                {showDealDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredDeals.length > 0 ? (
+                      filteredDeals.map((deal) => (
+                        <div
+                          key={deal.id}
+                          onClick={() => selectDeal(deal)}
+                          className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                        >
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {deal.title}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Deal #{deal.id} • {formatCurrency(deal.value)}
+                            {deal.contact_name && ` • ${deal.contact_name}`}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                        No won deals found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
+            <div className="relative dropdown-container">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Customer Account ID
+                Customer Account
               </label>
-              <input
-                type="number"
-                value={invoiceForm.customer_account_id}
-                onChange={(e) => setInvoiceForm({ ...invoiceForm, customer_account_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={accountSearchTerm}
+                  onChange={(e) => {
+                    handleAccountSearch(e.target.value);
+                    setShowAccountDropdown(true);
+                  }}
+                  onFocus={() => setShowAccountDropdown(true)}
+                  placeholder="Search customer accounts..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+                {showAccountDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredAccounts.length > 0 ? (
+                      filteredAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          onClick={() => selectAccount(account)}
+                          className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                        >
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {account.account_name}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Account #{account.id}
+                            {account.contact_name && ` • ${account.contact_name}`}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                        No customer accounts found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
