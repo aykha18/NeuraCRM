@@ -212,6 +212,9 @@ def read_root():
 if os.path.exists(frontend_dist_path):
     @app.get("/{path:path}")
     def serve_frontend_catch_all(path: str):
+        # Never intercept API routes
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
         # Serve asset files directly if they exist
         candidate = os.path.join(frontend_dist_path, path)
         if os.path.exists(candidate) and os.path.isfile(candidate):
