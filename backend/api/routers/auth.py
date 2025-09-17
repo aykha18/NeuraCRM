@@ -13,6 +13,10 @@ from backend.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
+@router.get("/test")
+def auth_router_test():
+    return {"message": "Auth router is working", "timestamp": datetime.now().isoformat()}
+
 # JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
