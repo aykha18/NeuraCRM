@@ -7,9 +7,9 @@ import jwt
 import os
 import bcrypt
 
-from ..db import get_db
-from ..models import User
-from ..dependencies import get_current_user
+from backend.api.db import get_db
+from backend.api.models import User
+from backend.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 

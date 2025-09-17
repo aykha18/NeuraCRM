@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
-from ..models import Deal, Stage, Contact, User
-from ..schemas.kanban import DealCreate, DealUpdate, StageCreate, StageUpdate
+from backend.api.models import Deal, Stage, Contact, User
+from backend.api.schemas.kanban import DealCreate, DealUpdate, StageCreate, StageUpdate
 
 def get_kanban_board(db: Session, organization_id: int):
     """
