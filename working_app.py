@@ -697,6 +697,30 @@ def check_user_limit(org_id: int, db: Session = Depends(get_db)):
         plan=subscription.plan
     )
 
+# AI Assistant endpoint
+@app.post("/api/ai/assistant")
+def ai_assistant(request: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """AI Sales Assistant endpoint"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Simple AI response for now (can be enhanced later)
+        message = request.get("message", "")
+        
+        # Basic responses based on keywords
+        if "lead" in message.lower():
+            return {"response": "I can help you analyze your leads. You currently have leads in your pipeline. Would you like me to show you the hottest prospects?"}
+        elif "deal" in message.lower():
+            return {"response": "I can help you with your deals. Let me analyze your pipeline and suggest next steps."}
+        elif "contact" in message.lower():
+            return {"response": "I can help you manage your contacts. Would you like me to show you contact insights?"}
+        else:
+            return {"response": "Hello! I'm your AI Sales Assistant. I can help you with leads, deals, contacts, and sales insights. What would you like to know?"}
+            
+    except Exception as e:
+        return {"error": f"AI assistant error: {str(e)}"}
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
 def get_contacts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
