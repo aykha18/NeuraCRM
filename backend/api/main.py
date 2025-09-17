@@ -250,6 +250,10 @@ def ping():
     """Simple health check endpoint that doesn't require database"""
     return {"status": "ok", "message": "pong", "timestamp": datetime.now().isoformat()}
 
+@app.post("/api/auth/test")
+def test_auth():
+    return {"message": "Auth router is working", "timestamp": datetime.now().isoformat()}
+
 @app.get("/api/health")
 def health_check():
     """Comprehensive health check endpoint"""
