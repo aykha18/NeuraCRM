@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from pydantic import BaseModel
 from typing import Optional
 
@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -1539,6 +1539,497 @@ def start_customer_onboarding(account_id: int, current_user: User = Depends(get_
         }
     except Exception as e:
         return {"error": f"Failed to start customer onboarding: {str(e)}"}
+
+# ============================================================================
+# FINANCIAL MANAGEMENT ENDPOINTS
+# ============================================================================
+
+# Invoice Management
+@app.get("/api/invoices")
+def get_invoices(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all invoices for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        invoices = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id
+        ).all()
+        
+        return [
+            {
+                "id": invoice.id,
+                "invoice_number": invoice.invoice_number,
+                "deal_id": invoice.deal_id,
+                "customer_account_id": invoice.customer_account_id,
+                "issue_date": invoice.issue_date.isoformat() if invoice.issue_date else None,
+                "due_date": invoice.due_date.isoformat(),
+                "status": invoice.status,
+                "subtotal": invoice.subtotal,
+                "tax_rate": invoice.tax_rate,
+                "tax_amount": invoice.tax_amount,
+                "total_amount": invoice.total_amount,
+                "paid_amount": invoice.paid_amount,
+                "balance_due": invoice.balance_due,
+                "description": invoice.description,
+                "notes": invoice.notes,
+                "created_at": invoice.created_at.isoformat(),
+                "sent_at": invoice.sent_at.isoformat() if invoice.sent_at else None,
+                "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None
+            }
+            for invoice in invoices
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch invoices: {str(e)}"}
+
+@app.post("/api/invoices")
+def create_invoice(invoice_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new invoice"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Generate invoice number
+        invoice_count = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id
+        ).count()
+        invoice_number = f"INV-{current_user.organization_id:03d}-{invoice_count + 1:06d}"
+        
+        # Calculate amounts
+        subtotal = float(invoice_data.get('subtotal', 0))
+        tax_rate = float(invoice_data.get('tax_rate', 0))
+        tax_amount = subtotal * (tax_rate / 100)
+        total_amount = subtotal + tax_amount
+        
+        invoice = Invoice(
+            invoice_number=invoice_number,
+            deal_id=invoice_data['deal_id'],
+            customer_account_id=invoice_data.get('customer_account_id'),
+            organization_id=current_user.organization_id,
+            due_date=datetime.fromisoformat(invoice_data['due_date'].replace('Z', '+00:00')),
+            subtotal=subtotal,
+            tax_rate=tax_rate,
+            tax_amount=tax_amount,
+            total_amount=total_amount,
+            balance_due=total_amount,
+            description=invoice_data.get('description'),
+            notes=invoice_data.get('notes'),
+            terms_conditions=invoice_data.get('terms_conditions'),
+            created_by=current_user.id
+        )
+        
+        db.add(invoice)
+        db.commit()
+        
+        return {
+            "message": "Invoice created successfully",
+            "invoice": {
+                "id": invoice.id,
+                "invoice_number": invoice.invoice_number,
+                "total_amount": invoice.total_amount,
+                "status": invoice.status
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create invoice: {str(e)}"}
+
+@app.get("/api/invoices/{invoice_id}")
+def get_invoice(invoice_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get a specific invoice"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        invoice = db.query(Invoice).filter(
+            Invoice.id == invoice_id,
+            Invoice.organization_id == current_user.organization_id
+        ).first()
+        
+        if not invoice:
+            return {"error": "Invoice not found"}
+        
+        return {
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "deal_id": invoice.deal_id,
+            "customer_account_id": invoice.customer_account_id,
+            "issue_date": invoice.issue_date.isoformat() if invoice.issue_date else None,
+            "due_date": invoice.due_date.isoformat(),
+            "status": invoice.status,
+            "subtotal": invoice.subtotal,
+            "tax_rate": invoice.tax_rate,
+            "tax_amount": invoice.tax_amount,
+            "total_amount": invoice.total_amount,
+            "paid_amount": invoice.paid_amount,
+            "balance_due": invoice.balance_due,
+            "description": invoice.description,
+            "notes": invoice.notes,
+            "terms_conditions": invoice.terms_conditions,
+            "created_at": invoice.created_at.isoformat(),
+            "sent_at": invoice.sent_at.isoformat() if invoice.sent_at else None,
+            "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch invoice: {str(e)}"}
+
+@app.put("/api/invoices/{invoice_id}/status")
+def update_invoice_status(invoice_id: int, status_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update invoice status"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        invoice = db.query(Invoice).filter(
+            Invoice.id == invoice_id,
+            Invoice.organization_id == current_user.organization_id
+        ).first()
+        
+        if not invoice:
+            return {"error": "Invoice not found"}
+        
+        new_status = status_data.get('status')
+        if new_status not in ['draft', 'sent', 'paid', 'overdue', 'cancelled']:
+            return {"error": "Invalid status"}
+        
+        invoice.status = new_status
+        
+        if new_status == 'sent':
+            invoice.sent_at = datetime.utcnow()
+        elif new_status == 'paid':
+            invoice.paid_at = datetime.utcnow()
+            invoice.paid_amount = invoice.total_amount
+            invoice.balance_due = 0
+        
+        db.commit()
+        
+        return {
+            "message": "Invoice status updated successfully",
+            "invoice": {
+                "id": invoice.id,
+                "status": invoice.status,
+                "sent_at": invoice.sent_at.isoformat() if invoice.sent_at else None,
+                "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update invoice status: {str(e)}"}
+
+# Payment Management
+@app.get("/api/payments")
+def get_payments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all payments for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        payments = db.query(Payment).filter(
+            Payment.organization_id == current_user.organization_id
+        ).all()
+        
+        return [
+            {
+                "id": payment.id,
+                "invoice_id": payment.invoice_id,
+                "payment_number": payment.payment_number,
+                "amount": payment.amount,
+                "payment_date": payment.payment_date.isoformat(),
+                "payment_method": payment.payment_method,
+                "payment_reference": payment.payment_reference,
+                "status": payment.status,
+                "notes": payment.notes,
+                "created_at": payment.created_at.isoformat()
+            }
+            for payment in payments
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch payments: {str(e)}"}
+
+@app.post("/api/payments")
+def create_payment(payment_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new payment"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Generate payment number
+        payment_count = db.query(Payment).filter(
+            Payment.organization_id == current_user.organization_id
+        ).count()
+        payment_number = f"PAY-{current_user.organization_id:03d}-{payment_count + 1:06d}"
+        
+        payment = Payment(
+            invoice_id=payment_data['invoice_id'],
+            organization_id=current_user.organization_id,
+            payment_number=payment_number,
+            amount=float(payment_data['amount']),
+            payment_date=datetime.fromisoformat(payment_data['payment_date'].replace('Z', '+00:00')),
+            payment_method=payment_data['payment_method'],
+            payment_reference=payment_data.get('payment_reference'),
+            status=payment_data.get('status', 'pending'),
+            notes=payment_data.get('notes'),
+            created_by=current_user.id
+        )
+        
+        db.add(payment)
+        
+        # Update invoice payment status
+        invoice = db.query(Invoice).filter(Invoice.id == payment_data['invoice_id']).first()
+        if invoice:
+            invoice.paid_amount += payment.amount
+            invoice.balance_due = invoice.total_amount - invoice.paid_amount
+            
+            if invoice.balance_due <= 0:
+                invoice.status = 'paid'
+                invoice.paid_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {
+            "message": "Payment created successfully",
+            "payment": {
+                "id": payment.id,
+                "payment_number": payment.payment_number,
+                "amount": payment.amount,
+                "status": payment.status
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create payment: {str(e)}"}
+
+# Revenue Management
+@app.get("/api/revenue")
+def get_revenue(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get revenue data for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        revenue_entries = db.query(Revenue).filter(
+            Revenue.organization_id == current_user.organization_id
+        ).all()
+        
+        return [
+            {
+                "id": revenue.id,
+                "invoice_id": revenue.invoice_id,
+                "deal_id": revenue.deal_id,
+                "amount": revenue.amount,
+                "recognition_date": revenue.recognition_date.isoformat(),
+                "recognition_type": revenue.recognition_type,
+                "recognition_period": revenue.recognition_period,
+                "revenue_type": revenue.revenue_type,
+                "revenue_category": revenue.revenue_category,
+                "status": revenue.status,
+                "created_at": revenue.created_at.isoformat()
+            }
+            for revenue in revenue_entries
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch revenue data: {str(e)}"}
+
+@app.post("/api/revenue/recognize")
+def recognize_revenue(revenue_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Recognize revenue for an invoice"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        invoice = db.query(Invoice).filter(
+            Invoice.id == revenue_data['invoice_id'],
+            Invoice.organization_id == current_user.organization_id
+        ).first()
+        
+        if not invoice:
+            return {"error": "Invoice not found"}
+        
+        # Create revenue entry
+        revenue = Revenue(
+            invoice_id=revenue_data['invoice_id'],
+            deal_id=invoice.deal_id,
+            organization_id=current_user.organization_id,
+            amount=float(revenue_data['amount']),
+            recognition_date=datetime.fromisoformat(revenue_data['recognition_date'].replace('Z', '+00:00')),
+            recognition_type=revenue_data.get('recognition_type', 'immediate'),
+            recognition_period=revenue_data.get('recognition_period'),
+            revenue_type=revenue_data.get('revenue_type', 'product'),
+            revenue_category=revenue_data.get('revenue_category'),
+            status=revenue_data.get('status', 'recognized')
+        )
+        
+        db.add(revenue)
+        db.commit()
+        
+        return {
+            "message": "Revenue recognized successfully",
+            "revenue": {
+                "id": revenue.id,
+                "amount": revenue.amount,
+                "recognition_date": revenue.recognition_date.isoformat(),
+                "recognition_type": revenue.recognition_type
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to recognize revenue: {str(e)}"}
+
+# Financial Reporting
+@app.get("/api/financial/dashboard")
+def get_financial_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get financial dashboard data"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get current month data
+        current_month = datetime.utcnow().strftime('%Y-%m')
+        
+        # Revenue metrics
+        total_revenue = db.query(Revenue).filter(
+            Revenue.organization_id == current_user.organization_id,
+            Revenue.status == 'recognized'
+        ).with_entities(func.sum(Revenue.amount)).scalar() or 0
+        
+        monthly_revenue = db.query(Revenue).filter(
+            Revenue.organization_id == current_user.organization_id,
+            Revenue.recognition_period == current_month,
+            Revenue.status == 'recognized'
+        ).with_entities(func.sum(Revenue.amount)).scalar() or 0
+        
+        # Invoice metrics
+        total_invoices = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id
+        ).count()
+        
+        paid_invoices = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id,
+            Invoice.status == 'paid'
+        ).count()
+        
+        overdue_invoices = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id,
+            Invoice.status == 'overdue'
+        ).count()
+        
+        # Payment metrics
+        total_payments = db.query(Payment).filter(
+            Payment.organization_id == current_user.organization_id,
+            Payment.status == 'completed'
+        ).with_entities(func.sum(Payment.amount)).scalar() or 0
+        
+        # Outstanding amounts
+        outstanding_amount = db.query(Invoice).filter(
+            Invoice.organization_id == current_user.organization_id,
+            Invoice.status.in_(['sent', 'overdue'])
+        ).with_entities(func.sum(Invoice.balance_due)).scalar() or 0
+        
+        return {
+            "revenue_metrics": {
+                "total_revenue": total_revenue,
+                "monthly_revenue": monthly_revenue,
+                "revenue_growth": 15.5  # Mock growth percentage
+            },
+            "invoice_metrics": {
+                "total_invoices": total_invoices,
+                "paid_invoices": paid_invoices,
+                "overdue_invoices": overdue_invoices,
+                "collection_rate": (paid_invoices / total_invoices * 100) if total_invoices > 0 else 0
+            },
+            "payment_metrics": {
+                "total_payments": total_payments,
+                "average_payment_time": 12.5,  # Mock days
+                "payment_success_rate": 94.2  # Mock percentage
+            },
+            "outstanding_amounts": {
+                "total_outstanding": outstanding_amount,
+                "overdue_amount": outstanding_amount * 0.3,  # Mock 30% overdue
+                "current_amount": outstanding_amount * 0.7   # Mock 70% current
+            }
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch financial dashboard data: {str(e)}"}
+
+@app.get("/api/financial/reports")
+def get_financial_reports(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get financial reports"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        reports = db.query(FinancialReport).filter(
+            FinancialReport.organization_id == current_user.organization_id
+        ).all()
+        
+        return [
+            {
+                "id": report.id,
+                "report_type": report.report_type,
+                "report_period": report.report_period,
+                "report_name": report.report_name,
+                "status": report.status,
+                "created_at": report.created_at.isoformat()
+            }
+            for report in reports
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch financial reports: {str(e)}"}
+
+@app.post("/api/financial/reports/generate")
+def generate_financial_report(report_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Generate a new financial report"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Generate report data (mock implementation)
+        report = FinancialReport(
+            organization_id=current_user.organization_id,
+            report_type=report_data['report_type'],
+            report_period=report_data['report_period'],
+            report_name=report_data['report_name'],
+            revenue_data={
+                "total_revenue": 125000,
+                "monthly_breakdown": [
+                    {"month": "2024-01", "revenue": 45000},
+                    {"month": "2024-02", "revenue": 52000},
+                    {"month": "2024-03", "revenue": 48000}
+                ]
+            },
+            payment_data={
+                "total_payments": 118000,
+                "collection_rate": 94.4,
+                "average_payment_time": 12.5
+            },
+            invoice_data={
+                "total_invoices": 45,
+                "paid_invoices": 42,
+                "overdue_invoices": 3
+            },
+            kpi_data={
+                "revenue_growth": 15.5,
+                "customer_lifetime_value": 2500,
+                "churn_rate": 5.2
+            },
+            generated_by=current_user.id
+        )
+        
+        db.add(report)
+        db.commit()
+        
+        return {
+            "message": "Financial report generated successfully",
+            "report": {
+                "id": report.id,
+                "report_name": report.report_name,
+                "report_type": report.report_type,
+                "report_period": report.report_period
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to generate financial report: {str(e)}"}
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")

@@ -352,4 +352,130 @@ class CustomerAccount(Base):
     # Relationships
     # deal = relationship('Deal', back_populates='customer_account')
     contact = relationship('Contact')
-    success_manager = relationship('User') 
+    success_manager = relationship('User')
+
+# Financial Management Models
+class Invoice(Base):
+    __tablename__ = 'invoices'
+    id = Column(Integer, primary_key=True)
+    invoice_number = Column(String, unique=True, nullable=False)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=False)
+    customer_account_id = Column(Integer, ForeignKey('customer_accounts.id'), nullable=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Invoice Details
+    issue_date = Column(DateTime, default=datetime.utcnow)
+    due_date = Column(DateTime, nullable=False)
+    status = Column(String, default='draft')  # draft, sent, paid, overdue, cancelled
+    
+    # Financial Details
+    subtotal = Column(Float, nullable=False)
+    tax_rate = Column(Float, default=0.0)
+    tax_amount = Column(Float, default=0.0)
+    total_amount = Column(Float, nullable=False)
+    paid_amount = Column(Float, default=0.0)
+    balance_due = Column(Float, nullable=False)
+    
+    # Invoice Content
+    description = Column(Text)
+    notes = Column(Text)
+    terms_conditions = Column(Text)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    sent_at = Column(DateTime)
+    paid_at = Column(DateTime)
+    
+    # Relationships
+    deal = relationship('Deal')
+    customer_account = relationship('CustomerAccount')
+    organization = relationship('Organization')
+    creator = relationship('User')
+    payments = relationship('Payment', back_populates='invoice')
+    revenue_entries = relationship('Revenue', back_populates='invoice')
+
+class Payment(Base):
+    __tablename__ = 'payments'
+    id = Column(Integer, primary_key=True)
+    invoice_id = Column(Integer, ForeignKey('invoices.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Payment Details
+    payment_number = Column(String, unique=True, nullable=False)
+    amount = Column(Float, nullable=False)
+    payment_date = Column(DateTime, default=datetime.utcnow)
+    payment_method = Column(String, nullable=False)  # credit_card, bank_transfer, check, cash, other
+    payment_reference = Column(String)  # transaction ID, check number, etc.
+    
+    # Status and Notes
+    status = Column(String, default='pending')  # pending, completed, failed, refunded
+    notes = Column(Text)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    invoice = relationship('Invoice', back_populates='payments')
+    organization = relationship('Organization')
+    creator = relationship('User')
+
+class Revenue(Base):
+    __tablename__ = 'revenue'
+    id = Column(Integer, primary_key=True)
+    invoice_id = Column(Integer, ForeignKey('invoices.id'), nullable=False)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Revenue Details
+    amount = Column(Float, nullable=False)
+    recognition_date = Column(DateTime, default=datetime.utcnow)
+    recognition_type = Column(String, default='immediate')  # immediate, monthly, quarterly, annually
+    recognition_period = Column(String)  # 2024-01, Q1-2024, 2024, etc.
+    
+    # Revenue Classification
+    revenue_type = Column(String, default='product')  # product, service, subscription, support
+    revenue_category = Column(String)  # sales, upsell, renewal, etc.
+    
+    # Status
+    status = Column(String, default='recognized')  # recognized, deferred, adjusted, reversed
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    invoice = relationship('Invoice', back_populates='revenue_entries')
+    deal = relationship('Deal')
+    organization = relationship('Organization')
+
+class FinancialReport(Base):
+    __tablename__ = 'financial_reports'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Report Details
+    report_type = Column(String, nullable=False)  # monthly, quarterly, annual, custom
+    report_period = Column(String, nullable=False)  # 2024-01, Q1-2024, 2024, etc.
+    report_name = Column(String, nullable=False)
+    
+    # Financial Data (JSON)
+    revenue_data = Column(JSON)  # Revenue breakdown by category, period, etc.
+    payment_data = Column(JSON)  # Payment metrics, collection rates, etc.
+    invoice_data = Column(JSON)  # Invoice metrics, aging, etc.
+    kpi_data = Column(JSON)  # Key performance indicators
+    
+    # Report Status
+    status = Column(String, default='generated')  # generated, reviewed, approved, archived
+    generated_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    generator = relationship('User') 
