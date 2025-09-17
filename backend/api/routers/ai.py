@@ -1,10 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import requests
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from openai import OpenAI
 from api.db import get_db
 from api.models import Deal, Contact, Lead, User
-from sqlalchemy import func
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv(dotenv_path=".env")
 
 router = APIRouter(
     prefix="/api/ai",
@@ -46,43 +51,35 @@ def ai_assistant(request: AIChatRequest, db: Session = Depends(get_db)):
     # Fetch minimal CRM context
     crm_context = get_crm_context(db, request.user_id)
 
-    # Simplified prompt for faster response
-    system_prompt = f"""You are a helpful AI Sales Assistant. Keep responses brief and conversational.
+    # System prompt for GPT models
+    system_prompt = (
+        "You are a helpful AI Sales Assistant for a CRM. Be concise, specific, and actionable.\n"
+        "Use the provided CRM context to ground your answers. If information is missing, ask a short clarifying question."
+    )
 
-CRM Context: {crm_context}
+    # Compose messages for OpenAI
+    messages = [
+        {"role": "system", "content": f"{system_prompt}\n\nCRM Context:\n{crm_context}"},
+        {"role": "user", "content": request.message},
+    ]
 
-Respond naturally and helpfully to sales questions."""
-
-    # Shorter, more direct prompt
-    prompt = f"{system_prompt}\n\nUser: {request.message}\nAssistant:"
-
-    # Call local Ollama API with shorter timeout
     try:
-        ollama_response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "gemma3",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=15  # Reduced timeout to 15 seconds
+        # Get API key from environment
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API key not found in environment variables")
+        
+        client = OpenAI(api_key=api_key)  # explicitly pass API key
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=400,
+            temperature=0.5,
         )
-        ollama_response.raise_for_status()
-        data = ollama_response.json()
-        ai_text = data.get("response", "I'm having trouble connecting right now. Please try again.")
-        
-        # Clean up the response
+        ai_text = completion.choices[0].message.content or ""
         ai_text = ai_text.strip()
-        if ai_text.startswith("Assistant:"):
-            ai_text = ai_text[10:].strip()
-        
-        # Ensure we have a response
-        if not ai_text or len(ai_text) < 10:
-            ai_text = "I'm sorry, I couldn't generate a proper response. Please try asking your question again."
-        
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=408, detail="AI response timed out. Please try again.")
+        if not ai_text:
+            ai_text = "I'm sorry, I couldn't generate a response just now. Please try again."
+        return AIChatResponse(response=ai_text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
-
-    return AIChatResponse(response=ai_text) 

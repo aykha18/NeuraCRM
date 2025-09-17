@@ -27,8 +27,11 @@ import {
   FileText,
   Globe,
   BarChart,
-  BrainCircuit
+  BrainCircuit,
+  Bot,
+  Sparkles
 } from "lucide-react";
+import AIChat from "../components/AIChat";
 
 interface AIFeature {
   id: string;
@@ -388,6 +391,7 @@ const aiFeatures: AIFeature[] = [
 export default function AIFeatures() {
   const [selectedFeature, setSelectedFeature] = useState<AIFeature | null>(null);
   const [filter, setFilter] = useState<"all" | "implemented" | "upcoming" | "premium">("all");
+  const [showAIChat, setShowAIChat] = useState(false);
 
   const filteredFeatures = aiFeatures.filter(feature => 
     filter === "all" || feature.status === filter
@@ -429,6 +433,21 @@ export default function AIFeatures() {
         <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
           Discover how AI is transforming your CRM experience. Explore implemented features, upcoming capabilities, and premium features available on request.
         </p>
+        
+        {/* AI Assistant Button */}
+        <div className="flex gap-4 items-center mb-6">
+          <button
+            onClick={() => setShowAIChat(true)}
+            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+          >
+            <Bot className="h-5 w-5" />
+            <span className="font-medium">Try AI Assistant</span>
+            <Sparkles className="h-4 w-4" />
+          </button>
+          <p className="text-sm text-gray-500">
+            Chat with our AI assistant to get personalized sales insights
+          </p>
+        </div>
         
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
@@ -655,6 +674,26 @@ export default function AIFeatures() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Chat Modal */}
+      {showAIChat && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">AI Sales Assistant</h2>
+              <button
+                onClick={() => setShowAIChat(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <AIChat />
             </div>
           </div>
         </div>

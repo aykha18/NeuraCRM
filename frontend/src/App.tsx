@@ -6,6 +6,7 @@ import Contacts from "./pages/contaxt";
 import Kanban from "./pages/Kanban";
 import Chat from "./pages/Chat";
 import Ai from "./pages/Ai";
+import AIHelpGuide from "./pages/AIHelpGuide";
 import EmailAutomation from "./pages/EmailAutomation";
 import PredictiveAnalytics from "./pages/PredictiveAnalytics";
 import UserManagement from "./pages/UserManagement";
@@ -79,6 +80,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Ai />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/ai-help" element={
+              <ProtectedRoute>
+                <Layout>
+                  <AIHelpGuide />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -9,6 +9,10 @@ from datetime import datetime
 import json
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -34,10 +38,12 @@ try:
     from api.routers import kanban
     from api.routers.dashboard import router as dashboard_router
     from api.routers.ai import router as ai_router
+    from api.routers.ai_enhanced import router as ai_enhanced_router
     from api.routers.email_automation import router as email_automation_router
     from api.routers.auth import router as auth_router
     from api.routers.chat import router as chat_router
     from api.routers.predictive_analytics import router as predictive_analytics_router
+    from api.routers.users import router as users_router
     
     # Include routers
     app.include_router(auth_router)
@@ -45,8 +51,10 @@ try:
     app.include_router(dashboard_router)
     app.include_router(chat_router)
     app.include_router(ai_router)
+    app.include_router(ai_enhanced_router)  # Enhanced AI with full CRM integration
     app.include_router(email_automation_router)
     app.include_router(predictive_analytics_router)
+    app.include_router(users_router)
     
     logger.info("All routers loaded successfully!")
     
