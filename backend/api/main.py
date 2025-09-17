@@ -20,10 +20,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import database and models first
-from api.db import get_session_local, get_engine
-from api.models import Lead, Contact, User, Organization, Base, Stage, Deal
-from api.dependencies import get_current_user
-from api.routers.auth import login as auth_login
+from .db import get_session_local, get_engine
+from .models import Lead, Contact, User, Organization, Base, Stage, Deal
+from .dependencies import get_current_user
+from .routers.auth import login as auth_login
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -46,15 +46,15 @@ async def _global_exception_handler(request: Request, exc: Exception):
 
 # Import and include routers immediately
 try:
-    from api.routers import kanban
-    from api.routers.dashboard import router as dashboard_router
-    from api.routers.ai import router as ai_router
-    from api.routers.ai_enhanced import router as ai_enhanced_router
-    from api.routers.email_automation import router as email_automation_router
-    from api.routers.auth import router as auth_router
-    from api.routers.chat import router as chat_router
-    from api.routers.predictive_analytics import router as predictive_analytics_router
-    from api.routers.users import router as users_router
+    from .routers import kanban
+    from .routers.dashboard import router as dashboard_router
+    from .routers.ai import router as ai_router
+    from .routers.ai_enhanced import router as ai_enhanced_router
+    from .routers.email_automation import router as email_automation_router
+    from .routers.auth import router as auth_router
+    from .routers.chat import router as chat_router
+    from .routers.predictive_analytics import router as predictive_analytics_router
+    from .routers.users import router as users_router
     
     # Include routers
     app.include_router(auth_router)
@@ -92,7 +92,7 @@ async def startup_event():
         
         # Import lead scoring service after database is ready
         try:
-            from api.lead_scoring import lead_scoring_service
+            from .lead_scoring import lead_scoring_service
             logger.info("Lead scoring service loaded successfully!")
         except Exception as e:
             logger.warning(f"Lead scoring service failed to load: {e}")
@@ -298,7 +298,7 @@ def score_lead(lead_id: int):
     """Calculate and update lead score"""
     try:
         # Try to import lead scoring service
-        from api.lead_scoring import lead_scoring_service
+        from .lead_scoring import lead_scoring_service
     except ImportError:
         raise HTTPException(status_code=503, detail="Lead scoring service not available")
     
@@ -334,7 +334,7 @@ def score_all_leads():
     """Score all leads in the system"""
     try:
         # Try to import lead scoring service
-        from api.lead_scoring import lead_scoring_service
+        from .lead_scoring import lead_scoring_service
     except ImportError:
         raise HTTPException(status_code=503, detail="Lead scoring service not available")
     
