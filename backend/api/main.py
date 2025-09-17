@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 from .db import get_session_local, get_engine
 from .models import Lead, Contact, User, Organization, Base, Stage, Deal
 from .dependencies import get_current_user
-from .routers.auth import login as auth_login
+# from .routers.auth import login as auth_login  # Removed to fix Railway import issues
 
 # Import Pydantic models
 from pydantic import BaseModel
@@ -233,13 +233,9 @@ def read_root():
 @app.post("/login")
 async def legacy_login_compat(request: Request):
     """Compatibility endpoint for clients calling POST /login.
-    Forwards to the actual auth login handler.
+    Redirects to the proper auth endpoint.
     """
-    db = get_session_local()()
-    try:
-        return await auth_login(None, request, db)  # reuse auth logic
-    finally:
-        db.close()
+    return {"detail": "Please use /api/auth/login endpoint", "redirect": "/api/auth/login"}
 
 @app.get("/health")
 def health_check():
