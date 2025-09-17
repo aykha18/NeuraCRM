@@ -916,7 +916,7 @@ export default function LeadsPage() {
         </div>
       </DetailModal>
       {/* Create Lead Modal */}
-      <AnimatedModal open={showCreateModal} onClose={() => { setShowCreateModal(false); resetCreateForm(); }} anchorRect={anchorRect}>
+      <AnimatedModal open={showCreateModal} onClose={() => { setShowCreateModal(false); resetCreateForm(); }} title="Create Lead">
         <div className="p-8 w-full max-w-md relative">
           <button
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"

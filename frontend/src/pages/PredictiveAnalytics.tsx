@@ -457,7 +457,7 @@ function OverviewTab({ insights }: { insights: DashboardInsights }) {
           Market Opportunities
         </h3>
         <div className="space-y-2">
-          {market_opportunities.market_opportunities.slice(0, 3).map((opp, index) => (
+          {(market_opportunities.market_opportunities || []).slice(0, 3).map((opp, index) => (
             <div key={index} className="flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-yellow-500" />
               <span className="text-sm text-gray-700">{opp.type}</span>
@@ -526,13 +526,13 @@ function ChurnTab({ churn }: { churn: ChurnPrediction }) {
         </div>
         
         <div className="space-y-3">
-          {churn.churn_risks.slice(0, 10).map((risk, index) => (
+          {(churn.churn_risks || []).slice(0, 10).map((risk, index) => (
             <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
               <div>
                 <div className="font-medium">{risk.contact_name}</div>
                 <div className="text-sm text-gray-600">{risk.company}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {risk.risk_factors.slice(0, 2).join(', ')}
+                  {(risk.risk_factors || []).slice(0, 2).join(', ')}
                 </div>
               </div>
               <div className="text-right">

@@ -92,7 +92,7 @@ export default function CustomerAccounts() {
   const startOnboarding = async (accountId: number) => {
     try {
       const data = await apiRequest(`/api/customer-accounts/${accountId}/onboarding/start`, 'POST');
-      alert(`Onboarding started! ${data.tasks.length} tasks created.`);
+      alert(`Onboarding started! ${(data as any)?.tasks?.length || 0} tasks created.`);
       fetchCustomerAccounts(); // Refresh the list
     } catch (err) {
       console.error('Error starting onboarding:', err);

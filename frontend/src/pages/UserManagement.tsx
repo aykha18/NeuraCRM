@@ -254,7 +254,7 @@ export default function UserManagement() {
           setShowCreateModal(false);
           resetCreateForm();
         }} 
-        anchorRect={anchorRect}
+        title="Create User"
       >
         <div className="p-6 w-full max-w-md">
           <div className="flex justify-between items-center mb-4">

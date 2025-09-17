@@ -387,7 +387,7 @@ export default function Contacts() {
         </table>
       </div>
 
-      <AnimatedModal open={showCreate} onClose={() => setShowCreate(false)} anchorRect={anchorRect}>
+      <AnimatedModal open={showCreate} onClose={() => setShowCreate(false)} title="Create Contact">
         <div className='p-6 w-full max-w-md'>
           <div className='flex items-center justify-between mb-4'>
             <h2 className='text-xl font-bold'>Create Contact</h2>
