@@ -4,7 +4,7 @@
     "builder": "dockerfile"
   },
   "deploy": {
-    "startCommand": "python working_app.py",
+    "startCommand": "python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT",
     "healthcheckPath": "/api/ping",
     "healthcheckTimeout": 300,
     "restartPolicyType": "on_failure"
