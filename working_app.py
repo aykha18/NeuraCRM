@@ -142,6 +142,43 @@ class UserLimitCheck(BaseModel):
     can_add_user: bool
     plan: str
 
+# Post-Sale Workflow Models
+class CustomerAccountCreate(BaseModel):
+    """Request schema for creating customer account"""
+    deal_id: int
+    account_name: str
+    contact_id: int
+    account_type: str = "standard"  # standard, premium, enterprise
+    onboarding_status: str = "pending"  # pending, in_progress, completed
+    success_manager_id: Optional[int] = None
+
+class CustomerAccountResponse(BaseModel):
+    """Response schema for customer account"""
+    id: int
+    deal_id: int
+    account_name: str
+    contact_id: int
+    account_type: str
+    onboarding_status: str
+    success_manager_id: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+class DealStatusUpdate(BaseModel):
+    """Request schema for updating deal status"""
+    status: str  # 'won', 'lost'
+    outcome_reason: Optional[str] = None
+    closed_at: Optional[datetime] = None
+
+class CustomerSuccessMetric(BaseModel):
+    """Response schema for customer success metrics"""
+    account_id: int
+    health_score: int  # 1-100
+    engagement_level: str  # low, medium, high
+    last_activity: Optional[datetime]
+    renewal_probability: int  # 1-100
+    satisfaction_score: Optional[int]  # 1-10
+
 # Authentication functions (only if auth is available)
 if AUTH_AVAILABLE:
     def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -330,7 +367,11 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
                 "created_at": deal.created_at.isoformat() if deal.created_at else None,
                 "owner_name": deal.owner.name if deal.owner else None,
                 "contact_name": deal.contact.name if deal.contact else None,
-                "watchers": []  # Could be populated from watchers relationship
+                "watchers": [],  # Could be populated from watchers relationship
+                "status": getattr(deal, 'status', 'open'),  # Default to 'open' if not set
+                "closed_at": deal.closed_at.isoformat() if deal.closed_at else None,
+                "outcome_reason": getattr(deal, 'outcome_reason', None),
+                "customer_account_id": getattr(deal, 'customer_account_id', None)
             }
             for deal in deals
         ]
@@ -1123,6 +1164,208 @@ def get_email_analytics(current_user: User = Depends(get_current_user), db: Sess
         }
     except Exception as e:
         return {"error": f"Failed to fetch email analytics: {str(e)}"}
+
+# Post-Sale Workflow Endpoints
+@app.put("/api/deals/{deal_id}/status")
+def update_deal_status(deal_id: int, status_data: DealStatusUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update deal status to won/lost and trigger post-sale workflow"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id,
+            Deal.organization_id == current_user.organization_id
+        ).first()
+        
+        if not deal:
+            return {"error": "Deal not found"}
+        
+        # Update deal status
+        deal.status = status_data.status
+        deal.outcome_reason = status_data.outcome_reason
+        deal.closed_at = status_data.closed_at or datetime.now()
+        
+        # If deal is won, create customer account
+        if status_data.status == "won":
+            # Create customer account
+            customer_account = {
+                "deal_id": deal_id,
+                "account_name": f"{deal.contact.name if deal.contact else 'Customer'} Account",
+                "contact_id": deal.contact_id,
+                "account_type": "standard",
+                "onboarding_status": "pending",
+                "success_manager_id": deal.owner_id
+            }
+            
+            # Store customer account (for now, return mock data)
+            account_response = {
+                "id": 999,  # Mock ID
+                "deal_id": deal_id,
+                "account_name": customer_account["account_name"],
+                "contact_id": deal.contact_id,
+                "account_type": "standard",
+                "onboarding_status": "pending",
+                "success_manager_id": deal.owner_id,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": None
+            }
+            
+            # Update deal with customer account reference
+            deal.customer_account_id = 999  # Mock ID
+            
+            db.commit()
+            
+            return {
+                "message": "Deal marked as won and customer account created",
+                "deal": {
+                    "id": deal.id,
+                    "title": deal.title,
+                    "status": deal.status,
+                    "closed_at": deal.closed_at.isoformat(),
+                    "outcome_reason": deal.outcome_reason
+                },
+                "customer_account": account_response
+            }
+        else:
+            # Deal is lost
+            db.commit()
+            return {
+                "message": "Deal marked as lost",
+                "deal": {
+                    "id": deal.id,
+                    "title": deal.title,
+                    "status": deal.status,
+                    "closed_at": deal.closed_at.isoformat(),
+                    "outcome_reason": deal.outcome_reason
+                }
+            }
+            
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update deal status: {str(e)}"}
+
+@app.get("/api/customer-accounts")
+def get_customer_accounts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all customer accounts for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # For now, return mock customer accounts
+        # In a real implementation, this would query a customer_accounts table
+        return [
+            {
+                "id": 1,
+                "deal_id": 1,
+                "account_name": "Acme Corp Account",
+                "contact_id": 1,
+                "account_type": "premium",
+                "onboarding_status": "completed",
+                "success_manager_id": 1,
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T00:00:00Z",
+                "health_score": 85,
+                "engagement_level": "high",
+                "renewal_probability": 90
+            },
+            {
+                "id": 2,
+                "deal_id": 2,
+                "account_name": "TechStart Inc Account",
+                "contact_id": 2,
+                "account_type": "standard",
+                "onboarding_status": "in_progress",
+                "success_manager_id": 2,
+                "created_at": "2024-01-10T00:00:00Z",
+                "updated_at": "2024-01-20T00:00:00Z",
+                "health_score": 70,
+                "engagement_level": "medium",
+                "renewal_probability": 75
+            }
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch customer accounts: {str(e)}"}
+
+@app.get("/api/customer-accounts/{account_id}/success-metrics")
+def get_customer_success_metrics(account_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get customer success metrics for an account"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Return mock success metrics
+        return {
+            "account_id": account_id,
+            "health_score": 85,
+            "engagement_level": "high",
+            "last_activity": "2024-01-20T10:30:00Z",
+            "renewal_probability": 90,
+            "satisfaction_score": 9,
+            "metrics": {
+                "total_interactions": 15,
+                "response_time_avg": "2.5 hours",
+                "feature_adoption": 78,
+                "support_tickets": 2,
+                "last_renewal": "2024-01-01T00:00:00Z",
+                "next_renewal": "2025-01-01T00:00:00Z"
+            }
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch customer success metrics: {str(e)}"}
+
+@app.post("/api/customer-accounts/{account_id}/onboarding/start")
+def start_customer_onboarding(account_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Start the customer onboarding process"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Mock onboarding workflow
+        onboarding_tasks = [
+            {
+                "id": 1,
+                "title": "Welcome Call",
+                "description": "Schedule and conduct welcome call with customer",
+                "status": "pending",
+                "due_date": "2024-01-25T00:00:00Z",
+                "assigned_to": current_user.id
+            },
+            {
+                "id": 2,
+                "title": "Account Setup",
+                "description": "Configure customer account and permissions",
+                "status": "pending",
+                "due_date": "2024-01-26T00:00:00Z",
+                "assigned_to": current_user.id
+            },
+            {
+                "id": 3,
+                "title": "Training Session",
+                "description": "Conduct product training session",
+                "status": "pending",
+                "due_date": "2024-01-28T00:00:00Z",
+                "assigned_to": current_user.id
+            },
+            {
+                "id": 4,
+                "title": "Success Plan",
+                "description": "Create and review customer success plan",
+                "status": "pending",
+                "due_date": "2024-01-30T00:00:00Z",
+                "assigned_to": current_user.id
+            }
+        ]
+        
+        return {
+            "message": "Customer onboarding started",
+            "account_id": account_id,
+            "onboarding_status": "in_progress",
+            "tasks": onboarding_tasks
+        }
+    except Exception as e:
+        return {"error": f"Failed to start customer onboarding: {str(e)}"}
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
