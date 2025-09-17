@@ -1,0 +1,42 @@
+[33mcommit 58917ef1bfad0b745c9921e309ff914ea1f3bca4[m
+Author: aykha18 <khanayubchand@gmail.com>
+Date:   Tue Sep 16 03:32:18 2025 +0530
+
+    Fix predictive analytics performance and stage management endpoints
+    
+    - Optimized predictive analytics service to handle large datasets (8.6x performance improvement)
+    - Limited churn prediction to 100 contacts and market analysis to 500 leads for better performance
+    - Added stage management endpoints (/stages and /api/kanban/stages/) to working_app.py
+    - Fixed catch-all route to properly handle /stages endpoint
+    - Added numpy dependency to requirements.txt for predictive analytics
+    - Fixed database session handling in stage management endpoints
+    - Predictive analytics now responds in 0.36s instead of 3.09s for large organizations
+
+backend/api/__pycache__/predictive_analytics.cpython-313.pyc
+backend/api/predictive_analytics.py
+backend/api/routers/__pycache__/predictive_analytics.cpython-313.pyc
+frontend/src/components/ChatWindow.tsx
+frontend/src/components/CreateRoomModal.tsx
+frontend/src/components/MessageInput.tsx
+frontend/src/contexts/AuthContext.tsx
+frontend/src/hooks/useWebSocket.ts
+frontend/src/pages/OrganizationSignup.tsx
+frontend/src/pages/PredictiveAnalytics.tsx
+frontend/src/pages/SignUp.tsx
+frontend/src/pages/contaxt.tsx
+frontend/src/services/leadScoring.ts
+frontend/src/utils/api.ts
+frontend/tsconfig.app.json
+frontend_dist/assets/index-B8AgZk0b.js
+frontend_dist/assets/index-BxGQNkmq.js
+frontend_dist/assets/index-C95QpNp8.css
+frontend_dist/assets/index-CUhkuEgz.css
+frontend_dist/assets/index-CcmqJ6be.js
+frontend_dist/assets/index-CejRcRHl.css
+frontend_dist/assets/index-DlrYD-MB.js
+frontend_dist/assets/index-DoHAxXz5.js
+frontend_dist/assets/index-iuLDYpvS.css
+frontend_dist/assets/index-k7aYPxTY.js
+frontend_dist/index.html
+requirements.txt
+working_app.py

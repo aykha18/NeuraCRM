@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService, type User, type CreateUserRequest } from '../services/users';
-import { Plus, Trash2, Eye, Users, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Eye, Users, UserPlus, Search } from 'lucide-react';
 import { AnimatedModal } from '../components/AnimatedModal';
 
 export default function UserManagement() {
@@ -13,12 +13,24 @@ export default function UserManagement() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const [createForm, setCreateForm] = useState<CreateUserRequest>({
     name: '',
     email: '',
     password: ''
   });
+
+  // Filter users based on search
+  const filteredUsers = useMemo(() => {
+    if (!search) return users;
+    const q = search.toLowerCase();
+    return users.filter((user) =>
+      (user.name || '').toLowerCase().includes(q) ||
+      (user.email || '').toLowerCase().includes(q) ||
+      (user.role || '').toLowerCase().includes(q)
+    );
+  }, [users, search]);
 
   useEffect(() => {
     if (user?.organization_id) {
@@ -118,16 +130,27 @@ export default function UserManagement() {
           </p>
         </div>
         
-        <button
-          onClick={(e) => {
-            setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect());
-            setShowCreateModal(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add User
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users..."
+              className="rounded-full pl-10 pr-4 py-2 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 w-64 shadow"
+            />
+            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+          </div>
+          <button
+            onClick={(e) => {
+              setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect());
+              setShowCreateModal(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add User
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -168,7 +191,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {users.map((userItem) => (
+              {filteredUsers.map((userItem) => (
                 <tr key={userItem.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
