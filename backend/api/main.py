@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -32,6 +33,15 @@ app = FastAPI(
     description="API for the CRM Application with AI Features",
     version="1.0.0"
 )
+
+# Global JSON error handler to avoid HTML/plain text 500s reaching the client
+@app.exception_handler(Exception)
+async def _global_exception_handler(request: Request, exc: Exception):
+    try:
+        logger.error(f"Unhandled error: {exc}")
+    except Exception:
+        pass
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 # Import and include routers immediately
 try:
