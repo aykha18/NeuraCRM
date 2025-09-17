@@ -894,15 +894,63 @@ def get_email_campaigns(current_user: User = Depends(get_current_user), db: Sess
                 "id": 1,
                 "name": "Welcome Campaign",
                 "template_id": 1,
+                "subject_override": None,
+                "body_override": None,
+                "target_type": "contacts",
+                "target_ids": "1,2,3",
+                "scheduled_at": None,
+                "sent_at": None,
                 "status": "draft",
-                "created_at": "2024-01-01T00:00:00Z"
+                "created_by": current_user.id,
+                "created_at": "2024-01-01T00:00:00Z",
+                "template": {
+                    "id": 1,
+                    "name": "Welcome Email",
+                    "subject": "Welcome to our service!",
+                    "body": "Thank you for joining us. We're excited to have you on board!",
+                    "category": "welcome",
+                    "is_active": True,
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "created_by": current_user.id,
+                    "validation": {
+                        "valid": True,
+                        "available_variables": ["contact.name", "contact.email"],
+                        "missing_variables": [],
+                        "total_variables": 2
+                    }
+                }
             },
             {
                 "id": 2,
                 "name": "Follow-up Campaign",
                 "template_id": 2,
+                "subject_override": None,
+                "body_override": None,
+                "target_type": "leads",
+                "target_ids": "1,2",
+                "scheduled_at": None,
+                "sent_at": "2024-01-01T12:00:00Z",
                 "status": "sent",
-                "created_at": "2024-01-01T00:00:00Z"
+                "created_by": current_user.id,
+                "created_at": "2024-01-01T00:00:00Z",
+                "template": {
+                    "id": 2,
+                    "name": "Follow-up Email",
+                    "subject": "Following up on our conversation",
+                    "body": "Hi there, I wanted to follow up on our recent conversation. Let me know if you have any questions!",
+                    "category": "follow-up",
+                    "is_active": True,
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "created_by": current_user.id,
+                    "validation": {
+                        "valid": True,
+                        "available_variables": ["contact.name", "deal.title"],
+                        "missing_variables": [],
+                        "total_variables": 2
+                    }
+                }
             }
         ]
     except Exception as e:
@@ -920,8 +968,16 @@ def create_email_campaign(campaign_data: dict, current_user: User = Depends(get_
             "id": 999,
             "name": campaign_data.get("name", "New Campaign"),
             "template_id": campaign_data.get("template_id", 1),
+            "subject_override": campaign_data.get("subject_override"),
+            "body_override": campaign_data.get("body_override"),
+            "target_type": campaign_data.get("target_type", "contacts"),
+            "target_ids": ",".join(map(str, campaign_data.get("target_ids", []))),
+            "scheduled_at": campaign_data.get("scheduled_at"),
+            "sent_at": None,
             "status": "draft",
-            "created_at": "2024-01-01T00:00:00Z"
+            "created_by": current_user.id,
+            "created_at": "2024-01-01T00:00:00Z",
+            "template": None
         }
     except Exception as e:
         return {"error": f"Failed to create email campaign: {str(e)}"}
