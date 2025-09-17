@@ -822,7 +822,15 @@ def get_email_templates(current_user: User = Depends(get_current_user), db: Sess
                 "body": "Thank you for joining us. We're excited to have you on board!",
                 "category": "welcome",
                 "is_active": True,
-                "created_at": "2024-01-01T00:00:00Z"
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+                "created_by": current_user.id,
+                "validation": {
+                    "valid": True,
+                    "available_variables": ["contact.name", "contact.email"],
+                    "missing_variables": [],
+                    "total_variables": 2
+                }
             },
             {
                 "id": 2,
@@ -831,7 +839,15 @@ def get_email_templates(current_user: User = Depends(get_current_user), db: Sess
                 "body": "Hi there, I wanted to follow up on our recent conversation. Let me know if you have any questions!",
                 "category": "follow-up",
                 "is_active": True,
-                "created_at": "2024-01-01T00:00:00Z"
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+                "created_by": current_user.id,
+                "validation": {
+                    "valid": True,
+                    "available_variables": ["contact.name", "deal.title"],
+                    "missing_variables": [],
+                    "total_variables": 2
+                }
             }
         ]
     except Exception as e:
@@ -852,7 +868,15 @@ def create_email_template(template_data: dict, current_user: User = Depends(get_
             "body": template_data.get("body", ""),
             "category": template_data.get("category", "general"),
             "is_active": True,
-            "created_at": "2024-01-01T00:00:00Z"
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "created_by": current_user.id,
+            "validation": {
+                "valid": True,
+                "available_variables": [],
+                "missing_variables": [],
+                "total_variables": 0
+            }
         }
     except Exception as e:
         return {"error": f"Failed to create email template: {str(e)}"}
