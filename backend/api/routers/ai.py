@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables
-load_dotenv()
+load_dotenv(dotenv_path="../.env")
 
 router = APIRouter(
     prefix="/api/ai",
@@ -135,10 +135,12 @@ Always ground your responses in the provided CRM context. If data is missing, as
     ]
 
     try:
-        # Get API key from environment
-        api_key = os.getenv("OPENAI_API_KEY")
+        # Get API key from environment (handle BOM issues)
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("\ufeffOPENAI_API_KEY")
         if not api_key:
-            raise HTTPException(status_code=500, detail="OpenAI API key not found in environment variables")
+            # Debug: Check what environment variables are available
+            env_debug = {k: v[:10] + "..." if len(v) > 10 else v for k, v in os.environ.items() if 'OPENAI' in k.upper()}
+            raise HTTPException(status_code=500, detail=f"OpenAI API key not found in environment variables. Available OPENAI vars: {env_debug}")
         
         client = OpenAI(api_key=api_key)  # explicitly pass API key
         completion = client.chat.completions.create(
