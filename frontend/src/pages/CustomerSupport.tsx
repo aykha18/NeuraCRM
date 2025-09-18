@@ -160,12 +160,12 @@ const CustomerSupport: React.FC = () => {
     closure_category: 'technical_fix',
     follow_up_required: false,
     follow_up_date: '',
-    customer_satisfied: null,
+    customer_satisfied: null as boolean | null,
     internal_notes: ''
   });
   const [closeForm, setCloseForm] = useState({
     final_notes: '',
-    customer_satisfied: null
+    customer_satisfied: null as boolean | null
   });
   const [cancelForm, setCancelForm] = useState({
     cancellation_reason: 'customer_cancelled',
@@ -397,7 +397,9 @@ const CustomerSupport: React.FC = () => {
 
   const fetchKnowledgeArticles = async () => {
     try {
-      const data = await apiRequest('/api/support/knowledge-base') as KnowledgeBaseArticle[];
+      const response = await apiRequest('/api/support/knowledge-base') as any;
+      // Handle both direct array response and wrapped response
+      const data = Array.isArray(response) ? response : (response?.value || []);
       if (Array.isArray(data)) {
         setKnowledgeArticles(data);
       }
@@ -475,25 +477,29 @@ const CustomerSupport: React.FC = () => {
       const response = await apiRequest('/api/support/knowledge-base', {
         method: 'POST',
         body: JSON.stringify(articleForm)
-      });
+      }) as any;
 
-      setError(null);
-      setSuccessMessage('Knowledge base article created successfully!');
-      setShowSuccessModal(true);
-      setShowCreateArticleModal(false);
-      setArticleForm({
-        title: '',
-        content: '',
-        summary: '',
-        category: 'general',
-        subcategory: '',
-        tags: [],
-        status: 'draft',
-        visibility: 'public',
-        featured: false,
-        meta_description: ''
-      });
-      fetchKnowledgeArticles();
+      if (response && !response.error) {
+        setError(null);
+        setSuccessMessage('Knowledge base article created successfully!');
+        setShowSuccessModal(true);
+        setShowCreateArticleModal(false);
+        setArticleForm({
+          title: '',
+          content: '',
+          summary: '',
+          category: 'general',
+          subcategory: '',
+          tags: [],
+          status: 'draft',
+          visibility: 'public',
+          featured: false,
+          meta_description: ''
+        });
+        fetchKnowledgeArticles();
+      } else {
+        setError(response?.error || 'Failed to create knowledge base article');
+      }
     } catch (err) {
       console.error('Error creating article:', err);
       setError('Failed to create knowledge base article');
