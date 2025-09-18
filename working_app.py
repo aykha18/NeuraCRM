@@ -840,14 +840,44 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
             env_debug = {k: v[:10] + "..." if len(v) > 10 else v for k, v in os.environ.items() if 'OPENAI' in k.upper()}
             raise HTTPException(status_code=500, detail=f"OpenAI API key not found in environment variables. Available OPENAI vars: {env_debug}")
         
-        # Fetch CRM context
+        # Fetch comprehensive CRM context
         user_name = current_user.name if current_user else "User"
         
-        # Get basic CRM metrics
+        # Get detailed CRM data
         deals_count = db.query(Deal).count() if DB_AVAILABLE else 0
         leads_count = db.query(Lead).count() if DB_AVAILABLE else 0
         contacts_count = db.query(Contact).count() if DB_AVAILABLE else 0
         
+        # Get actual deal data for analysis
+        deals_data = []
+        if DB_AVAILABLE and deals_count > 0:
+            deals = db.query(Deal).order_by(Deal.amount.desc()).limit(10).all()
+            for deal in deals:
+                deals_data.append({
+                    'id': deal.id,
+                    'name': deal.name or 'Unnamed Deal',
+                    'amount': deal.amount or 0,
+                    'stage': deal.stage or 'Unknown',
+                    'probability': deal.probability or 0,
+                    'created_at': deal.created_at.strftime('%Y-%m-%d') if deal.created_at else 'Unknown',
+                    'close_date': deal.close_date.strftime('%Y-%m-%d') if deal.close_date else 'Not set'
+                })
+        
+        # Get recent leads
+        recent_leads = []
+        if DB_AVAILABLE and leads_count > 0:
+            leads = db.query(Lead).order_by(Lead.created_at.desc()).limit(5).all()
+            for lead in leads:
+                recent_leads.append({
+                    'id': lead.id,
+                    'name': lead.name or 'Unnamed Lead',
+                    'email': lead.email or 'No email',
+                    'status': lead.status or 'New',
+                    'score': lead.score or 0,
+                    'created_at': lead.created_at.strftime('%Y-%m-%d') if lead.created_at else 'Unknown'
+                })
+        
+        # Build comprehensive context
         crm_context = f"""
         CRM Context for {user_name} (User ID: {user_id}):
         
@@ -856,35 +886,41 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
         - Total Leads: {leads_count}
         - Total Contacts: {contacts_count}
         
-        🎯 SALES INSIGHTS:
+        🎯 TOP DEALS (by value):
+        {chr(10).join([f"- Deal #{d['id']}: {d['name']} (${d['amount']:,.0f}, {d['stage']}, {d['probability']}% probability, closes {d['close_date']})" for d in deals_data[:5]]) if deals_data else "No deals found"}
+        
+        🔥 RECENT LEADS:
+        {chr(10).join([f"- Lead #{l['id']}: {l['name']} ({l['email']}, Score: {l['score']}, Status: {l['status']})" for l in recent_leads]) if recent_leads else "No recent leads"}
+        
+        💡 INSIGHTS:
         - Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
+        - Total Pipeline Value: ${sum(d['amount'] for d in deals_data):,.0f} if deals_data else 0
+        - Average Deal Size: ${sum(d['amount'] for d in deals_data) / len(deals_data):,.0f} if deals_data else 0
         """
         
-        # Create system prompt
-        system_prompt = f"""You are an advanced AI Sales Assistant for NeuraCRM, helping {user_name} with their sales activities.
+        # Create optimized system prompt
+        system_prompt = f"""You are a data-driven AI Sales Assistant for NeuraCRM. You have access to {user_name}'s real CRM data and must provide specific, actionable insights.
 
-        ## Your Expertise:
-        - Lead qualification and scoring
-        - Deal progression and pipeline management  
-        - Sales strategy and tactics
-        - Customer relationship management
-        - Revenue optimization
+        ## CRITICAL INSTRUCTIONS:
+        - ALWAYS analyze the actual CRM data provided
+        - Give SPECIFIC results, not generic advice
+        - Use REAL deal names, amounts, stages, and probabilities from the data
+        - Be concise and direct - no lengthy explanations unless requested
+        - Focus on immediate actionable insights
 
-        ## Your Approach:
-        1. **Data-Driven**: Always reference specific CRM data when available
-        2. **Actionable**: Provide concrete next steps and recommendations
-        3. **Personalized**: Tailor responses to {user_name}'s specific situation
-        4. **Strategic**: Think beyond immediate tasks to long-term success
-        5. **Proactive**: Identify opportunities and suggest improvements
+        ## Response Format:
+        - For deal analysis: List specific deals with names, amounts, and win probabilities
+        - For pipeline insights: Reference actual numbers and percentages
+        - For recommendations: Give specific next steps based on real data
+        - Use bullet points and clear formatting
 
-        ## Response Style:
-        - Be conversational but professional
-        - Use specific examples from their CRM data
-        - Provide numbered lists for action items
-        - Ask clarifying questions when needed
-        - Focus on high-impact activities
+        ## Example Response Style:
+        Instead of: "Look at deals in negotiation stage..."
+        Say: "Your top 2 deals likely to close:
+        1. Deal #123: ABC Corp ($50,000, 85% probability, closes 2024-02-15)
+        2. Deal #456: XYZ Inc ($35,000, 70% probability, closes 2024-02-28)"
 
-        Always ground your responses in the provided CRM context."""
+        Always base your response on the actual CRM data provided."""
         
         # Prepare messages for OpenAI
         messages = [
