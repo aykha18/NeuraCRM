@@ -17,7 +17,7 @@ const AIChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your AI Sales Assistant. I can help you with:\n\n• Analyzing your deals and pipeline\n• Finding your hottest leads\n• Suggesting follow-up actions\n• Answering questions about your CRM data\n\nWhat would you like to know?",
+      content: "👋 Hello! I'm your AI Sales Assistant, powered by advanced CRM analytics.\n\n🎯 I can help you with:\n• **Pipeline Analysis** - Deep insights into your sales funnel\n• **Lead Intelligence** - Find your hottest prospects automatically\n• **Deal Strategy** - Personalized recommendations for each opportunity\n• **Revenue Optimization** - Data-driven tactics to boost your numbers\n• **Follow-up Automation** - Smart reminders and next steps\n\n💡 Try asking me:\n• \"What are my top 3 deals this month?\"\n• \"Which leads need immediate attention?\"\n• \"How can I improve my pipeline?\"\n\nWhat would you like to explore today?",
       sender: 'ai',
       timestamp: new Date()
     }
@@ -51,14 +51,20 @@ const AIChat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/ai/assistant', {
+      // Use enhanced AI endpoint for better responses
+      const response = await fetch('/api/ai-enhanced/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           message: inputMessage.trim(),
-          user_id: user?.id || 1
+          conversation_history: messages.slice(-10).map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          })),
+          include_insights: true
         })
       });
 
@@ -68,9 +74,17 @@ const AIChat: React.FC = () => {
 
       const data = await response.json();
       
+      // Handle enhanced response format
+      let responseContent = data.response;
+      
+      // Add insights if available
+      if (data.insights) {
+        responseContent += `\n\n📊 **Sales Insights:**\n${JSON.stringify(data.insights, null, 2)}`;
+      }
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response,
+        content: responseContent,
         sender: 'ai',
         timestamp: new Date()
       };
@@ -108,10 +122,12 @@ const AIChat: React.FC = () => {
   };
 
   const suggestedPrompts = [
-    "What are my top deals?",
-    "Suggest follow-up actions",
-    "Analyze my pipeline",
-    "Find my hottest leads"
+    "Show me my top 3 deals this month",
+    "Which leads need immediate attention?",
+    "Analyze my pipeline performance",
+    "Find my hottest prospects",
+    "What deals are at risk of stalling?",
+    "Suggest follow-up actions for this week"
   ];
 
   const handleSuggestedPrompt = (prompt: string) => {

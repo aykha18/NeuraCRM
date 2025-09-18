@@ -24,23 +24,48 @@ class AIChatResponse(BaseModel):
     response: str
 
 def get_crm_context(db: Session, user_id: int) -> str:
-    """Fetch minimal CRM data to provide context for AI responses"""
+    """Fetch comprehensive CRM data to provide context for AI responses"""
     try:
-        # Get only essential data to reduce query time
+        # Get user info
+        user = db.query(User).filter(User.id == user_id).first()
+        user_name = user.name if user else "User"
+        
+        # Get deals data
         deals_count = db.query(Deal).filter(Deal.owner_id == user_id).count()
         total_value = db.query(func.sum(Deal.value)).filter(Deal.owner_id == user_id).scalar() or 0
+        open_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'open').count()
+        won_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'won').count()
         
-        # Get top 3 deals only
-        top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(3).all()
+        # Get top 5 deals with stages
+        top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(5).all()
         deals_info = []
         for deal in top_deals:
-            deals_info.append(f"- {deal.title}: ${deal.value or 0}")
+            deals_info.append(f"- {deal.title}: ${deal.value or 0} ({deal.status})")
+        
+        # Get leads data
+        leads_count = db.query(Lead).filter(Lead.owner_id == user_id).count()
+        hot_leads = db.query(Lead).filter(Lead.owner_id == user_id, Lead.status == 'hot').count()
+        
+        # Get contacts data
+        contacts_count = db.query(Contact).filter(Contact.owner_id == user_id).count()
         
         context = f"""
-Quick CRM Summary for User {user_id}:
-- Total deals: {deals_count}
-- Total pipeline value: ${total_value:,.0f}
-- Top deals: {chr(10).join(deals_info) if deals_info else "No deals found"}
+CRM Context for {user_name} (User ID: {user_id}):
+
+📊 PIPELINE OVERVIEW:
+- Total Deals: {deals_count} (${total_value:,.0f} total value)
+- Open Deals: {open_deals}
+- Won Deals: {won_deals}
+- Total Leads: {leads_count} (Hot leads: {hot_leads})
+- Total Contacts: {contacts_count}
+
+🎯 TOP DEALS:
+{chr(10).join(deals_info) if deals_info else "No deals found"}
+
+💡 SALES INSIGHTS:
+- Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
+- Average Deal Size: ${(total_value / deals_count):,.0f} if deals_count > 0 else 'No data'
+- Conversion Rate: {(won_deals / deals_count * 100):.1f}% if deals_count > 0 else 'No data'
 """
         return context
     except Exception as e:
@@ -51,11 +76,43 @@ def ai_assistant(request: AIChatRequest, db: Session = Depends(get_db)):
     # Fetch minimal CRM context
     crm_context = get_crm_context(db, request.user_id)
 
-    # System prompt for GPT models
-    system_prompt = (
-        "You are a helpful AI Sales Assistant for a CRM. Be concise, specific, and actionable.\n"
-        "Use the provided CRM context to ground your answers. If information is missing, ask a short clarifying question."
-    )
+    # Get user info for personalized responses
+    user = db.query(User).filter(User.id == request.user_id).first()
+    user_name = user.name if user else "User"
+    
+    # Enhanced system prompt for GPT models
+    system_prompt = f"""You are an advanced AI Sales Assistant for NeuraCRM, helping {user_name} with their sales activities.
+
+## Your Expertise:
+- Lead qualification and scoring
+- Deal progression and pipeline management  
+- Sales strategy and tactics
+- Customer relationship management
+- Revenue optimization
+
+## Your Approach:
+1. **Data-Driven**: Always reference specific CRM data when available
+2. **Actionable**: Provide concrete next steps and recommendations
+3. **Personalized**: Tailor responses to {user_name}'s specific situation
+4. **Strategic**: Think beyond immediate tasks to long-term success
+5. **Proactive**: Identify opportunities and suggest improvements
+
+## Response Style:
+- Be conversational but professional
+- Use specific examples from their CRM data
+- Provide numbered lists for action items
+- Ask clarifying questions when needed
+- Focus on high-impact activities
+
+## Key Areas to Help With:
+- Pipeline analysis and optimization
+- Lead scoring and qualification
+- Deal strategy and progression
+- Follow-up recommendations
+- Revenue forecasting
+- Customer relationship building
+
+Always ground your responses in the provided CRM context. If data is missing, ask specific questions to gather more information."""
 
     # Compose messages for OpenAI
     messages = [
@@ -73,8 +130,8 @@ def ai_assistant(request: AIChatRequest, db: Session = Depends(get_db)):
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            max_tokens=400,
-            temperature=0.5,
+            max_tokens=600,
+            temperature=0.7,
         )
         ai_text = completion.choices[0].message.content or ""
         ai_text = ai_text.strip()
