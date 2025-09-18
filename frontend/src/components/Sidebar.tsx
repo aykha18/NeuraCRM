@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 
@@ -16,6 +16,7 @@ const navItems = [
   { name: "Customer Accounts", icon: <Building2 />, path: "/customer-accounts" },
   { name: "Financial Management", icon: <DollarSign />, path: "/financial-management" },
   { name: "Customer Support", icon: <Headphones />, path: "/customer-support" },
+  { name: "Sentiment Analysis", icon: <TrendingUp />, path: "/sentiment-analysis" },
   { name: "User Management", icon: <UserCog />, path: "/user-management" },
 ];
 

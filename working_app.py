@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -4215,8 +4215,183 @@ def delete_stage_simple(stage_id: int, db: Session = Depends(get_db)):
         db.rollback()
         return {"error": f"Failed to delete stage: {str(e)}"}
 
+# ===== SENTIMENT ANALYSIS ENDPOINTS =====
+
+def get_sentiment_score_and_label(text: str) -> tuple[float, str]:
+    """Simple keyword-based sentiment analysis"""
+    if not text:
+        return 0.0, "neutral"
+    
+    text_lower = text.lower()
+    
+    # Positive keywords
+    positive_words = ['good', 'great', 'excellent', 'amazing', 'fantastic', 'wonderful', 'love', 'happy', 'satisfied', 'pleased', 'thank', 'appreciate', 'helpful', 'fast', 'quick', 'easy', 'perfect', 'outstanding', 'brilliant']
+    
+    # Negative keywords  
+    negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'angry', 'frustrated', 'disappointed', 'slow', 'difficult', 'problem', 'issue', 'error', 'bug', 'broken', 'useless', 'waste', 'annoying', 'stupid']
+    
+    positive_count = sum(1 for word in positive_words if word in text_lower)
+    negative_count = sum(1 for word in negative_words if word in text_lower)
+    
+    if positive_count > negative_count:
+        return 0.8, "positive"
+    elif negative_count > positive_count:
+        return -0.8, "negative"
+    else:
+        return 0.0, "neutral"
+
+@app.get("/api/sentiment-analysis/overview")
+async def get_sentiment_overview(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get sentiment overview for the organization"""
+    try:
+        org_id = current_user.organization_id
+        
+        # Get support tickets
+        tickets = db.query(SupportTicket).filter(SupportTicket.organization_id == org_id).all()
+        ticket_sentiments = []
+        for ticket in tickets:
+            score, label = get_sentiment_score_and_label(ticket.description)
+            ticket_sentiments.append({"score": score, "label": label})
+        
+        # Get chat messages
+        chat_rooms = db.query(ChatRoom).filter(ChatRoom.organization_id == org_id).all()
+        chat_sentiments = []
+        for room in chat_rooms:
+            messages = db.query(ChatMessage).filter(ChatMessage.room_id == room.id).all()
+            for message in messages:
+                score, label = get_sentiment_score_and_label(message.content)
+                chat_sentiments.append({"score": score, "label": label})
+        
+        # Get activities
+        activities = db.query(Activity).join(User).filter(User.organization_id == org_id).all()
+        activity_sentiments = []
+        for activity in activities:
+            score, label = get_sentiment_score_and_label(activity.message)
+            activity_sentiments.append({"score": score, "label": label})
+        
+        # Calculate overall sentiment
+        all_scores = [s["score"] for s in ticket_sentiments + chat_sentiments + activity_sentiments]
+        overall_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
+        overall_label = "positive" if overall_score > 0.3 else "negative" if overall_score < -0.3 else "neutral"
+        
+        return {
+            "overall_score": round(overall_score, 2),
+            "overall_label": overall_label,
+            "support_tickets": {
+                "count": len(tickets),
+                "positive": len([s for s in ticket_sentiments if s["label"] == "positive"]),
+                "negative": len([s for s in ticket_sentiments if s["label"] == "negative"]),
+                "neutral": len([s for s in ticket_sentiments if s["label"] == "neutral"])
+            },
+            "chat_messages": {
+                "count": len(chat_sentiments),
+                "positive": len([s for s in chat_sentiments if s["label"] == "positive"]),
+                "negative": len([s for s in chat_sentiments if s["label"] == "negative"]),
+                "neutral": len([s for s in chat_sentiments if s["label"] == "neutral"])
+            },
+            "activities": {
+                "count": len(activities),
+                "positive": len([s for s in activity_sentiments if s["label"] == "positive"]),
+                "negative": len([s for s in activity_sentiments if s["label"] == "negative"]),
+                "neutral": len([s for s in activity_sentiments if s["label"] == "neutral"])
+            }
+        }
+    except Exception as e:
+        return {"error": f"Failed to get sentiment overview: {str(e)}"}
+
+@app.get("/api/sentiment-analysis/support-tickets")
+async def get_support_ticket_sentiment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get sentiment analysis for support tickets"""
+    try:
+        org_id = current_user.organization_id
+        tickets = db.query(SupportTicket).filter(SupportTicket.organization_id == org_id).all()
+        
+        results = []
+        for ticket in tickets:
+            score, label = get_sentiment_score_and_label(ticket.description)
+            results.append({
+                "ticket_id": ticket.id,
+                "ticket_number": ticket.ticket_number,
+                "title": ticket.title,
+                "description": ticket.description,
+                "sentiment_score": round(score, 2),
+                "sentiment_label": label,
+                "status": ticket.status,
+                "created_at": ticket.created_at.isoformat() if ticket.created_at else None
+            })
+        
+        return {"tickets": results}
+    except Exception as e:
+        return {"error": f"Failed to get ticket sentiment: {str(e)}"}
+
+@app.get("/api/sentiment-analysis/chat-messages")
+async def get_chat_sentiment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get sentiment analysis for chat messages"""
+    try:
+        org_id = current_user.organization_id
+        chat_rooms = db.query(ChatRoom).filter(ChatRoom.organization_id == org_id).all()
+        
+        results = []
+        for room in chat_rooms:
+            messages = db.query(ChatMessage).filter(ChatMessage.room_id == room.id).all()
+            for message in messages:
+                score, label = get_sentiment_score_and_label(message.content)
+                results.append({
+                    "message_id": message.id,
+                    "room_id": room.id,
+                    "room_name": room.name,
+                    "content": message.content,
+                    "sentiment_score": round(score, 2),
+                    "sentiment_label": label,
+                    "sender_id": message.sender_id,
+                    "created_at": message.created_at.isoformat() if message.created_at else None
+                })
+        
+        return {"messages": results}
+    except Exception as e:
+        return {"error": f"Failed to get chat sentiment: {str(e)}"}
+
+@app.get("/api/sentiment-analysis/activities")
+async def get_activity_sentiment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get sentiment analysis for activities"""
+    try:
+        org_id = current_user.organization_id
+        activities = db.query(Activity).join(User).filter(User.organization_id == org_id).all()
+        
+        results = []
+        for activity in activities:
+            score, label = get_sentiment_score_and_label(activity.message)
+            results.append({
+                "activity_id": activity.id,
+                "type": activity.type,
+                "message": activity.message,
+                "sentiment_score": round(score, 2),
+                "sentiment_label": label,
+                "user_id": activity.user_id,
+                "deal_id": activity.deal_id,
+                "created_at": activity.timestamp.isoformat() if activity.timestamp else None
+            })
+        
+        return {"activities": results}
+    except Exception as e:
+        return {"error": f"Failed to get activity sentiment: {str(e)}"}
+
+# ===== END SENTIMENT ANALYSIS ENDPOINTS =====
+
 # Serve frontend (AFTER all API routes)
-frontend_path = "/app/frontend_dist"
+frontend_path = "frontend_dist"
 if os.path.exists(frontend_path):
     app.mount("/static", StaticFiles(directory=frontend_path), name="static")
     

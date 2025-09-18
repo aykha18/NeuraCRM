@@ -13,6 +13,7 @@ import UserManagement from "./pages/UserManagement";
 import CustomerAccounts from "./pages/CustomerAccounts";
 import FinancialManagement from "./pages/FinancialManagement";
 import CustomerSupport from "./pages/CustomerSupport";
+import SentimentAnalysis from "./pages/SentimentAnalysis";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -133,6 +134,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <CustomerSupport />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/sentiment-analysis" element={
+              <ProtectedRoute>
+                <Layout>
+                  <SentimentAnalysis />
                 </Layout>
               </ProtectedRoute>
             } />
