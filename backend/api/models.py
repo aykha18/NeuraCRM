@@ -478,4 +478,269 @@ class FinancialReport(Base):
     
     # Relationships
     organization = relationship('Organization')
-    generator = relationship('User') 
+    generator = relationship('User')
+
+# Customer Support Models
+class SupportTicket(Base):
+    __tablename__ = 'support_tickets'
+    id = Column(Integer, primary_key=True)
+    ticket_number = Column(String, unique=True, nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Ticket Details
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    priority = Column(String, default='medium')  # low, medium, high, urgent, critical
+    status = Column(String, default='open')  # open, in_progress, pending_customer, resolved, closed, cancelled
+    category = Column(String, nullable=False)  # technical, billing, feature_request, bug_report, general
+    subcategory = Column(String)  # login_issue, payment_problem, etc.
+    
+    # Customer Information
+    customer_account_id = Column(Integer, ForeignKey('customer_accounts.id'), nullable=True)
+    contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
+    customer_email = Column(String, nullable=False)
+    customer_name = Column(String, nullable=False)
+    
+    # Assignment and SLA
+    assigned_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    assigned_at = Column(DateTime)
+    sla_deadline = Column(DateTime)
+    first_response_at = Column(DateTime)
+    resolution_deadline = Column(DateTime)
+    
+    # Resolution
+    resolution = Column(Text)
+    resolution_notes = Column(Text)
+    resolved_at = Column(DateTime)
+    resolved_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    
+    # Escalation
+    escalated = Column(Boolean, default=False)
+    escalated_at = Column(DateTime)
+    escalated_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    escalation_reason = Column(String)
+    
+    # Customer Satisfaction
+    satisfaction_rating = Column(Integer)  # 1-5 scale
+    satisfaction_feedback = Column(Text)
+    satisfaction_survey_sent = Column(Boolean, default=False)
+    satisfaction_survey_sent_at = Column(DateTime)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=True)  # Support agent who created
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    closed_at = Column(DateTime)
+    
+    # Relationships
+    organization = relationship('Organization')
+    customer_account = relationship('CustomerAccount')
+    contact = relationship('Contact')
+    assigned_to = relationship('User', foreign_keys=[assigned_to_id])
+    resolved_by = relationship('User', foreign_keys=[resolved_by_id])
+    escalated_to = relationship('User', foreign_keys=[escalated_to_id])
+    creator = relationship('User', foreign_keys=[created_by])
+    comments = relationship('SupportComment', back_populates='ticket', cascade='all, delete-orphan')
+    attachments = relationship('SupportAttachment', back_populates='ticket', cascade='all, delete-orphan')
+
+class SupportComment(Base):
+    __tablename__ = 'support_comments'
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey('support_tickets.id'), nullable=False)
+    author_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # Null for customer comments
+    author_name = Column(String, nullable=False)  # Support agent name or customer name
+    author_email = Column(String, nullable=False)  # Support agent email or customer email
+    author_type = Column(String, default='agent')  # agent, customer, system
+    
+    # Comment Content
+    content = Column(Text, nullable=False)
+    is_internal = Column(Boolean, default=False)  # Internal notes not visible to customer
+    comment_type = Column(String, default='comment')  # comment, status_change, assignment, escalation
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    ticket = relationship('SupportTicket', back_populates='comments')
+    author = relationship('User')
+
+class SupportAttachment(Base):
+    __tablename__ = 'support_attachments'
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey('support_tickets.id'), nullable=False)
+    comment_id = Column(Integer, ForeignKey('support_comments.id'), nullable=True)
+    
+    # File Details
+    filename = Column(String, nullable=False)
+    original_filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String, nullable=False)
+    
+    # Metadata
+    uploaded_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    ticket = relationship('SupportTicket', back_populates='attachments')
+    comment = relationship('SupportComment')
+    uploader = relationship('User')
+
+class KnowledgeBaseArticle(Base):
+    __tablename__ = 'knowledge_base_articles'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Article Details
+    title = Column(String, nullable=False)
+    slug = Column(String, unique=True, nullable=False)
+    content = Column(Text, nullable=False)
+    summary = Column(Text)
+    
+    # Categorization
+    category = Column(String, nullable=False)  # getting_started, troubleshooting, billing, features
+    subcategory = Column(String)
+    tags = Column(JSON)  # Array of tags for better searchability
+    
+    # Status and Visibility
+    status = Column(String, default='draft')  # draft, published, archived
+    visibility = Column(String, default='public')  # public, internal, customer_only
+    featured = Column(Boolean, default=False)
+    
+    # SEO and Analytics
+    meta_description = Column(String)
+    view_count = Column(Integer, default=0)
+    helpful_count = Column(Integer, default=0)
+    not_helpful_count = Column(Integer, default=0)
+    
+    # Workflow
+    author_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    reviewer_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    approved_at = Column(DateTime)
+    last_reviewed_at = Column(DateTime)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    published_at = Column(DateTime)
+    
+    # Relationships
+    organization = relationship('Organization')
+    author = relationship('User', foreign_keys=[author_id])
+    reviewer = relationship('User', foreign_keys=[reviewer_id])
+
+class SupportSLA(Base):
+    __tablename__ = 'support_slas'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # SLA Configuration
+    name = Column(String, nullable=False)  # Standard, Premium, Enterprise
+    priority = Column(String, nullable=False)  # low, medium, high, urgent, critical
+    category = Column(String, nullable=True)  # Optional category-specific SLA
+    
+    # Response Times (in hours)
+    first_response_time = Column(Integer, nullable=False)  # Hours to first response
+    resolution_time = Column(Integer, nullable=False)  # Hours to resolution
+    
+    # Business Hours
+    business_hours_only = Column(Boolean, default=True)
+    business_hours_start = Column(String, default='09:00')  # HH:MM format
+    business_hours_end = Column(String, default='17:00')  # HH:MM format
+    business_days = Column(JSON, default=['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
+    
+    # Escalation Rules
+    auto_escalate = Column(Boolean, default=True)
+    escalation_time = Column(Integer)  # Hours before escalation
+    escalation_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    
+    # Status
+    active = Column(Boolean, default=True)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    escalation_user = relationship('User')
+
+class CustomerSatisfactionSurvey(Base):
+    __tablename__ = 'customer_satisfaction_surveys'
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey('support_tickets.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Survey Details
+    survey_type = Column(String, default='post_resolution')  # post_resolution, periodic, onboarding
+    rating = Column(Integer, nullable=False)  # 1-5 scale
+    nps_score = Column(Integer)  # Net Promoter Score (-100 to 100)
+    
+    # Survey Responses
+    overall_satisfaction = Column(Integer)  # 1-5 scale
+    response_time_rating = Column(Integer)  # 1-5 scale
+    resolution_quality_rating = Column(Integer)  # 1-5 scale
+    agent_knowledge_rating = Column(Integer)  # 1-5 scale
+    communication_rating = Column(Integer)  # 1-5 scale
+    
+    # Open-ended Feedback
+    what_went_well = Column(Text)
+    what_could_improve = Column(Text)
+    additional_comments = Column(Text)
+    
+    # Follow-up Actions
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_notes = Column(Text)
+    follow_up_assigned_to = Column(Integer, ForeignKey('users.id'), nullable=True)
+    
+    # Metadata
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    customer_email = Column(String, nullable=False)
+    customer_name = Column(String, nullable=False)
+    
+    # Relationships
+    ticket = relationship('SupportTicket')
+    organization = relationship('Organization')
+    follow_up_assignee = relationship('User')
+
+class SupportAnalytics(Base):
+    __tablename__ = 'support_analytics'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Time Period
+    period_type = Column(String, nullable=False)  # daily, weekly, monthly, quarterly, yearly
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    
+    # Ticket Metrics
+    total_tickets = Column(Integer, default=0)
+    open_tickets = Column(Integer, default=0)
+    resolved_tickets = Column(Integer, default=0)
+    closed_tickets = Column(Integer, default=0)
+    
+    # Response Time Metrics
+    avg_first_response_time = Column(Float, default=0.0)  # Hours
+    avg_resolution_time = Column(Float, default=0.0)  # Hours
+    sla_breach_count = Column(Integer, default=0)
+    sla_compliance_rate = Column(Float, default=0.0)  # Percentage
+    
+    # Customer Satisfaction
+    avg_satisfaction_rating = Column(Float, default=0.0)
+    nps_score = Column(Float, default=0.0)
+    survey_response_rate = Column(Float, default=0.0)
+    
+    # Agent Performance
+    tickets_per_agent = Column(JSON)  # Agent ID -> ticket count
+    resolution_rate_per_agent = Column(JSON)  # Agent ID -> resolution rate
+    
+    # Category Breakdown
+    tickets_by_category = Column(JSON)  # Category -> count
+    tickets_by_priority = Column(JSON)  # Priority -> count
+    
+    # Metadata
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization') 

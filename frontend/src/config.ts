@@ -6,8 +6,13 @@ const isRailway = typeof window !== 'undefined' && window.location.hostname === 
 // BUT NOT when running on Railway
 const runtimeOverride = !isRailway && typeof window !== 'undefined' ? window.localStorage?.getItem('API_BASE_URL') : null;
 
-export const API_BASE_URL = isRailway ? 'https://neuracrm.up.railway.app' : 
-  (runtimeOverride || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000');
+// Default base URL: in dev use backend port 8000; in built/served bundles use current origin
+const defaultBaseUrl = import.meta.env.DEV
+  ? 'http://127.0.0.1:8000'
+  : (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
+
+export const API_BASE_URL = isRailway ? 'https://neuracrm.up.railway.app' :
+  (runtimeOverride || import.meta.env.VITE_API_URL || defaultBaseUrl);
 
 // Environment check
 export const isDevelopment = import.meta.env.DEV;

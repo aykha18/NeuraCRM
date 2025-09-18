@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func
+from sqlalchemy import text, func, or_
 from pydantic import BaseModel
 from typing import Optional
 
@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -50,6 +50,20 @@ try:
         print("Γ£à Financial management tables created/verified successfully")
     except Exception as e:
         print(f"Γ¥î Error creating financial tables: {e}")
+    
+    # Create customer support tables if they don't exist
+    try:
+        engine = get_engine()
+        SupportTicket.metadata.create_all(bind=engine)
+        SupportComment.metadata.create_all(bind=engine)
+        SupportAttachment.metadata.create_all(bind=engine)
+        KnowledgeBaseArticle.metadata.create_all(bind=engine)
+        SupportSLA.metadata.create_all(bind=engine)
+        CustomerSatisfactionSurvey.metadata.create_all(bind=engine)
+        SupportAnalytics.metadata.create_all(bind=engine)
+        print("Γ£à Customer support tables created/verified successfully")
+    except Exception as e:
+        print(f"Γ¥î Error creating customer support tables: {e}")
         
 except ImportError as e:
     print(f"Γ¥î Database import failed: {e}")
@@ -2051,6 +2065,689 @@ def generate_financial_report(report_data: dict, current_user: User = Depends(ge
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to generate financial report: {str(e)}"}
+
+# ============================================================================
+# CUSTOMER SUPPORT ENDPOINTS
+# ============================================================================
+
+# Ticket Management
+@app.get("/api/support/tickets")
+def get_support_tickets(
+    status: str = None,
+    priority: str = None,
+    category: str = None,
+    assigned_to: int = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all support tickets with optional filters"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        query = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id
+        )
+        
+        # Apply filters
+        if status:
+            query = query.filter(SupportTicket.status == status)
+        if priority:
+            query = query.filter(SupportTicket.priority == priority)
+        if category:
+            query = query.filter(SupportTicket.category == category)
+        if assigned_to:
+            query = query.filter(SupportTicket.assigned_to_id == assigned_to)
+        
+        tickets = query.order_by(SupportTicket.created_at.desc()).all()
+        
+        return [
+            {
+                "id": ticket.id,
+                "ticket_number": ticket.ticket_number,
+                "title": ticket.title,
+                "description": ticket.description,
+                "priority": ticket.priority,
+                "status": ticket.status,
+                "category": ticket.category,
+                "subcategory": ticket.subcategory,
+                "customer_name": ticket.customer_name,
+                "customer_email": ticket.customer_email,
+                "assigned_to_id": ticket.assigned_to_id,
+                "assigned_to_name": ticket.assigned_to.name if ticket.assigned_to else None,
+                "sla_deadline": ticket.sla_deadline.isoformat() if ticket.sla_deadline else None,
+                "first_response_at": ticket.first_response_at.isoformat() if ticket.first_response_at else None,
+                "resolution_deadline": ticket.resolution_deadline.isoformat() if ticket.resolution_deadline else None,
+                "escalated": ticket.escalated,
+                "escalated_at": ticket.escalated_at.isoformat() if ticket.escalated_at else None,
+                "satisfaction_rating": ticket.satisfaction_rating,
+                "created_at": ticket.created_at.isoformat(),
+                "updated_at": ticket.updated_at.isoformat(),
+                "resolved_at": ticket.resolved_at.isoformat() if ticket.resolved_at else None,
+                "closed_at": ticket.closed_at.isoformat() if ticket.closed_at else None
+            }
+            for ticket in tickets
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch support tickets: {str(e)}"}
+
+@app.post("/api/support/tickets")
+def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new support ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Generate ticket number
+        ticket_count = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id
+        ).count()
+        ticket_number = f"TKT-{current_user.organization_id:03d}-{ticket_count + 1:06d}"
+        
+        # Calculate SLA deadlines based on priority
+        sla_hours = {
+            'low': 72,      # 3 days
+            'medium': 24,   # 1 day
+            'high': 8,      # 8 hours
+            'urgent': 4,    # 4 hours
+            'critical': 1   # 1 hour
+        }
+        
+        priority = ticket_data.get('priority', 'medium')
+        sla_hours_value = sla_hours.get(priority, 24)
+        
+        # Calculate deadlines
+        now = datetime.utcnow()
+        sla_deadline = now + timedelta(hours=sla_hours_value)
+        resolution_deadline = now + timedelta(hours=sla_hours_value * 2)
+        
+        ticket = SupportTicket(
+            ticket_number=ticket_number,
+            organization_id=current_user.organization_id,
+            title=ticket_data['title'],
+            description=ticket_data['description'],
+            priority=priority,
+            category=ticket_data['category'],
+            subcategory=ticket_data.get('subcategory'),
+            customer_name=ticket_data['customer_name'],
+            customer_email=ticket_data['customer_email'],
+            customer_account_id=ticket_data.get('customer_account_id'),
+            contact_id=ticket_data.get('contact_id'),
+            assigned_to_id=ticket_data.get('assigned_to_id'),
+            sla_deadline=sla_deadline,
+            resolution_deadline=resolution_deadline,
+            created_by=current_user.id
+        )
+        
+        db.add(ticket)
+        db.commit()
+        
+        return {
+            "message": "Support ticket created successfully",
+            "ticket": {
+                "id": ticket.id,
+                "ticket_number": ticket.ticket_number,
+                "title": ticket.title,
+                "priority": ticket.priority,
+                "status": ticket.status,
+                "sla_deadline": ticket.sla_deadline.isoformat()
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create support ticket: {str(e)}"}
+
+@app.get("/api/support/tickets/{ticket_id}")
+def get_support_ticket(ticket_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get a specific support ticket with comments"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == current_user.organization_id
+        ).first()
+        
+        if not ticket:
+            return {"error": "Support ticket not found"}
+        
+        # Get comments
+        comments = db.query(SupportComment).filter(
+            SupportComment.ticket_id == ticket_id
+        ).order_by(SupportComment.created_at.asc()).all()
+        
+        return {
+            "id": ticket.id,
+            "ticket_number": ticket.ticket_number,
+            "title": ticket.title,
+            "description": ticket.description,
+            "priority": ticket.priority,
+            "status": ticket.status,
+            "category": ticket.category,
+            "subcategory": ticket.subcategory,
+            "customer_name": ticket.customer_name,
+            "customer_email": ticket.customer_email,
+            "customer_account_id": ticket.customer_account_id,
+            "contact_id": ticket.contact_id,
+            "assigned_to_id": ticket.assigned_to_id,
+            "assigned_to_name": ticket.assigned_to.name if ticket.assigned_to else None,
+            "sla_deadline": ticket.sla_deadline.isoformat() if ticket.sla_deadline else None,
+            "first_response_at": ticket.first_response_at.isoformat() if ticket.first_response_at else None,
+            "resolution_deadline": ticket.resolution_deadline.isoformat() if ticket.resolution_deadline else None,
+            "resolution": ticket.resolution,
+            "resolution_notes": ticket.resolution_notes,
+            "escalated": ticket.escalated,
+            "escalated_at": ticket.escalated_at.isoformat() if ticket.escalated_at else None,
+            "escalation_reason": ticket.escalation_reason,
+            "satisfaction_rating": ticket.satisfaction_rating,
+            "satisfaction_feedback": ticket.satisfaction_feedback,
+            "created_at": ticket.created_at.isoformat(),
+            "updated_at": ticket.updated_at.isoformat(),
+            "resolved_at": ticket.resolved_at.isoformat() if ticket.resolved_at else None,
+            "closed_at": ticket.closed_at.isoformat() if ticket.closed_at else None,
+            "comments": [
+                {
+                    "id": comment.id,
+                    "author_name": comment.author_name,
+                    "author_email": comment.author_email,
+                    "author_type": comment.author_type,
+                    "content": comment.content,
+                    "is_internal": comment.is_internal,
+                    "comment_type": comment.comment_type,
+                    "created_at": comment.created_at.isoformat()
+                }
+                for comment in comments
+            ]
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch support ticket: {str(e)}"}
+
+@app.put("/api/support/tickets/{ticket_id}")
+def update_support_ticket(ticket_id: int, update_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update a support ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == current_user.organization_id
+        ).first()
+        
+        if not ticket:
+            return {"error": "Support ticket not found"}
+        
+        # Update fields
+        if 'title' in update_data:
+            ticket.title = update_data['title']
+        if 'description' in update_data:
+            ticket.description = update_data['description']
+        if 'priority' in update_data:
+            ticket.priority = update_data['priority']
+        if 'status' in update_data:
+            ticket.status = update_data['status']
+        if 'category' in update_data:
+            ticket.category = update_data['category']
+        if 'subcategory' in update_data:
+            ticket.subcategory = update_data['subcategory']
+        if 'assigned_to_id' in update_data:
+            ticket.assigned_to_id = update_data['assigned_to_id']
+            if update_data['assigned_to_id']:
+                ticket.assigned_at = datetime.utcnow()
+        if 'resolution' in update_data:
+            ticket.resolution = update_data['resolution']
+        if 'resolution_notes' in update_data:
+            ticket.resolution_notes = update_data['resolution_notes']
+        
+        # Handle status changes
+        if 'status' in update_data:
+            new_status = update_data['status']
+            if new_status == 'resolved' and not ticket.resolved_at:
+                ticket.resolved_at = datetime.utcnow()
+                ticket.resolved_by_id = current_user.id
+            elif new_status == 'closed' and not ticket.closed_at:
+                ticket.closed_at = datetime.utcnow()
+        
+        # Set first response time if this is the first agent response
+        if not ticket.first_response_at and current_user.id != ticket.created_by:
+            ticket.first_response_at = datetime.utcnow()
+        
+        ticket.updated_at = datetime.utcnow()
+        db.commit()
+        
+        return {
+            "message": "Support ticket updated successfully",
+            "ticket": {
+                "id": ticket.id,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "assigned_to_id": ticket.assigned_to_id,
+                "updated_at": ticket.updated_at.isoformat()
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update support ticket: {str(e)}"}
+
+@app.post("/api/support/tickets/{ticket_id}/comments")
+def add_ticket_comment(ticket_id: int, comment_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Add a comment to a support ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == current_user.organization_id
+        ).first()
+        
+        if not ticket:
+            return {"error": "Support ticket not found"}
+        
+        comment = SupportComment(
+            ticket_id=ticket_id,
+            author_id=current_user.id,
+            author_name=current_user.name,
+            author_email=current_user.email,
+            author_type='agent',
+            content=comment_data['content'],
+            is_internal=comment_data.get('is_internal', False),
+            comment_type=comment_data.get('comment_type', 'comment')
+        )
+        
+        db.add(comment)
+        
+        # Update ticket's first response time if this is the first agent comment
+        if not ticket.first_response_at and not comment.is_internal:
+            ticket.first_response_at = datetime.utcnow()
+        
+        ticket.updated_at = datetime.utcnow()
+        db.commit()
+        
+        return {
+            "message": "Comment added successfully",
+            "comment": {
+                "id": comment.id,
+                "author_name": comment.author_name,
+                "content": comment.content,
+                "is_internal": comment.is_internal,
+                "created_at": comment.created_at.isoformat()
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to add comment: {str(e)}"}
+
+# Knowledge Base Management
+@app.get("/api/support/knowledge-base")
+def get_knowledge_base_articles(
+    category: str = None,
+    status: str = 'published',
+    search: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get knowledge base articles with optional filters"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        query = db.query(KnowledgeBaseArticle).filter(
+            KnowledgeBaseArticle.organization_id == current_user.organization_id
+        )
+        
+        if status:
+            query = query.filter(KnowledgeBaseArticle.status == status)
+        if category:
+            query = query.filter(KnowledgeBaseArticle.category == category)
+        if search:
+            query = query.filter(
+                or_(
+                    KnowledgeBaseArticle.title.ilike(f'%{search}%'),
+                    KnowledgeBaseArticle.content.ilike(f'%{search}%'),
+                    KnowledgeBaseArticle.summary.ilike(f'%{search}%')
+                )
+            )
+        
+        articles = query.order_by(KnowledgeBaseArticle.featured.desc(), KnowledgeBaseArticle.view_count.desc()).all()
+        
+        return [
+            {
+                "id": article.id,
+                "title": article.title,
+                "slug": article.slug,
+                "summary": article.summary,
+                "category": article.category,
+                "subcategory": article.subcategory,
+                "tags": article.tags or [],
+                "status": article.status,
+                "visibility": article.visibility,
+                "featured": article.featured,
+                "view_count": article.view_count,
+                "helpful_count": article.helpful_count,
+                "not_helpful_count": article.not_helpful_count,
+                "author_name": article.author.name if article.author else None,
+                "created_at": article.created_at.isoformat(),
+                "updated_at": article.updated_at.isoformat(),
+                "published_at": article.published_at.isoformat() if article.published_at else None
+            }
+            for article in articles
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch knowledge base articles: {str(e)}"}
+
+@app.get("/api/support/knowledge-base/{article_id}")
+def get_knowledge_base_article(article_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get a specific knowledge base article"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        article = db.query(KnowledgeBaseArticle).filter(
+            KnowledgeBaseArticle.id == article_id,
+            KnowledgeBaseArticle.organization_id == current_user.organization_id
+        ).first()
+        
+        if not article:
+            return {"error": "Knowledge base article not found"}
+        
+        # Increment view count
+        article.view_count += 1
+        db.commit()
+        
+        return {
+            "id": article.id,
+            "title": article.title,
+            "slug": article.slug,
+            "content": article.content,
+            "summary": article.summary,
+            "category": article.category,
+            "subcategory": article.subcategory,
+            "tags": article.tags or [],
+            "status": article.status,
+            "visibility": article.visibility,
+            "featured": article.featured,
+            "meta_description": article.meta_description,
+            "view_count": article.view_count,
+            "helpful_count": article.helpful_count,
+            "not_helpful_count": article.not_helpful_count,
+            "author_name": article.author.name if article.author else None,
+            "created_at": article.created_at.isoformat(),
+            "updated_at": article.updated_at.isoformat(),
+            "published_at": article.published_at.isoformat() if article.published_at else None
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch knowledge base article: {str(e)}"}
+
+@app.post("/api/support/knowledge-base")
+def create_knowledge_base_article(article_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new knowledge base article"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Generate slug from title
+        slug = article_data['title'].lower().replace(' ', '-').replace('_', '-')
+        slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+        
+        # Ensure unique slug
+        counter = 1
+        original_slug = slug
+        while db.query(KnowledgeBaseArticle).filter(KnowledgeBaseArticle.slug == slug).first():
+            slug = f"{original_slug}-{counter}"
+            counter += 1
+        
+        article = KnowledgeBaseArticle(
+            organization_id=current_user.organization_id,
+            title=article_data['title'],
+            slug=slug,
+            content=article_data['content'],
+            summary=article_data.get('summary'),
+            category=article_data['category'],
+            subcategory=article_data.get('subcategory'),
+            tags=article_data.get('tags', []),
+            status=article_data.get('status', 'draft'),
+            visibility=article_data.get('visibility', 'public'),
+            featured=article_data.get('featured', False),
+            meta_description=article_data.get('meta_description'),
+            author_id=current_user.id
+        )
+        
+        if article.status == 'published':
+            article.published_at = datetime.utcnow()
+        
+        db.add(article)
+        db.commit()
+        
+        return {
+            "message": "Knowledge base article created successfully",
+            "article": {
+                "id": article.id,
+                "title": article.title,
+                "slug": article.slug,
+                "status": article.status
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create knowledge base article: {str(e)}"}
+
+# Support Analytics
+@app.get("/api/support/analytics/dashboard")
+def get_support_analytics_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get support analytics dashboard data"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get current month data
+        current_month = datetime.utcnow().strftime('%Y-%m')
+        
+        # Ticket metrics
+        total_tickets = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id
+        ).count()
+        
+        open_tickets = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+        ).count()
+        
+        resolved_tickets = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.status == 'resolved'
+        ).count()
+        
+        closed_tickets = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.status == 'closed'
+        ).count()
+        
+        # Response time metrics
+        tickets_with_response = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.first_response_at.isnot(None)
+        ).all()
+        
+        avg_first_response_time = 0
+        if tickets_with_response:
+            total_response_time = sum([
+                (ticket.first_response_at - ticket.created_at).total_seconds() / 3600
+                for ticket in tickets_with_response
+            ])
+            avg_first_response_time = total_response_time / len(tickets_with_response)
+        
+        # Resolution time metrics
+        resolved_tickets_with_time = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.resolved_at.isnot(None)
+        ).all()
+        
+        avg_resolution_time = 0
+        if resolved_tickets_with_time:
+            total_resolution_time = sum([
+                (ticket.resolved_at - ticket.created_at).total_seconds() / 3600
+                for ticket in resolved_tickets_with_time
+            ])
+            avg_resolution_time = total_resolution_time / len(resolved_tickets_with_time)
+        
+        # SLA compliance
+        sla_breach_count = db.query(SupportTicket).filter(
+            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.sla_deadline < datetime.utcnow(),
+            SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+        ).count()
+        
+        sla_compliance_rate = ((total_tickets - sla_breach_count) / total_tickets * 100) if total_tickets > 0 else 100
+        
+        # Customer satisfaction
+        satisfaction_surveys = db.query(CustomerSatisfactionSurvey).filter(
+            CustomerSatisfactionSurvey.organization_id == current_user.organization_id
+        ).all()
+        
+        avg_satisfaction_rating = 0
+        nps_score = 0
+        if satisfaction_surveys:
+            avg_satisfaction_rating = sum([survey.overall_satisfaction for survey in satisfaction_surveys if survey.overall_satisfaction]) / len([s for s in satisfaction_surveys if s.overall_satisfaction])
+            nps_scores = [survey.nps_score for survey in satisfaction_surveys if survey.nps_score is not None]
+            if nps_scores:
+                nps_score = sum(nps_scores) / len(nps_scores)
+        
+        # Category breakdown
+        category_counts = db.query(
+            SupportTicket.category,
+            func.count(SupportTicket.id)
+        ).filter(
+            SupportTicket.organization_id == current_user.organization_id
+        ).group_by(SupportTicket.category).all()
+        
+        tickets_by_category = {category: count for category, count in category_counts}
+        
+        # Priority breakdown
+        priority_counts = db.query(
+            SupportTicket.priority,
+            func.count(SupportTicket.id)
+        ).filter(
+            SupportTicket.organization_id == current_user.organization_id
+        ).group_by(SupportTicket.priority).all()
+        
+        tickets_by_priority = {priority: count for priority, count in priority_counts}
+        
+        return {
+            "ticket_metrics": {
+                "total_tickets": total_tickets,
+                "open_tickets": open_tickets,
+                "resolved_tickets": resolved_tickets,
+                "closed_tickets": closed_tickets,
+                "resolution_rate": (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0
+            },
+            "response_metrics": {
+                "avg_first_response_time": round(avg_first_response_time, 2),
+                "avg_resolution_time": round(avg_resolution_time, 2),
+                "sla_breach_count": sla_breach_count,
+                "sla_compliance_rate": round(sla_compliance_rate, 2)
+            },
+            "satisfaction_metrics": {
+                "avg_satisfaction_rating": round(avg_satisfaction_rating, 2),
+                "nps_score": round(nps_score, 2),
+                "survey_count": len(satisfaction_surveys)
+            },
+            "breakdown": {
+                "tickets_by_category": tickets_by_category,
+                "tickets_by_priority": tickets_by_priority
+            }
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch support analytics: {str(e)}"}
+
+# Customer Satisfaction Surveys
+@app.get("/api/support/surveys")
+def get_satisfaction_surveys(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get customer satisfaction surveys"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        surveys = db.query(CustomerSatisfactionSurvey).filter(
+            CustomerSatisfactionSurvey.organization_id == current_user.organization_id
+        ).order_by(CustomerSatisfactionSurvey.submitted_at.desc()).all()
+        
+        return [
+            {
+                "id": survey.id,
+                "ticket_id": survey.ticket_id,
+                "ticket_number": survey.ticket.ticket_number if survey.ticket else None,
+                "survey_type": survey.survey_type,
+                "rating": survey.rating,
+                "nps_score": survey.nps_score,
+                "overall_satisfaction": survey.overall_satisfaction,
+                "response_time_rating": survey.response_time_rating,
+                "resolution_quality_rating": survey.resolution_quality_rating,
+                "agent_knowledge_rating": survey.agent_knowledge_rating,
+                "communication_rating": survey.communication_rating,
+                "what_went_well": survey.what_went_well,
+                "what_could_improve": survey.what_could_improve,
+                "additional_comments": survey.additional_comments,
+                "follow_up_required": survey.follow_up_required,
+                "customer_name": survey.customer_name,
+                "customer_email": survey.customer_email,
+                "submitted_at": survey.submitted_at.isoformat()
+            }
+            for survey in surveys
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch satisfaction surveys: {str(e)}"}
+
+@app.post("/api/support/surveys")
+def create_satisfaction_survey(survey_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a customer satisfaction survey"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        survey = CustomerSatisfactionSurvey(
+            ticket_id=survey_data['ticket_id'],
+            organization_id=current_user.organization_id,
+            survey_type=survey_data.get('survey_type', 'post_resolution'),
+            rating=survey_data['rating'],
+            nps_score=survey_data.get('nps_score'),
+            overall_satisfaction=survey_data.get('overall_satisfaction'),
+            response_time_rating=survey_data.get('response_time_rating'),
+            resolution_quality_rating=survey_data.get('resolution_quality_rating'),
+            agent_knowledge_rating=survey_data.get('agent_knowledge_rating'),
+            communication_rating=survey_data.get('communication_rating'),
+            what_went_well=survey_data.get('what_went_well'),
+            what_could_improve=survey_data.get('what_could_improve'),
+            additional_comments=survey_data.get('additional_comments'),
+            follow_up_required=survey_data.get('follow_up_required', False),
+            follow_up_notes=survey_data.get('follow_up_notes'),
+            follow_up_assigned_to=survey_data.get('follow_up_assigned_to'),
+            customer_name=survey_data['customer_name'],
+            customer_email=survey_data['customer_email']
+        )
+        
+        db.add(survey)
+        
+        # Update ticket with satisfaction rating
+        ticket = db.query(SupportTicket).filter(SupportTicket.id == survey_data['ticket_id']).first()
+        if ticket:
+            ticket.satisfaction_rating = survey_data['rating']
+            ticket.satisfaction_feedback = survey_data.get('additional_comments')
+        
+        db.commit()
+        
+        return {
+            "message": "Satisfaction survey submitted successfully",
+            "survey": {
+                "id": survey.id,
+                "rating": survey.rating,
+                "nps_score": survey.nps_score
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create satisfaction survey: {str(e)}"}
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")

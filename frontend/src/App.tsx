@@ -12,6 +12,7 @@ import PredictiveAnalytics from "./pages/PredictiveAnalytics";
 import UserManagement from "./pages/UserManagement";
 import CustomerAccounts from "./pages/CustomerAccounts";
 import FinancialManagement from "./pages/FinancialManagement";
+import CustomerSupport from "./pages/CustomerSupport";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -125,6 +126,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <FinancialManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/customer-support" element={
+              <ProtectedRoute>
+                <Layout>
+                  <CustomerSupport />
                 </Layout>
               </ProtectedRoute>
             } />
