@@ -9,7 +9,9 @@ from sqlalchemy import func, desc, and_, or_
 from api.models import (
     User, Organization, Contact, Lead, Deal, Stage, Activity, 
     EmailTemplate, EmailCampaign, EmailLog, ChatMessage, ChatRoom,
-    Subscription, SubscriptionPlan
+    Subscription, SubscriptionPlan, SupportTicket, SupportComment,
+    KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey,
+    SupportAnalytics, SupportQueue
 )
 
 class CRMDataAccess:
@@ -480,3 +482,92 @@ class CRMDataAccess:
             ]
         
         return results
+    
+    def get_support_context(self) -> Dict[str, Any]:
+        """Get support and customer service context"""
+        # Support tickets
+        total_tickets = self.db.query(SupportTicket).filter(
+            SupportTicket.organization_id == self.organization_id
+        ).count()
+        
+        open_tickets = self.db.query(SupportTicket).filter(
+            and_(
+                SupportTicket.organization_id == self.organization_id,
+                SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+            )
+        ).count()
+        
+        # Knowledge base articles
+        total_articles = self.db.query(KnowledgeBaseArticle).filter(
+            KnowledgeBaseArticle.organization_id == self.organization_id
+        ).count()
+        
+        published_articles = self.db.query(KnowledgeBaseArticle).filter(
+            and_(
+                KnowledgeBaseArticle.organization_id == self.organization_id,
+                KnowledgeBaseArticle.status == 'published'
+            )
+        ).count()
+        
+        # Recent tickets
+        recent_tickets = self.db.query(SupportTicket).filter(
+            SupportTicket.organization_id == self.organization_id
+        ).order_by(desc(SupportTicket.created_at)).limit(5).all()
+        
+        return {
+            "support_metrics": {
+                "total_tickets": total_tickets,
+                "open_tickets": open_tickets,
+                "resolved_tickets": total_tickets - open_tickets,
+                "total_articles": total_articles,
+                "published_articles": published_articles
+            },
+            "recent_tickets": [
+                {
+                    "id": ticket.id,
+                    "ticket_number": ticket.ticket_number,
+                    "title": ticket.title,
+                    "status": ticket.status,
+                    "priority": ticket.priority,
+                    "customer_name": ticket.customer_name,
+                    "created_at": ticket.created_at.isoformat() if ticket.created_at else None
+                }
+                for ticket in recent_tickets
+            ]
+        }
+    
+    def get_knowledge_base_context(self, query: str = None) -> Dict[str, Any]:
+        """Get knowledge base context for AI responses"""
+        base_query = self.db.query(KnowledgeBaseArticle).filter(
+            and_(
+                KnowledgeBaseArticle.organization_id == self.organization_id,
+                KnowledgeBaseArticle.status == 'published'
+            )
+        )
+        
+        if query:
+            articles = base_query.filter(
+                or_(
+                    KnowledgeBaseArticle.title.ilike(f"%{query}%"),
+                    KnowledgeBaseArticle.content.ilike(f"%{query}%"),
+                    KnowledgeBaseArticle.summary.ilike(f"%{query}%")
+                )
+            ).limit(10).all()
+        else:
+            articles = base_query.order_by(desc(KnowledgeBaseArticle.view_count)).limit(10).all()
+        
+        return {
+            "articles": [
+                {
+                    "id": article.id,
+                    "title": article.title,
+                    "summary": article.summary,
+                    "category": article.category,
+                    "subcategory": article.subcategory,
+                    "view_count": article.view_count,
+                    "helpful_count": article.helpful_count,
+                    "created_at": article.created_at.isoformat() if article.created_at else None
+                }
+                for article in articles
+            ]
+        }

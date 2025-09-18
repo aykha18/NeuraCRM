@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from openai import OpenAI
 from api.db import get_db
-from api.models import Deal, Contact, Lead, User
+from api.models import Deal, Contact, Lead, User, SupportTicket, KnowledgeBaseArticle
 from dotenv import load_dotenv
 import os
 
@@ -49,10 +49,15 @@ def get_crm_context(db: Session, user_id: int) -> str:
         # Get contacts data
         contacts_count = db.query(Contact).filter(Contact.owner_id == user_id).count()
         
+        # Get support data
+        support_tickets_count = db.query(SupportTicket).count()
+        open_support_tickets = db.query(SupportTicket).filter(SupportTicket.status.in_(['open', 'in_progress'])).count()
+        knowledge_articles_count = db.query(KnowledgeBaseArticle).filter(KnowledgeBaseArticle.status == 'published').count()
+        
         context = f"""
 CRM Context for {user_name} (User ID: {user_id}):
 
-📊 PIPELINE OVERVIEW:
+📊 SALES PIPELINE:
 - Total Deals: {deals_count} (${total_value:,.0f} total value)
 - Open Deals: {open_deals}
 - Won Deals: {won_deals}
@@ -62,10 +67,16 @@ CRM Context for {user_name} (User ID: {user_id}):
 🎯 TOP DEALS:
 {chr(10).join(deals_info) if deals_info else "No deals found"}
 
+🛠️ CUSTOMER SUPPORT:
+- Total Support Tickets: {support_tickets_count}
+- Open Support Tickets: {open_support_tickets}
+- Knowledge Base Articles: {knowledge_articles_count}
+
 💡 SALES INSIGHTS:
 - Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
 - Average Deal Size: ${(total_value / deals_count):,.0f} if deals_count > 0 else 'No data'
 - Conversion Rate: {(won_deals / deals_count * 100):.1f}% if deals_count > 0 else 'No data'
+- Support Load: {'High' if open_support_tickets > 20 else 'Moderate' if open_support_tickets > 10 else 'Low'}
 """
         return context
     except Exception as e:
@@ -111,6 +122,9 @@ def ai_assistant(request: AIChatRequest, db: Session = Depends(get_db)):
 - Follow-up recommendations
 - Revenue forecasting
 - Customer relationship building
+- Customer support and service
+- Knowledge base article suggestions
+- Support ticket analysis and recommendations
 
 Always ground your responses in the provided CRM context. If data is missing, ask specific questions to gather more information."""
 
