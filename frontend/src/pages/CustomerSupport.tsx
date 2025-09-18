@@ -75,6 +75,7 @@ interface KnowledgeBaseArticle {
   id: number;
   title: string;
   slug: string;
+  content?: string;
   summary?: string;
   category: string;
   subcategory?: string;
@@ -89,6 +90,7 @@ interface KnowledgeBaseArticle {
   created_at: string;
   updated_at: string;
   published_at?: string;
+  meta_description?: string;
 }
 
 interface SupportAnalytics {
@@ -114,6 +116,7 @@ interface SupportAnalytics {
     tickets_by_category: Record<string, number>;
     tickets_by_priority: Record<string, number>;
   };
+  error?: string;
 }
 
 const CustomerSupport: React.FC = () => {
@@ -588,7 +591,7 @@ const CustomerSupport: React.FC = () => {
     setSelectedArticle(article);
     setArticleForm({
       title: article.title,
-      content: article.content,
+      content: article.content || '',
       summary: article.summary || '',
       category: article.category,
       subcategory: article.subcategory || '',
