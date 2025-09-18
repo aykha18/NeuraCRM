@@ -944,7 +944,7 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
         - Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
         - Average Deal Size: ${avg_deal_size:,.0f}
         - High-Probability Deals: {len(high_probability_deals)} deals (${sum(d['value'] for d in high_probability_deals):,.0f} value)
-        - Lead Quality: {len(hot_leads)}/{leads_count} leads are hot ({len(hot_leads)/leads_count*100:.1f}% if leads_count > 0 else 0}%)
+        - Lead Quality: {len(hot_leads)}/{leads_count} leads are hot ({(len(hot_leads)/leads_count*100):.1f if leads_count > 0 else 0.0}%)
         - Sales Velocity: {len(won_deals)} deals closed
         """
         
