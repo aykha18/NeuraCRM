@@ -414,9 +414,15 @@ const CustomerSupport: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       const data = await apiRequest('/api/support/analytics/dashboard') as SupportAnalytics;
-      setAnalytics(data);
+      if (data && !data.error) {
+        setAnalytics(data);
+      } else {
+        console.warn('Analytics data not available:', data?.error);
+        setAnalytics(null);
+      }
     } catch (err) {
       console.error('Error fetching analytics:', err);
+      setAnalytics(null);
     }
   };
 
@@ -1008,7 +1014,7 @@ const CustomerSupport: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tickets</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {analytics.ticket_metrics.total_tickets}
+                    {analytics?.ticket_metrics?.total_tickets || 0}
                   </p>
                 </div>
               </div>
@@ -1022,7 +1028,7 @@ const CustomerSupport: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Resolution Rate</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {analytics.ticket_metrics.resolution_rate.toFixed(1)}%
+                    {analytics?.ticket_metrics?.resolution_rate?.toFixed(1) || '0.0'}%
                   </p>
                 </div>
               </div>
@@ -1036,7 +1042,7 @@ const CustomerSupport: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Response Time</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {analytics.response_metrics.avg_first_response_time.toFixed(1)}h
+                    {analytics?.response_metrics?.avg_first_response_time?.toFixed(1) || '0.0'}h
                   </p>
                 </div>
               </div>
@@ -1050,7 +1056,7 @@ const CustomerSupport: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Satisfaction</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {analytics.satisfaction_metrics.avg_satisfaction_rating.toFixed(1)}/5
+                    {analytics?.satisfaction_metrics?.avg_satisfaction_rating?.toFixed(1) || '0.0'}/5
                   </p>
                 </div>
               </div>
@@ -1062,7 +1068,7 @@ const CustomerSupport: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tickets by Category</h3>
               <div className="space-y-3">
-                {Object.entries(analytics.breakdown.tickets_by_category).map(([category, count]) => (
+                {Object.entries(analytics?.breakdown?.tickets_by_category || {}).map(([category, count]) => (
                   <div key={category} className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                       {category.replace('_', ' ')}
@@ -1078,7 +1084,7 @@ const CustomerSupport: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tickets by Priority</h3>
               <div className="space-y-3">
-                {Object.entries(analytics.breakdown.tickets_by_priority).map(([priority, count]) => (
+                {Object.entries(analytics?.breakdown?.tickets_by_priority || {}).map(([priority, count]) => (
                   <div key={priority} className="flex items-center justify-between">
                     <span className={`text-sm px-2 py-1 rounded-full ${getPriorityColor(priority)}`}>
                       {priority}
@@ -1095,7 +1101,9 @@ const CustomerSupport: React.FC = () => {
       ) : (
         <div className="text-center py-8">
           <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            {analytics === null ? 'Analytics data not available' : 'Loading analytics...'}
+          </p>
         </div>
       )}
     </div>
