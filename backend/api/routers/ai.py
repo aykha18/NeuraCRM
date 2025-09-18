@@ -30,14 +30,25 @@ def get_crm_context(db: Session, user_id: int) -> str:
         user = db.query(User).filter(User.id == user_id).first()
         user_name = user.name if user else "User"
         
-        # Get deals data
-        deals_count = db.query(Deal).filter(Deal.owner_id == user_id).count()
-        total_value = db.query(func.sum(Deal.value)).filter(Deal.owner_id == user_id).scalar() or 0
-        open_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'open').count()
-        won_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'won').count()
+        # Get user's organization to show organization-wide data if user has no deals
+        user_org_id = user.organization_id if user else None
         
-        # Get top deals with comprehensive data
-        top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(8).all()
+        # Get deals data - first try user's deals, then organization deals if none
+        user_deals_count = db.query(Deal).filter(Deal.owner_id == user_id).count()
+        if user_deals_count == 0 and user_org_id:
+            # User has no deals, show organization deals
+            deals_count = db.query(Deal).filter(Deal.organization_id == user_org_id).count()
+            total_value = db.query(func.sum(Deal.value)).filter(Deal.organization_id == user_org_id).scalar() or 0
+            open_deals = db.query(Deal).filter(Deal.organization_id == user_org_id, Deal.status == 'open').count()
+            won_deals = db.query(Deal).filter(Deal.organization_id == user_org_id, Deal.status == 'won').count()
+            top_deals = db.query(Deal).filter(Deal.organization_id == user_org_id).order_by(Deal.value.desc()).limit(8).all()
+        else:
+            # User has deals, use user-specific data
+            deals_count = user_deals_count
+            total_value = db.query(func.sum(Deal.value)).filter(Deal.owner_id == user_id).scalar() or 0
+            open_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'open').count()
+            won_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'won').count()
+            top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(8).all()
         deals_info = []
         for deal in top_deals:
             # Calculate probability based on stage
@@ -51,30 +62,43 @@ def get_crm_context(db: Session, user_id: int) -> str:
                     'prospecting': 10, 'qualification': 25, 'proposal': 50,
                     'negotiation': 75, 'closing': 90
                 }
-                probability = stage_probabilities.get(deal.stage.title.lower() if deal.stage else 'prospecting', 20)
+                probability = stage_probabilities.get(deal.stage.name.lower() if deal.stage else 'prospecting', 20)
             
             deals_info.append(f"- Deal #{deal.id}: {deal.title} (${deal.value or 0:,.0f}, {probability}% probability, {deal.status}, closes {deal.reminder_date.strftime('%Y-%m-%d') if deal.reminder_date else 'Not set'})")
         
-        # Get comprehensive leads data
-        leads_count = db.query(Lead).filter(Lead.owner_id == user_id).count()
-        hot_leads = db.query(Lead).filter(Lead.owner_id == user_id, Lead.score >= 70).count()
-        
-        # Get top leads by score
-        top_leads = db.query(Lead).filter(Lead.owner_id == user_id).order_by(Lead.score.desc()).limit(5).all()
+        # Get comprehensive leads data - try user first, then organization
+        user_leads_count = db.query(Lead).filter(Lead.owner_id == user_id).count()
+        if user_leads_count == 0 and user_org_id:
+            # User has no leads, show organization leads
+            leads_count = db.query(Lead).filter(Lead.organization_id == user_org_id).count()
+            hot_leads = db.query(Lead).filter(Lead.organization_id == user_org_id, Lead.score >= 70).count()
+            top_leads = db.query(Lead).filter(Lead.organization_id == user_org_id).order_by(Lead.score.desc()).limit(5).all()
+        else:
+            # User has leads, use user-specific data
+            leads_count = user_leads_count
+            hot_leads = db.query(Lead).filter(Lead.owner_id == user_id, Lead.score >= 70).count()
+            top_leads = db.query(Lead).filter(Lead.owner_id == user_id).order_by(Lead.score.desc()).limit(5).all()
         leads_info = []
         for lead in top_leads:
             leads_info.append(f"- Lead #{lead.id}: {lead.title} (Score: {lead.score}, Confidence: {lead.score_confidence or 0.0:.1f}, Source: {lead.source or 'Unknown'})")
         
-        # Get contacts data
-        contacts_count = db.query(Contact).filter(Contact.owner_id == user_id).count()
+        # Get contacts data - try user first, then organization
+        user_contacts_count = db.query(Contact).filter(Contact.owner_id == user_id).count()
+        if user_contacts_count == 0 and user_org_id:
+            contacts_count = db.query(Contact).filter(Contact.organization_id == user_org_id).count()
+        else:
+            contacts_count = user_contacts_count
         
         # Get support data
         support_tickets_count = db.query(SupportTicket).count()
         open_support_tickets = db.query(SupportTicket).filter(SupportTicket.status.in_(['open', 'in_progress'])).count()
         knowledge_articles_count = db.query(KnowledgeBaseArticle).filter(KnowledgeBaseArticle.status == 'published').count()
         
+        # Determine data scope
+        data_scope = "organization-wide" if (user_deals_count == 0 and user_org_id) else "user-specific"
+        
         context = f"""
-CRM Context for {user_name} (User ID: {user_id}):
+CRM Context for {user_name} (User ID: {user_id}) - Showing {data_scope} data:
 
 📊 SALES PIPELINE:
 - Total Deals: {deals_count} (${total_value:,.0f} total value)
@@ -142,6 +166,7 @@ Always base your response on the actual CRM data provided."""
         {"role": "system", "content": f"{system_prompt}\n\nCRM Context:\n{crm_context}"},
         {"role": "user", "content": request.message},
     ]
+    
 
     try:
         # Get API key from environment (handle BOM issues)
