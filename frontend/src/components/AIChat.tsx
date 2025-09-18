@@ -51,20 +51,15 @@ const AIChat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Use enhanced AI endpoint for better responses
-      const response = await fetch('/api/ai-enhanced/chat', {
+      // Use basic AI endpoint with improved context
+      const response = await fetch('/api/ai/assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           message: inputMessage.trim(),
-          conversation_history: messages.slice(-10).map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          })),
-          include_insights: true
+          user_id: user?.id || 1
         })
       });
 
@@ -74,17 +69,9 @@ const AIChat: React.FC = () => {
 
       const data = await response.json();
       
-      // Handle enhanced response format
-      let responseContent = data.response;
-      
-      // Add insights if available
-      if (data.insights) {
-        responseContent += `\n\n📊 **Sales Insights:**\n${JSON.stringify(data.insights, null, 2)}`;
-      }
-      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: responseContent,
+        content: data.response,
         sender: 'ai',
         timestamp: new Date()
       };
