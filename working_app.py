@@ -822,18 +822,92 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
         return {"error": "Database not available"}
     
     try:
-        # Simple AI response for now (can be enhanced later)
-        message = request.get("message", "")
+        from openai import OpenAI
+        from dotenv import load_dotenv
+        import os
         
-        # Basic responses based on keywords
-        if "lead" in message.lower():
-            return {"response": "I can help you analyze your leads. You currently have leads in your pipeline. Would you like me to show you the hottest prospects?"}
-        elif "deal" in message.lower():
-            return {"response": "I can help you with your deals. Let me analyze your pipeline and suggest next steps."}
-        elif "contact" in message.lower():
-            return {"response": "I can help you manage your contacts. Would you like me to show you contact insights?"}
-        else:
-            return {"response": "Hello! I'm your AI Sales Assistant. I can help you with leads, deals, contacts, and sales insights. What would you like to know?"}
+        # Load environment variables
+        load_dotenv()
+        
+        # Get message and user info
+        message = request.get("message", "")
+        user_id = request.get("user_id", current_user.id if current_user else 1)
+        
+        # Get API key from environment (handle BOM issues)
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("\ufeffOPENAI_API_KEY")
+        if not api_key:
+            # Debug: Check what environment variables are available
+            env_debug = {k: v[:10] + "..." if len(v) > 10 else v for k, v in os.environ.items() if 'OPENAI' in k.upper()}
+            raise HTTPException(status_code=500, detail=f"OpenAI API key not found in environment variables. Available OPENAI vars: {env_debug}")
+        
+        # Fetch CRM context
+        user_name = current_user.name if current_user else "User"
+        
+        # Get basic CRM metrics
+        deals_count = db.query(Deal).count() if DB_AVAILABLE else 0
+        leads_count = db.query(Lead).count() if DB_AVAILABLE else 0
+        contacts_count = db.query(Contact).count() if DB_AVAILABLE else 0
+        
+        crm_context = f"""
+        CRM Context for {user_name} (User ID: {user_id}):
+        
+        📊 SALES PIPELINE:
+        - Total Deals: {deals_count}
+        - Total Leads: {leads_count}
+        - Total Contacts: {contacts_count}
+        
+        🎯 SALES INSIGHTS:
+        - Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
+        """
+        
+        # Create system prompt
+        system_prompt = f"""You are an advanced AI Sales Assistant for NeuraCRM, helping {user_name} with their sales activities.
+
+        ## Your Expertise:
+        - Lead qualification and scoring
+        - Deal progression and pipeline management  
+        - Sales strategy and tactics
+        - Customer relationship management
+        - Revenue optimization
+
+        ## Your Approach:
+        1. **Data-Driven**: Always reference specific CRM data when available
+        2. **Actionable**: Provide concrete next steps and recommendations
+        3. **Personalized**: Tailor responses to {user_name}'s specific situation
+        4. **Strategic**: Think beyond immediate tasks to long-term success
+        5. **Proactive**: Identify opportunities and suggest improvements
+
+        ## Response Style:
+        - Be conversational but professional
+        - Use specific examples from their CRM data
+        - Provide numbered lists for action items
+        - Ask clarifying questions when needed
+        - Focus on high-impact activities
+
+        Always ground your responses in the provided CRM context."""
+        
+        # Prepare messages for OpenAI
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": f"CRM Context: {crm_context}"},
+            {"role": "user", "content": message},
+        ]
+        
+        # Call OpenAI API
+        client = OpenAI(api_key=api_key)
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=600,
+            temperature=0.7,
+        )
+        
+        ai_text = completion.choices[0].message.content or ""
+        ai_text = ai_text.strip()
+        if not ai_text:
+            ai_text = "I'm sorry, I couldn't generate a response just now. Please try again."
+        
+        return {"response": ai_text}
             
     except Exception as e:
         return {"error": f"AI assistant error: {str(e)}"}

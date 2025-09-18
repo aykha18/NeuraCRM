@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables
-load_dotenv(dotenv_path="../.env")
+load_dotenv()
 
 router = APIRouter(
     prefix="/api/ai",
