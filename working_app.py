@@ -39,6 +39,18 @@ try:
     from api.routers.predictive_analytics import router as predictive_analytics_router
     DB_AVAILABLE = True
     print("Γ£à Database models imported successfully")
+    
+    # Create financial management tables if they don't exist
+    try:
+        engine = get_engine()
+        Invoice.metadata.create_all(bind=engine)
+        Payment.metadata.create_all(bind=engine)
+        Revenue.metadata.create_all(bind=engine)
+        FinancialReport.metadata.create_all(bind=engine)
+        print("Γ£à Financial management tables created/verified successfully")
+    except Exception as e:
+        print(f"Γ¥î Error creating financial tables: {e}")
+        
 except ImportError as e:
     print(f"Γ¥î Database import failed: {e}")
     DB_AVAILABLE = False
@@ -1844,6 +1856,15 @@ def recognize_revenue(revenue_data: dict, current_user: User = Depends(get_curre
         
         if not invoice:
             return {"error": "Invoice not found"}
+        
+        # Check if revenue for this invoice already exists
+        existing_revenue = db.query(Revenue).filter(
+            Revenue.invoice_id == revenue_data['invoice_id'],
+            Revenue.organization_id == current_user.organization_id
+        ).first()
+        
+        if existing_revenue:
+            return {"error": "Revenue for this invoice has already been recognized"}
         
         # Create revenue entry
         revenue = Revenue(
