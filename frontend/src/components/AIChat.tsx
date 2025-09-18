@@ -52,10 +52,12 @@ const AIChat: React.FC = () => {
 
     try {
       // Use basic AI endpoint with improved context
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/ai/assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify({
           message: inputMessage.trim(),
