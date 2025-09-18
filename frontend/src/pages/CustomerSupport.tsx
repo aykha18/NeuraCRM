@@ -1865,6 +1865,184 @@ const CustomerSupport: React.FC = () => {
           </div>
         </AnimatedModal>
 
+        {/* Ticket Details Modal */}
+        <AnimatedModal
+          open={showTicketDetailsModal}
+          onClose={() => setShowTicketDetailsModal(false)}
+          title="Ticket Details"
+          animationType="scale"
+          size="lg"
+        >
+          {selectedTicket && (
+            <div className="space-y-6">
+              {/* Ticket Header */}
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {selectedTicket.ticket_number}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {selectedTicket.title}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedTicket.priority)}`}>
+                      {selectedTicket.priority}
+                    </span>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTicket.status)}`}>
+                      {selectedTicket.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Customer:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">{selectedTicket.customer_name}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Email:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">{selectedTicket.customer_email}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Category:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">{selectedTicket.category}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Assigned To:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">
+                      {selectedTicket.assigned_to_name || 'Unassigned'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Created:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">
+                      {formatDate(selectedTicket.created_at)}
+                    </span>
+                  </div>
+                  {selectedTicket.sla_deadline && (
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">SLA Deadline:</span>
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">
+                        {formatDate(selectedTicket.sla_deadline)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">Description</h4>
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {selectedTicket.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Comments Section */}
+              {selectedTicket.comments && selectedTicket.comments.length > 0 && (
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Comments</h4>
+                  <div className="space-y-3">
+                    {selectedTicket.comments.map((comment) => (
+                      <div key={comment.id} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {comment.author_name}
+                            </span>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              comment.is_internal 
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            }`}>
+                              {comment.is_internal ? 'Internal' : 'Public'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">
+                          {comment.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Comment Form */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Add Comment</h4>
+                <div className="space-y-3">
+                  <textarea
+                    value={commentForm.content}
+                    onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Add a comment..."
+                  />
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_internal"
+                      checked={commentForm.is_internal}
+                      onChange={(e) => setCommentForm({ ...commentForm, is_internal: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_internal" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      Internal comment (not visible to customer)
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => addComment(selectedTicket.id)}
+                    disabled={!commentForm.content || loading}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+                  >
+                    {loading ? 'Adding...' : 'Add Comment'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowTicketDetailsModal(false)}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+                {!selectedTicket.assigned_to_id && (
+                  <button
+                    onClick={() => {
+                      setShowTicketDetailsModal(false);
+                      setShowAssignmentModal(true);
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  >
+                    Assign Ticket
+                  </button>
+                )}
+                {(selectedTicket.status === 'open' || selectedTicket.status === 'in_progress') && (
+                  <button
+                    onClick={() => {
+                      setShowTicketDetailsModal(false);
+                      setShowResolveModal(true);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    Resolve Ticket
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </AnimatedModal>
+
         {/* Edit Article Modal */}
         <AnimatedModal
           open={showEditArticleModal}
