@@ -517,6 +517,15 @@ class SupportTicket(Base):
     resolved_at = Column(DateTime)
     resolved_by_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     
+    # Closure Workflow
+    closure_reason = Column(String)  # resolved, duplicate, not_reproducible, customer_cancelled, etc.
+    closure_category = Column(String)  # technical_fix, workaround, user_education, etc.
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_date = Column(DateTime)
+    follow_up_notes = Column(Text)
+    customer_satisfied = Column(Boolean)  # Customer satisfaction before closure
+    internal_notes = Column(Text)  # Internal notes not visible to customer
+    
     # Escalation
     escalated = Column(Boolean, default=False)
     escalated_at = Column(DateTime)

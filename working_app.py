@@ -3243,6 +3243,283 @@ def auto_assign_ticket(
         db.rollback()
         return {"error": f"Failed to auto-assign ticket: {str(e)}"}
 
+# Support Ticket Closure Endpoints
+@app.patch("/api/support/tickets/{ticket_id}/resolve")
+def resolve_ticket(
+    ticket_id: int, 
+    resolution_data: dict, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Resolve a ticket with resolution details"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        if ticket.status in ['resolved', 'closed', 'cancelled']:
+            return {"error": "Ticket is already resolved or closed"}
+        
+        # Validate resolution data
+        resolution = resolution_data.get('resolution', '')
+        resolution_notes = resolution_data.get('resolution_notes', '')
+        closure_reason = resolution_data.get('closure_reason', 'resolved')
+        closure_category = resolution_data.get('closure_category', 'technical_fix')
+        follow_up_required = resolution_data.get('follow_up_required', False)
+        follow_up_date = resolution_data.get('follow_up_date')
+        customer_satisfied = resolution_data.get('customer_satisfied')
+        internal_notes = resolution_data.get('internal_notes', '')
+        
+        if not resolution:
+            raise HTTPException(status_code=400, detail="Resolution is required")
+        
+        # Update ticket
+        ticket.status = 'resolved'
+        ticket.resolution = resolution
+        ticket.resolution_notes = resolution_notes
+        ticket.resolved_at = datetime.utcnow()
+        ticket.resolved_by_id = current_user.id
+        ticket.closure_reason = closure_reason
+        ticket.closure_category = closure_category
+        ticket.follow_up_required = follow_up_required
+        ticket.customer_satisfied = customer_satisfied
+        ticket.internal_notes = internal_notes
+        
+        if follow_up_date:
+            ticket.follow_up_date = datetime.fromisoformat(follow_up_date.replace('Z', '+00:00'))
+        
+        # Create audit log
+        audit = AssignmentAudit(
+            ticket_id=ticket_id,
+            assigned_to_id=ticket.assigned_to_id,
+            assigned_by_id=current_user.id,
+            assignment_type='resolution',
+            assignment_reason=f"Ticket resolved: {closure_reason}",
+            previous_assigned_to_id=ticket.assigned_to_id
+        )
+        
+        db.add(audit)
+        db.commit()
+        
+        return {
+            "message": "Ticket resolved successfully",
+            "ticket": {
+                "id": ticket.id,
+                "status": ticket.status,
+                "resolved_at": ticket.resolved_at.isoformat(),
+                "resolved_by": current_user.name,
+                "closure_reason": ticket.closure_reason,
+                "follow_up_required": ticket.follow_up_required
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to resolve ticket: {str(e)}"}
+
+@app.patch("/api/support/tickets/{ticket_id}/close")
+def close_ticket(
+    ticket_id: int, 
+    closure_data: dict, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Close a resolved ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        if ticket.status not in ['resolved']:
+            raise HTTPException(status_code=400, detail="Ticket must be resolved before closing")
+        
+        # Validate closure data
+        final_notes = closure_data.get('final_notes', '')
+        customer_satisfied = closure_data.get('customer_satisfied')
+        
+        # Update ticket
+        ticket.status = 'closed'
+        ticket.closed_at = datetime.utcnow()
+        ticket.customer_satisfied = customer_satisfied
+        
+        if final_notes:
+            ticket.resolution_notes = f"{ticket.resolution_notes}\n\nFinal Notes: {final_notes}" if ticket.resolution_notes else f"Final Notes: {final_notes}"
+        
+        # Create audit log
+        audit = AssignmentAudit(
+            ticket_id=ticket_id,
+            assigned_to_id=ticket.assigned_to_id,
+            assigned_by_id=current_user.id,
+            assignment_type='closure',
+            assignment_reason="Ticket closed",
+            previous_assigned_to_id=ticket.assigned_to_id
+        )
+        
+        db.add(audit)
+        db.commit()
+        
+        return {
+            "message": "Ticket closed successfully",
+            "ticket": {
+                "id": ticket.id,
+                "status": ticket.status,
+                "closed_at": ticket.closed_at.isoformat(),
+                "closed_by": current_user.name
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to close ticket: {str(e)}"}
+
+@app.patch("/api/support/tickets/{ticket_id}/cancel")
+def cancel_ticket(
+    ticket_id: int, 
+    cancellation_data: dict, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Cancel a ticket (customer cancelled, duplicate, etc.)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        if ticket.status in ['closed', 'cancelled']:
+            return {"error": "Ticket is already closed or cancelled"}
+        
+        # Validate cancellation data
+        cancellation_reason = cancellation_data.get('cancellation_reason', 'customer_cancelled')
+        cancellation_notes = cancellation_data.get('cancellation_notes', '')
+        
+        # Update ticket
+        ticket.status = 'cancelled'
+        ticket.closed_at = datetime.utcnow()
+        ticket.closure_reason = cancellation_reason
+        ticket.resolution_notes = f"Cancelled: {cancellation_notes}" if cancellation_notes else "Ticket cancelled"
+        
+        # Create audit log
+        audit = AssignmentAudit(
+            ticket_id=ticket_id,
+            assigned_to_id=ticket.assigned_to_id,
+            assigned_by_id=current_user.id,
+            assignment_type='cancellation',
+            assignment_reason=f"Ticket cancelled: {cancellation_reason}",
+            previous_assigned_to_id=ticket.assigned_to_id
+        )
+        
+        db.add(audit)
+        db.commit()
+        
+        return {
+            "message": "Ticket cancelled successfully",
+            "ticket": {
+                "id": ticket.id,
+                "status": ticket.status,
+                "closed_at": ticket.closed_at.isoformat(),
+                "cancellation_reason": cancellation_reason
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to cancel ticket: {str(e)}"}
+
+@app.get("/api/support/tickets/{ticket_id}/closure-options")
+def get_closure_options(
+    ticket_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Get available closure options for a ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        # Define closure options based on ticket state and category
+        closure_reasons = {
+            'resolved': ['resolved', 'workaround_provided', 'user_education', 'configuration_fix'],
+            'cancelled': ['customer_cancelled', 'duplicate', 'not_reproducible', 'invalid_request', 'spam']
+        }
+        
+        closure_categories = {
+            'technical': ['technical_fix', 'bug_fix', 'configuration_change', 'upgrade'],
+            'billing': ['billing_correction', 'refund_processed', 'payment_issue_resolved'],
+            'general': ['information_provided', 'user_education', 'process_explanation']
+        }
+        
+        # Determine available options based on ticket category
+        available_reasons = closure_reasons.get('resolved', [])
+        available_categories = closure_categories.get(ticket.category, closure_categories.get('general', []))
+        
+        return {
+            "ticket": {
+                "id": ticket.id,
+                "status": ticket.status,
+                "category": ticket.category,
+                "can_resolve": ticket.status in ['open', 'in_progress', 'pending_customer'],
+                "can_close": ticket.status == 'resolved',
+                "can_cancel": ticket.status in ['open', 'in_progress', 'pending_customer']
+            },
+            "closure_reasons": available_reasons,
+            "closure_categories": available_categories,
+            "follow_up_options": [
+                "none",
+                "customer_feedback",
+                "technical_verification", 
+                "billing_follow_up",
+                "training_session"
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"error": f"Failed to get closure options: {str(e)}"}
+
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
 def get_contacts(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

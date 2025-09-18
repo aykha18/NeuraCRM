@@ -140,6 +140,9 @@ const CustomerSupport: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showEscalationModal, setShowEscalationModal] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [agents, setAgents] = useState<any[]>([]);
   const [assignmentForm, setAssignmentForm] = useState({
     assigned_to_id: '',
@@ -149,6 +152,24 @@ const CustomerSupport: React.FC = () => {
   const [escalationForm, setEscalationForm] = useState({
     reason: '',
     escalated_to_id: ''
+  });
+  const [resolveForm, setResolveForm] = useState({
+    resolution: '',
+    resolution_notes: '',
+    closure_reason: 'resolved',
+    closure_category: 'technical_fix',
+    follow_up_required: false,
+    follow_up_date: '',
+    customer_satisfied: null,
+    internal_notes: ''
+  });
+  const [closeForm, setCloseForm] = useState({
+    final_notes: '',
+    customer_satisfied: null
+  });
+  const [cancelForm, setCancelForm] = useState({
+    cancellation_reason: 'customer_cancelled',
+    cancellation_notes: ''
   });
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -268,6 +289,90 @@ const CustomerSupport: React.FC = () => {
     } catch (error) {
       setShowErrorModal(true);
       setErrorMessage('Failed to escalate ticket');
+    }
+  };
+
+  const resolveTicket = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      const response = await apiRequest(`/api/support/tickets/${selectedTicket.id}/resolve`, {
+        method: 'PATCH',
+        body: JSON.stringify(resolveForm)
+      }) as any;
+      
+      if (response && !response.error) {
+        setShowResolveModal(false);
+        setResolveForm({
+          resolution: '',
+          resolution_notes: '',
+          closure_reason: 'resolved',
+          closure_category: 'technical_fix',
+          follow_up_required: false,
+          follow_up_date: '',
+          customer_satisfied: null,
+          internal_notes: ''
+        });
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket resolved successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to resolve ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to resolve ticket');
+    }
+  };
+
+  const closeTicket = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      const response = await apiRequest(`/api/support/tickets/${selectedTicket.id}/close`, {
+        method: 'PATCH',
+        body: JSON.stringify(closeForm)
+      }) as any;
+      
+      if (response && !response.error) {
+        setShowCloseModal(false);
+        setCloseForm({ final_notes: '', customer_satisfied: null });
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket closed successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to close ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to close ticket');
+    }
+  };
+
+  const cancelTicket = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      const response = await apiRequest(`/api/support/tickets/${selectedTicket.id}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify(cancelForm)
+      }) as any;
+      
+      if (response && !response.error) {
+        setShowCancelModal(false);
+        setCancelForm({ cancellation_reason: 'customer_cancelled', cancellation_notes: '' });
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket cancelled successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to cancel ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to cancel ticket');
     }
   };
 
@@ -659,6 +764,39 @@ const CustomerSupport: React.FC = () => {
                         >
                           Escalate
                         </button>
+                        {ticket.status === 'open' || ticket.status === 'in_progress' || ticket.status === 'pending_customer' ? (
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(ticket);
+                              setShowResolveModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
+                            Resolve
+                          </button>
+                        ) : null}
+                        {ticket.status === 'resolved' ? (
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(ticket);
+                              setShowCloseModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                          >
+                            Close
+                          </button>
+                        ) : null}
+                        {ticket.status === 'open' || ticket.status === 'in_progress' || ticket.status === 'pending_customer' ? (
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(ticket);
+                              setShowCancelModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Cancel
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1300,6 +1438,316 @@ const CustomerSupport: React.FC = () => {
           <div className="text-center">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">{successMessage}</p>
+          </div>
+        </AnimatedModal>
+
+        {/* Resolve Modal */}
+        <AnimatedModal
+          open={showResolveModal}
+          onClose={() => setShowResolveModal(false)}
+          title="Resolve Ticket"
+          animationType="scale"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Resolution *
+              </label>
+              <textarea
+                value={resolveForm.resolution}
+                onChange={(e) => setResolveForm({ ...resolveForm, resolution: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Describe how the issue was resolved..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Resolution Notes
+              </label>
+              <textarea
+                value={resolveForm.resolution_notes}
+                onChange={(e) => setResolveForm({ ...resolveForm, resolution_notes: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Additional notes about the resolution..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Closure Reason
+                </label>
+                <select
+                  value={resolveForm.closure_reason}
+                  onChange={(e) => setResolveForm({ ...resolveForm, closure_reason: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="resolved">Resolved</option>
+                  <option value="workaround_provided">Workaround Provided</option>
+                  <option value="user_education">User Education</option>
+                  <option value="configuration_fix">Configuration Fix</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Closure Category
+                </label>
+                <select
+                  value={resolveForm.closure_category}
+                  onChange={(e) => setResolveForm({ ...resolveForm, closure_category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="technical_fix">Technical Fix</option>
+                  <option value="bug_fix">Bug Fix</option>
+                  <option value="configuration_change">Configuration Change</option>
+                  <option value="user_education">User Education</option>
+                  <option value="information_provided">Information Provided</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="follow_up_required"
+                checked={resolveForm.follow_up_required}
+                onChange={(e) => setResolveForm({ ...resolveForm, follow_up_required: e.target.checked })}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="follow_up_required" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                Follow-up required
+              </label>
+            </div>
+
+            {resolveForm.follow_up_required && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Follow-up Date
+                </label>
+                <input
+                  type="date"
+                  value={resolveForm.follow_up_date}
+                  onChange={(e) => setResolveForm({ ...resolveForm, follow_up_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Customer Satisfaction
+              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="customer_satisfied"
+                    value="true"
+                    checked={resolveForm.customer_satisfied === true}
+                    onChange={() => setResolveForm({ ...resolveForm, customer_satisfied: true })}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Satisfied</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="customer_satisfied"
+                    value="false"
+                    checked={resolveForm.customer_satisfied === false}
+                    onChange={() => setResolveForm({ ...resolveForm, customer_satisfied: false })}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Not Satisfied</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="customer_satisfied"
+                    value="null"
+                    checked={resolveForm.customer_satisfied === null}
+                    onChange={() => setResolveForm({ ...resolveForm, customer_satisfied: null })}
+                    className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Unknown</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Internal Notes
+              </label>
+              <textarea
+                value={resolveForm.internal_notes}
+                onChange={(e) => setResolveForm({ ...resolveForm, internal_notes: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Internal notes (not visible to customer)..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowResolveModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={resolveTicket}
+                disabled={!resolveForm.resolution || loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Resolving...' : 'Resolve Ticket'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
+        {/* Close Modal */}
+        <AnimatedModal
+          open={showCloseModal}
+          onClose={() => setShowCloseModal(false)}
+          title="Close Ticket"
+          animationType="scale"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Final Notes
+              </label>
+              <textarea
+                value={closeForm.final_notes}
+                onChange={(e) => setCloseForm({ ...closeForm, final_notes: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Any final notes before closing..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Customer Satisfaction
+              </label>
+              <div className="flex space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="close_customer_satisfied"
+                    value="true"
+                    checked={closeForm.customer_satisfied === true}
+                    onChange={() => setCloseForm({ ...closeForm, customer_satisfied: true })}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Satisfied</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="close_customer_satisfied"
+                    value="false"
+                    checked={closeForm.customer_satisfied === false}
+                    onChange={() => setCloseForm({ ...closeForm, customer_satisfied: false })}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Not Satisfied</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="close_customer_satisfied"
+                    value="null"
+                    checked={closeForm.customer_satisfied === null}
+                    onChange={() => setCloseForm({ ...closeForm, customer_satisfied: null })}
+                    className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Unknown</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCloseModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={closeTicket}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Closing...' : 'Close Ticket'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
+        {/* Cancel Modal */}
+        <AnimatedModal
+          open={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          title="Cancel Ticket"
+          animationType="scale"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Cancellation Reason *
+              </label>
+              <select
+                value={cancelForm.cancellation_reason}
+                onChange={(e) => setCancelForm({ ...cancelForm, cancellation_reason: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                required
+              >
+                <option value="customer_cancelled">Customer Cancelled</option>
+                <option value="duplicate">Duplicate Ticket</option>
+                <option value="not_reproducible">Not Reproducible</option>
+                <option value="invalid_request">Invalid Request</option>
+                <option value="spam">Spam</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Cancellation Notes
+              </label>
+              <textarea
+                value={cancelForm.cancellation_notes}
+                onChange={(e) => setCancelForm({ ...cancelForm, cancellation_notes: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Explain why the ticket is being cancelled..."
+                required
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={cancelTicket}
+                disabled={!cancelForm.cancellation_notes || loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Cancelling...' : 'Cancel Ticket'}
+              </button>
+            </div>
           </div>
         </AnimatedModal>
 
