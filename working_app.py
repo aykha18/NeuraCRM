@@ -868,13 +868,13 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
                         'negotiation': 75,
                         'closing': 90
                     }
-                    probability = stage_probabilities.get(deal.stage.title.lower() if deal.stage else 'prospecting', 20)
+                    probability = stage_probabilities.get(deal.stage.name.lower() if deal.stage else 'prospecting', 20)
                 
                 deals_data.append({
                     'id': deal.id,
                     'title': deal.title or 'Unnamed Deal',
                     'value': deal.value or 0,
-                    'stage': deal.stage.title if deal.stage else 'Unknown',
+                    'stage': deal.stage.name if deal.stage else 'Unknown',
                     'status': deal.status or 'open',
                     'probability': probability,
                     'created_at': deal.created_at.strftime('%Y-%m-%d') if deal.created_at else 'Unknown',
