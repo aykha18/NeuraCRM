@@ -36,15 +36,34 @@ def get_crm_context(db: Session, user_id: int) -> str:
         open_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'open').count()
         won_deals = db.query(Deal).filter(Deal.owner_id == user_id, Deal.status == 'won').count()
         
-        # Get top 5 deals with stages
-        top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(5).all()
+        # Get top deals with comprehensive data
+        top_deals = db.query(Deal).filter(Deal.owner_id == user_id).order_by(Deal.value.desc()).limit(8).all()
         deals_info = []
         for deal in top_deals:
-            deals_info.append(f"- {deal.title}: ${deal.value or 0} ({deal.status})")
+            # Calculate probability based on stage
+            probability = 0
+            if deal.status == 'won':
+                probability = 100
+            elif deal.status == 'lost':
+                probability = 0
+            elif deal.stage:
+                stage_probabilities = {
+                    'prospecting': 10, 'qualification': 25, 'proposal': 50,
+                    'negotiation': 75, 'closing': 90
+                }
+                probability = stage_probabilities.get(deal.stage.title.lower() if deal.stage else 'prospecting', 20)
+            
+            deals_info.append(f"- Deal #{deal.id}: {deal.title} (${deal.value or 0:,.0f}, {probability}% probability, {deal.status}, closes {deal.reminder_date.strftime('%Y-%m-%d') if deal.reminder_date else 'Not set'})")
         
-        # Get leads data
+        # Get comprehensive leads data
         leads_count = db.query(Lead).filter(Lead.owner_id == user_id).count()
-        hot_leads = db.query(Lead).filter(Lead.owner_id == user_id, Lead.status == 'hot').count()
+        hot_leads = db.query(Lead).filter(Lead.owner_id == user_id, Lead.score >= 70).count()
+        
+        # Get top leads by score
+        top_leads = db.query(Lead).filter(Lead.owner_id == user_id).order_by(Lead.score.desc()).limit(5).all()
+        leads_info = []
+        for lead in top_leads:
+            leads_info.append(f"- Lead #{lead.id}: {lead.title} (Score: {lead.score}, Confidence: {lead.score_confidence or 0.0:.1f}, Source: {lead.source or 'Unknown'})")
         
         # Get contacts data
         contacts_count = db.query(Contact).filter(Contact.owner_id == user_id).count()
@@ -64,8 +83,11 @@ CRM Context for {user_name} (User ID: {user_id}):
 - Total Leads: {leads_count} (Hot leads: {hot_leads})
 - Total Contacts: {contacts_count}
 
-🎯 TOP DEALS:
+🎯 TOP DEALS (by value & probability):
 {chr(10).join(deals_info) if deals_info else "No deals found"}
+
+🔥 HOT LEADS (score ≥70):
+{chr(10).join(leads_info) if leads_info else "No hot leads"}
 
 🛠️ CUSTOMER SUPPORT:
 - Total Support Tickets: {support_tickets_count}

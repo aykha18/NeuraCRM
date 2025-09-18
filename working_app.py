@@ -848,79 +848,142 @@ def ai_assistant(request: dict, current_user: User = Depends(get_current_user), 
         leads_count = db.query(Lead).count() if DB_AVAILABLE else 0
         contacts_count = db.query(Contact).count() if DB_AVAILABLE else 0
         
-        # Get actual deal data for analysis
+        # Get comprehensive deal data for analysis
         deals_data = []
         if DB_AVAILABLE and deals_count > 0:
-            deals = db.query(Deal).order_by(Deal.amount.desc()).limit(10).all()
+            deals = db.query(Deal).order_by(Deal.value.desc()).limit(10).all()
             for deal in deals:
+                # Calculate probability based on stage and status
+                probability = 0
+                if deal.status == 'won':
+                    probability = 100
+                elif deal.status == 'lost':
+                    probability = 0
+                elif deal.stage:
+                    # Map stages to probabilities (customize based on your sales process)
+                    stage_probabilities = {
+                        'prospecting': 10,
+                        'qualification': 25,
+                        'proposal': 50,
+                        'negotiation': 75,
+                        'closing': 90
+                    }
+                    probability = stage_probabilities.get(deal.stage.title.lower() if deal.stage else 'prospecting', 20)
+                
                 deals_data.append({
                     'id': deal.id,
-                    'name': deal.name or 'Unnamed Deal',
-                    'amount': deal.amount or 0,
-                    'stage': deal.stage or 'Unknown',
-                    'probability': deal.probability or 0,
+                    'title': deal.title or 'Unnamed Deal',
+                    'value': deal.value or 0,
+                    'stage': deal.stage.title if deal.stage else 'Unknown',
+                    'status': deal.status or 'open',
+                    'probability': probability,
                     'created_at': deal.created_at.strftime('%Y-%m-%d') if deal.created_at else 'Unknown',
-                    'close_date': deal.close_date.strftime('%Y-%m-%d') if deal.close_date else 'Not set'
+                    'close_date': deal.reminder_date.strftime('%Y-%m-%d') if deal.reminder_date else 'Not set',
+                    'owner': deal.owner.name if deal.owner else 'Unassigned'
                 })
         
-        # Get recent leads
+        # Get comprehensive lead data
         recent_leads = []
         if DB_AVAILABLE and leads_count > 0:
-            leads = db.query(Lead).order_by(Lead.created_at.desc()).limit(5).all()
+            leads = db.query(Lead).order_by(Lead.score.desc(), Lead.created_at.desc()).limit(8).all()
             for lead in leads:
                 recent_leads.append({
                     'id': lead.id,
-                    'name': lead.name or 'Unnamed Lead',
-                    'email': lead.email or 'No email',
+                    'title': lead.title or 'Unnamed Lead',
                     'status': lead.status or 'New',
+                    'source': lead.source or 'Unknown',
                     'score': lead.score or 0,
-                    'created_at': lead.created_at.strftime('%Y-%m-%d') if lead.created_at else 'Unknown'
+                    'confidence': lead.score_confidence or 0.0,
+                    'created_at': lead.created_at.strftime('%Y-%m-%d') if lead.created_at else 'Unknown',
+                    'owner': lead.owner.name if lead.owner else 'Unassigned'
                 })
+        
+        # Get recent activities for engagement analysis
+        recent_activities = []
+        if DB_AVAILABLE:
+            activities = db.query(Activity).order_by(Activity.timestamp.desc()).limit(5).all()
+            for activity in activities:
+                recent_activities.append({
+                    'type': activity.type or 'Unknown',
+                    'message': activity.message or 'No message',
+                    'timestamp': activity.timestamp.strftime('%Y-%m-%d %H:%M') if activity.timestamp else 'Unknown',
+                    'deal_id': activity.deal_id,
+                    'user': activity.user.name if activity.user else 'System'
+                })
+        
+        # Calculate advanced metrics
+        total_pipeline_value = sum(d['value'] for d in deals_data)
+        avg_deal_size = total_pipeline_value / len(deals_data) if deals_data else 0
+        high_probability_deals = [d for d in deals_data if d['probability'] >= 70]
+        hot_leads = [l for l in recent_leads if l['score'] >= 70]
+        
+        # Calculate conversion metrics
+        won_deals = [d for d in deals_data if d['status'] == 'won']
+        conversion_rate = (len(won_deals) / len(deals_data) * 100) if deals_data else 0
         
         # Build comprehensive context
         crm_context = f"""
         CRM Context for {user_name} (User ID: {user_id}):
         
-        📊 SALES PIPELINE:
-        - Total Deals: {deals_count}
-        - Total Leads: {leads_count}
+        📊 SALES PIPELINE OVERVIEW:
+        - Total Deals: {deals_count} (${total_pipeline_value:,.0f} total value)
+        - Total Leads: {leads_count} ({len(hot_leads)} hot leads)
         - Total Contacts: {contacts_count}
+        - Conversion Rate: {conversion_rate:.1f}%
         
-        🎯 TOP DEALS (by value):
-        {chr(10).join([f"- Deal #{d['id']}: {d['name']} (${d['amount']:,.0f}, {d['stage']}, {d['probability']}% probability, closes {d['close_date']})" for d in deals_data[:5]]) if deals_data else "No deals found"}
+        🎯 TOP DEALS (by value & probability):
+        {chr(10).join([f"- Deal #{d['id']}: {d['title']} (${d['value']:,.0f}, {d['stage']}, {d['probability']}% probability, closes {d['close_date']}, Owner: {d['owner']})" for d in deals_data[:6]]) if deals_data else "No deals found"}
         
-        🔥 RECENT LEADS:
-        {chr(10).join([f"- Lead #{l['id']}: {l['name']} ({l['email']}, Score: {l['score']}, Status: {l['status']})" for l in recent_leads]) if recent_leads else "No recent leads"}
+        🔥 HOT LEADS (score ≥70):
+        {chr(10).join([f"- Lead #{l['id']}: {l['title']} (Score: {l['score']}, Confidence: {l['confidence']:.1f}, Source: {l['source']}, Owner: {l['owner']})" for l in hot_leads[:5]]) if hot_leads else "No hot leads"}
         
-        💡 INSIGHTS:
+        📈 RECENT ACTIVITY:
+        {chr(10).join([f"- {a['type']}: {a['message'][:50]}... by {a['user']} on {a['timestamp']}" for a in recent_activities]) if recent_activities else "No recent activity"}
+        
+        💡 ADVANCED INSIGHTS:
         - Pipeline Health: {'Strong' if deals_count > 10 else 'Growing' if deals_count > 5 else 'Early Stage'}
-        - Total Pipeline Value: ${sum(d['amount'] for d in deals_data):,.0f} if deals_data else 0
-        - Average Deal Size: ${sum(d['amount'] for d in deals_data) / len(deals_data):,.0f} if deals_data else 0
+        - Average Deal Size: ${avg_deal_size:,.0f}
+        - High-Probability Deals: {len(high_probability_deals)} deals (${sum(d['value'] for d in high_probability_deals):,.0f} value)
+        - Lead Quality: {len(hot_leads)}/{leads_count} leads are hot ({len(hot_leads)/leads_count*100:.1f}% if leads_count > 0 else 0}%)
+        - Sales Velocity: {len(won_deals)} deals closed
         """
         
-        # Create optimized system prompt
-        system_prompt = f"""You are a data-driven AI Sales Assistant for NeuraCRM. You have access to {user_name}'s real CRM data and must provide specific, actionable insights.
+        # Create enhanced system prompt for rich CRM data
+        system_prompt = f"""You are an advanced AI Sales Assistant for NeuraCRM with access to comprehensive CRM data including deals, leads, activities, and performance metrics.
 
         ## CRITICAL INSTRUCTIONS:
-        - ALWAYS analyze the actual CRM data provided
-        - Give SPECIFIC results, not generic advice
-        - Use REAL deal names, amounts, stages, and probabilities from the data
-        - Be concise and direct - no lengthy explanations unless requested
-        - Focus on immediate actionable insights
+        - ALWAYS analyze the actual CRM data provided with specific numbers, names, and metrics
+        - Give SPECIFIC results using real deal titles, lead scores, probability percentages, and dollar amounts
+        - Use owner names, deal stages, lead sources, and activity data for context
+        - Be concise but comprehensive - provide actionable insights with supporting data
+        - Focus on high-impact recommendations based on actual performance metrics
 
-        ## Response Format:
-        - For deal analysis: List specific deals with names, amounts, and win probabilities
-        - For pipeline insights: Reference actual numbers and percentages
-        - For recommendations: Give specific next steps based on real data
-        - Use bullet points and clear formatting
+        ## ENHANCED RESPONSE CAPABILITIES:
+        - **Deal Analysis**: Use actual deal titles, values, stages, probabilities, owners, and close dates
+        - **Lead Intelligence**: Reference lead scores, confidence levels, sources, and ownership
+        - **Activity Insights**: Consider recent activities and engagement patterns
+        - **Performance Metrics**: Use conversion rates, pipeline health, and sales velocity
+        - **Predictive Analysis**: Identify trends and opportunities from the data
 
-        ## Example Response Style:
-        Instead of: "Look at deals in negotiation stage..."
-        Say: "Your top 2 deals likely to close:
-        1. Deal #123: ABC Corp ($50,000, 85% probability, closes 2024-02-15)
-        2. Deal #456: XYZ Inc ($35,000, 70% probability, closes 2024-02-28)"
+        ## RESPONSE FORMAT EXAMPLES:
+        
+        **For "top deals likely to close":**
+        "Your top 2 deals likely to close based on probability and value:
+        1. Deal #45: TechCorp Solutions ($75,000, 90% probability, Negotiation stage, closes 2024-02-20, Owner: John Smith)
+        2. Deal #23: Global Enterprises ($50,000, 85% probability, Proposal stage, closes 2024-02-25, Owner: Sarah Johnson)
+        
+        Next actions:
+        - Schedule final meeting with TechCorp (Deal #45) - high probability
+        - Send contract to Global Enterprises (Deal #23) - ready for closing"
 
-        Always base your response on the actual CRM data provided."""
+        **For lead analysis:**
+        "Your hottest leads requiring immediate attention:
+        1. Lead #12: Enterprise Corp (Score: 95, Confidence: 0.9, Source: Website, Owner: Mike Wilson)
+        2. Lead #8: StartupXYZ (Score: 88, Confidence: 0.8, Source: Referral, Owner: Lisa Brown)
+        
+        Recommendation: Prioritize Enterprise Corp - highest score and confidence"
+
+        Always provide specific, data-driven insights with actionable next steps."""
         
         # Prepare messages for OpenAI
         messages = [
