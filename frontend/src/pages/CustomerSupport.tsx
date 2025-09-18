@@ -137,7 +137,10 @@ const CustomerSupport: React.FC = () => {
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showTicketDetailsModal, setShowTicketDetailsModal] = useState(false);
   const [showCreateArticleModal, setShowCreateArticleModal] = useState(false);
+  const [showEditArticleModal, setShowEditArticleModal] = useState(false);
+  const [showDeleteArticleModal, setShowDeleteArticleModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showEscalationModal, setShowEscalationModal] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
@@ -508,6 +511,95 @@ const CustomerSupport: React.FC = () => {
     }
   };
 
+  const editArticle = async () => {
+    if (!selectedArticle) return;
+    
+    try {
+      setLoading(true);
+      const response = await apiRequest(`/api/support/knowledge-base/${selectedArticle.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(articleForm)
+      }) as any;
+
+      if (response && !response.error) {
+        setError(null);
+        setSuccessMessage('Knowledge base article updated successfully!');
+        setShowSuccessModal(true);
+        setShowEditArticleModal(false);
+        setSelectedArticle(null);
+        setArticleForm({
+          title: '',
+          content: '',
+          summary: '',
+          category: 'general',
+          subcategory: '',
+          tags: [],
+          status: 'draft',
+          visibility: 'public',
+          featured: false,
+          meta_description: ''
+        });
+        fetchKnowledgeArticles();
+      } else {
+        setError(response?.error || 'Failed to update knowledge base article');
+      }
+    } catch (err) {
+      console.error('Error updating article:', err);
+      setError('Failed to update knowledge base article');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteArticle = async () => {
+    if (!selectedArticle) return;
+    
+    try {
+      setLoading(true);
+      const response = await apiRequest(`/api/support/knowledge-base/${selectedArticle.id}`, {
+        method: 'DELETE'
+      }) as any;
+
+      if (response && !response.error) {
+        setError(null);
+        setSuccessMessage('Knowledge base article deleted successfully!');
+        setShowSuccessModal(true);
+        setShowDeleteArticleModal(false);
+        setSelectedArticle(null);
+        fetchKnowledgeArticles();
+      } else {
+        setError(response?.error || 'Failed to delete knowledge base article');
+      }
+    } catch (err) {
+      console.error('Error deleting article:', err);
+      setError('Failed to delete knowledge base article');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditModal = (article: KnowledgeBaseArticle) => {
+    setSelectedArticle(article);
+    setArticleForm({
+      title: article.title,
+      content: article.content,
+      summary: article.summary || '',
+      category: article.category,
+      subcategory: article.subcategory || '',
+      tags: Array.isArray(article.tags) ? article.tags : [],
+      status: article.status,
+      visibility: article.visibility,
+      featured: article.featured,
+      meta_description: article.meta_description || ''
+    });
+    setShowEditArticleModal(true);
+  };
+
+  const openDeleteModal = (article: KnowledgeBaseArticle) => {
+    setSelectedArticle(article);
+    setShowDeleteArticleModal(true);
+  };
+
   const addComment = async (ticketId: number) => {
     try {
       setLoading(true);
@@ -875,10 +967,18 @@ const CustomerSupport: React.FC = () => {
                 {article.status}
               </span>
               <div className="flex space-x-2">
-                <button className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                <button 
+                  onClick={() => openEditModal(article)}
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  title="Edit article"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                <button 
+                  onClick={() => openDeleteModal(article)}
+                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  title="Delete article"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -1752,6 +1852,150 @@ const CustomerSupport: React.FC = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Cancelling...' : 'Cancel Ticket'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
+        {/* Edit Article Modal */}
+        <AnimatedModal
+          open={showEditArticleModal}
+          onClose={() => setShowEditArticleModal(false)}
+          title="Edit Knowledge Base Article"
+          animationType="scale"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title
+              </label>
+              <input
+                type="text"
+                value={articleForm.title}
+                onChange={(e) => setArticleForm({ ...articleForm, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Article title"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Summary
+              </label>
+              <textarea
+                value={articleForm.summary}
+                onChange={(e) => setArticleForm({ ...articleForm, summary: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Brief summary of the article"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Content
+              </label>
+              <textarea
+                value={articleForm.content}
+                onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Article content (markdown supported)"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Category
+                </label>
+                <select
+                  value={articleForm.category}
+                  onChange={(e) => setArticleForm({ ...articleForm, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="getting_started">Getting Started</option>
+                  <option value="troubleshooting">Troubleshooting</option>
+                  <option value="billing">Billing</option>
+                  <option value="features">Features</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <select
+                  value={articleForm.status}
+                  onChange={(e) => setArticleForm({ ...articleForm, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="edit_featured"
+                checked={articleForm.featured}
+                onChange={(e) => setArticleForm({ ...articleForm, featured: e.target.checked })}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="edit_featured" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                Featured article
+              </label>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => setShowEditArticleModal(false)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editArticle}
+                disabled={loading || !articleForm.title || !articleForm.content}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              >
+                {loading ? 'Updating...' : 'Update Article'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
+        {/* Delete Article Modal */}
+        <AnimatedModal
+          open={showDeleteArticleModal}
+          onClose={() => setShowDeleteArticleModal(false)}
+          title="Delete Knowledge Base Article"
+          animationType="scale"
+          size="md"
+        >
+          <div className="text-center">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete "{selectedArticle?.title}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteArticleModal(false)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteArticle}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              >
+                {loading ? 'Deleting...' : 'Delete Article'}
               </button>
             </div>
           </div>

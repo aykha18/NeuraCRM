@@ -2609,6 +2609,90 @@ def create_knowledge_base_article(article_data: dict, current_user: User = Depen
         db.rollback()
         return {"error": f"Failed to create knowledge base article: {str(e)}"}
 
+@app.put("/api/support/knowledge-base/{article_id}")
+def update_knowledge_base_article(article_id: int, article_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update a knowledge base article"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        article = db.query(KnowledgeBaseArticle).filter(
+            KnowledgeBaseArticle.id == article_id,
+            KnowledgeBaseArticle.organization_id == current_user.organization_id
+        ).first()
+        
+        if not article:
+            return {"error": "Article not found"}
+        
+        # Update fields
+        if 'title' in article_data:
+            article.title = article_data['title']
+            # Update slug if title changed
+            slug = article_data['title'].lower().replace(' ', '-').replace('_', '-')
+            slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+            article.slug = slug
+        
+        if 'content' in article_data:
+            article.content = article_data['content']
+        if 'summary' in article_data:
+            article.summary = article_data['summary']
+        if 'category' in article_data:
+            article.category = article_data['category']
+        if 'subcategory' in article_data:
+            article.subcategory = article_data['subcategory']
+        if 'tags' in article_data:
+            article.tags = article_data['tags']
+        if 'status' in article_data:
+            article.status = article_data['status']
+            if article_data['status'] == 'published' and not article.published_at:
+                article.published_at = datetime.utcnow()
+        if 'visibility' in article_data:
+            article.visibility = article_data['visibility']
+        if 'featured' in article_data:
+            article.featured = article_data['featured']
+        if 'meta_description' in article_data:
+            article.meta_description = article_data['meta_description']
+        
+        article.updated_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {
+            "message": "Knowledge base article updated successfully",
+            "article": {
+                "id": article.id,
+                "title": article.title,
+                "slug": article.slug,
+                "status": article.status
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update knowledge base article: {str(e)}"}
+
+@app.delete("/api/support/knowledge-base/{article_id}")
+def delete_knowledge_base_article(article_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a knowledge base article"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        article = db.query(KnowledgeBaseArticle).filter(
+            KnowledgeBaseArticle.id == article_id,
+            KnowledgeBaseArticle.organization_id == current_user.organization_id
+        ).first()
+        
+        if not article:
+            return {"error": "Article not found"}
+        
+        db.delete(article)
+        db.commit()
+        
+        return {"message": "Knowledge base article deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete knowledge base article: {str(e)}"}
+
 # Support Analytics
 @app.get("/api/support/analytics/dashboard")
 def get_support_analytics_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
