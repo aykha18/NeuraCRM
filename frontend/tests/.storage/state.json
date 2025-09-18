@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "API_BASE_URL",
+          "value": "http://127.0.0.1:8002"
+        },
+        {
+          "name": "access_token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJub2RlaXRAbm9kZS5jb20iLCJ1c2VyX2lkIjoyMywib3JnYW5pemF0aW9uX2lkIjo4LCJleHAiOjE3NTgyMzIzMjF9.PusEu51mYVwHs4MFUHb9pW6S-VTA5hEmppwDGJSErQU"
+        }
+      ]
+    }
+  ]
+}

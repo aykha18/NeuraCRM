@@ -138,6 +138,20 @@ const CustomerSupport: React.FC = () => {
   const [showTicketDetailsModal, setShowTicketDetailsModal] = useState(false);
   const [showCreateArticleModal, setShowCreateArticleModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showEscalationModal, setShowEscalationModal] = useState(false);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [assignmentForm, setAssignmentForm] = useState({
+    assigned_to_id: '',
+    reason: '',
+    type: 'manual'
+  });
+  const [escalationForm, setEscalationForm] = useState({
+    reason: '',
+    escalated_to_id: ''
+  });
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Forms
   const [ticketForm, setTicketForm] = useState({
@@ -173,7 +187,89 @@ const CustomerSupport: React.FC = () => {
     fetchTickets();
     fetchKnowledgeArticles();
     fetchAnalytics();
+    fetchAgents();
   }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const response = await apiRequest('/api/support/agents') as any;
+      if (response && !response.error) {
+        setAgents(response);
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+    }
+  };
+
+  const assignTicket = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      const response = await apiRequest(`/api/support/tickets/${selectedTicket.id}/assign`, {
+        method: 'PATCH',
+        body: JSON.stringify(assignmentForm)
+      }) as any;
+      
+      if (response && !response.error) {
+        setShowAssignmentModal(false);
+        setAssignmentForm({ assigned_to_id: '', reason: '', type: 'manual' });
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket assigned successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to assign ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to assign ticket');
+    }
+  };
+
+  const autoAssignTicket = async (ticketId: number) => {
+    try {
+      const response = await apiRequest(`/api/support/tickets/${ticketId}/auto-assign`, {
+        method: 'POST'
+      }) as any;
+      
+      if (response && !response.error) {
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket auto-assigned successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to auto-assign ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to auto-assign ticket');
+    }
+  };
+
+  const escalateTicket = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      const response = await apiRequest(`/api/support/tickets/${selectedTicket.id}/escalate`, {
+        method: 'POST',
+        body: JSON.stringify(escalationForm)
+      }) as any;
+      
+      if (response && !response.error) {
+        setShowEscalationModal(false);
+        setEscalationForm({ reason: '', escalated_to_id: '' });
+        fetchTickets(); // Refresh tickets
+        setShowSuccessModal(true);
+        setSuccessMessage('Ticket escalated successfully');
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to escalate ticket');
+      }
+    } catch (error) {
+      setShowErrorModal(true);
+      setErrorMessage('Failed to escalate ticket');
+    }
+  };
 
   useEffect(() => {
     filterTickets();
@@ -364,6 +460,7 @@ const CustomerSupport: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Manage customer support requests</p>
         </div>
         <button
+          data-testid="cs-create-ticket"
           onClick={() => setShowCreateTicketModal(true)}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
         >
@@ -446,7 +543,7 @@ const CustomerSupport: React.FC = () => {
       </div>
 
       {/* Tickets List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700" data-testid="cs-ticket-list">
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -526,15 +623,43 @@ const CustomerSupport: React.FC = () => {
                       {formatDate(ticket.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => {
-                          setSelectedTicket(ticket);
-                          setShowTicketDetailsModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        View
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedTicket(ticket);
+                            setShowTicketDetailsModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          View
+                        </button>
+                        {!ticket.assigned_to_id && (
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(ticket);
+                              setShowAssignmentModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                          >
+                            Assign
+                          </button>
+                        )}
+                        <button
+                          onClick={() => autoAssignTicket(ticket.id)}
+                          className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                        >
+                          Auto
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedTicket(ticket);
+                            setShowEscalationModal(true);
+                          }}
+                          className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
+                        >
+                          Escalate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -803,12 +928,13 @@ const CustomerSupport: React.FC = () => {
           animationType="scale"
           size="lg"
         >
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="cs-ticket-modal">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Title
               </label>
               <input
+                data-testid="cs-title"
                 type="text"
                 value={ticketForm.title}
                 onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
@@ -822,6 +948,7 @@ const CustomerSupport: React.FC = () => {
                 Description
               </label>
               <textarea
+                data-testid="cs-description"
                 value={ticketForm.description}
                 onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
                 rows={4}
@@ -836,6 +963,7 @@ const CustomerSupport: React.FC = () => {
                   Priority
                 </label>
                 <select
+                  data-testid="cs-priority"
                   value={ticketForm.priority}
                   onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -853,6 +981,7 @@ const CustomerSupport: React.FC = () => {
                   Category
                 </label>
                 <select
+                  data-testid="cs-category"
                   value={ticketForm.category}
                   onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -871,7 +1000,8 @@ const CustomerSupport: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Customer Name
                 </label>
-                <input
+              <input
+                data-testid="cs-customer-name"
                   type="text"
                   value={ticketForm.customer_name}
                   onChange={(e) => setTicketForm({ ...ticketForm, customer_name: e.target.value })}
@@ -884,7 +1014,8 @@ const CustomerSupport: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Customer Email
                 </label>
-                <input
+              <input
+                data-testid="cs-customer-email"
                   type="email"
                   value={ticketForm.customer_email}
                   onChange={(e) => setTicketForm({ ...ticketForm, customer_email: e.target.value })}
@@ -1025,6 +1156,139 @@ const CustomerSupport: React.FC = () => {
           </div>
         </AnimatedModal>
 
+        {/* Assignment Modal */}
+        <AnimatedModal
+          open={showAssignmentModal}
+          onClose={() => setShowAssignmentModal(false)}
+          title="Assign Ticket"
+          animationType="scale"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assign to Agent
+              </label>
+              <select
+                value={assignmentForm.assigned_to_id}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, assigned_to_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Select an agent</option>
+                {agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name} ({agent.role}) - {agent.workload} tickets
+                    {agent.skills.length > 0 && ` - Skills: ${agent.skills.map((s: any) => s.name).join(', ')}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assignment Reason
+              </label>
+              <textarea
+                value={assignmentForm.reason}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, reason: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Why is this ticket being assigned to this agent?"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assignment Type
+              </label>
+              <select
+                value={assignmentForm.type}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, type: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="manual">Manual Assignment</option>
+                <option value="skills_based">Skills-Based</option>
+                <option value="escalation">Escalation</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAssignmentModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={assignTicket}
+                disabled={!assignmentForm.assigned_to_id || loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Assigning...' : 'Assign Ticket'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
+        {/* Escalation Modal */}
+        <AnimatedModal
+          open={showEscalationModal}
+          onClose={() => setShowEscalationModal(false)}
+          title="Escalate Ticket"
+          animationType="scale"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Escalation Reason *
+              </label>
+              <textarea
+                value={escalationForm.reason}
+                onChange={(e) => setEscalationForm({ ...escalationForm, reason: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="Why is this ticket being escalated?"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Escalate to Agent (Optional)
+              </label>
+              <select
+                value={escalationForm.escalated_to_id}
+                onChange={(e) => setEscalationForm({ ...escalationForm, escalated_to_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Auto-assign to senior agent</option>
+                {agents.filter(agent => agent.role === 'manager' || agent.role === 'admin').map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name} ({agent.role}) - {agent.workload} tickets
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowEscalationModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={escalateTicket}
+                disabled={!escalationForm.reason || loading}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Escalating...' : 'Escalate Ticket'}
+              </button>
+            </div>
+          </div>
+        </AnimatedModal>
+
         {/* Success Modal */}
         <AnimatedModal
           open={showSuccessModal}
@@ -1036,6 +1300,20 @@ const CustomerSupport: React.FC = () => {
           <div className="text-center">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">{successMessage}</p>
+          </div>
+        </AnimatedModal>
+
+        {/* Error Modal */}
+        <AnimatedModal
+          open={showErrorModal}
+          onClose={() => setShowErrorModal(false)}
+          title="Error"
+          animationType="scale"
+          size="sm"
+        >
+          <div className="text-center">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">{errorMessage}</p>
           </div>
         </AnimatedModal>
       </div>

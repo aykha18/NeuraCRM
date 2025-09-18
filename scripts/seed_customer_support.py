@@ -12,17 +12,21 @@ from backend.api.db import get_db, get_engine
 from backend.api import models
 
 
-def get_or_create_user(db, name: str, email: str, password: str):
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user:
-        return user
-    # Minimal user/org for seeding
-    org = db.query(models.Organization).first()
+def get_or_create_user(db, name: str, email: str, password: str, org_id: int):
+    # Ensure organization  exists with the requested id
+    org = db.query(models.Organization).filter(models.Organization.id == org_id).first()
     if not org:
-        org = models.Organization(name="Default Org")
+        org = models.Organization(id=org_id, name=f"Org {org_id}")
         db.add(org)
         db.flush()
-    user = models.User(name=name, email=email, password_hash=password, organization_id=org.id)
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user:
+        # Align org and password
+        user.organization_id = org_id
+        user.password_hash = password
+        db.commit()
+        return user
+    user = models.User(name=name, email=email, password_hash=password, organization_id=org_id)
     db.add(user)
     db.commit()
     return user
@@ -145,9 +149,9 @@ def main():
     # Seed
     db = next(get_db())
     try:
-        # Use provided test credentials (plaintext compatible with auth fallback)
-        user = get_or_create_user(db, name="Node IT", email="nodeit@node.com", password="NodeIT2024!")
-        organization_id = user.organization_id or 1
+        # Use provided test credentials and target org_id 8
+        user = get_or_create_user(db, name="Node IT", email="nodeit@node.com", password="NodeIT2024!", org_id=8)
+        organization_id = user.organization_id or 8
         seed_sla(db, organization_id)
         seed_kb(db, user, organization_id)
         seed_tickets(db, user, organization_id)

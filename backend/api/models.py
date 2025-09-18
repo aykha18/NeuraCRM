@@ -504,6 +504,9 @@ class SupportTicket(Base):
     # Assignment and SLA
     assigned_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     assigned_at = Column(DateTime)
+    assignment_reason = Column(Text)  # Why was this ticket assigned
+    assignment_type = Column(String, default='manual')  # manual, auto, round_robin, skills_based, escalation
+    queue_id = Column(Integer, ForeignKey('support_queues.id'), nullable=True)
     sla_deadline = Column(DateTime)
     first_response_at = Column(DateTime)
     resolution_deadline = Column(DateTime)
@@ -540,6 +543,7 @@ class SupportTicket(Base):
     resolved_by = relationship('User', foreign_keys=[resolved_by_id])
     escalated_to = relationship('User', foreign_keys=[escalated_to_id])
     creator = relationship('User', foreign_keys=[created_by])
+    queue = relationship('SupportQueue', back_populates='tickets')
     comments = relationship('SupportComment', back_populates='ticket', cascade='all, delete-orphan')
     attachments = relationship('SupportAttachment', back_populates='ticket', cascade='all, delete-orphan')
 
@@ -743,4 +747,66 @@ class SupportAnalytics(Base):
     generated_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    organization = relationship('Organization') 
+    organization = relationship('Organization')
+
+# Support Assignment Models
+class SupportQueue(Base):
+    __tablename__ = 'support_queues'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)  # e.g., "Technical Support", "Billing", "Tier 2"
+    description = Column(Text)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Queue Settings
+    auto_assign = Column(Boolean, default=True)
+    round_robin = Column(Boolean, default=True)
+    max_workload = Column(Integer, default=10)  # Max tickets per agent
+    business_hours_only = Column(Boolean, default=False)
+    business_hours_start = Column(String, default="09:00")  # HH:MM format
+    business_hours_end = Column(String, default="17:00")   # HH:MM format
+    timezone = Column(String, default="UTC")
+    
+    # Priority Routing
+    handles_priorities = Column(JSON)  # List of priorities this queue handles
+    escalation_queue_id = Column(Integer, ForeignKey('support_queues.id'), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    tickets = relationship('SupportTicket', back_populates='queue')
+    escalation_queue = relationship('SupportQueue', remote_side=[id])
+
+class UserSkill(Base):
+    __tablename__ = 'user_skills'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    skill_name = Column(String, nullable=False)  # e.g., "technical", "billing", "api_integration"
+    skill_level = Column(String, default='intermediate')  # beginner, intermediate, advanced, expert
+    category = Column(String)  # technical, product, billing, etc.
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship('User')
+
+class AssignmentAudit(Base):
+    __tablename__ = 'assignment_audits'
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey('support_tickets.id'), nullable=False)
+    assigned_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    assigned_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    assignment_type = Column(String, nullable=False)  # manual, auto, round_robin, skills_based, escalation
+    assignment_reason = Column(Text)
+    previous_assigned_to_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    queue_id = Column(Integer, ForeignKey('support_queues.id'), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    ticket = relationship('SupportTicket')
+    assigned_to = relationship('User', foreign_keys=[assigned_to_id])
+    assigned_by = relationship('User', foreign_keys=[assigned_by_id])
+    previous_assigned_to = relationship('User', foreign_keys=[previous_assigned_to_id])
+    queue = relationship('SupportQueue') 

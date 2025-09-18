@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -61,6 +61,9 @@ try:
         SupportSLA.metadata.create_all(bind=engine)
         CustomerSatisfactionSurvey.metadata.create_all(bind=engine)
         SupportAnalytics.metadata.create_all(bind=engine)
+        SupportQueue.metadata.create_all(bind=engine)
+        UserSkill.metadata.create_all(bind=engine)
+        AssignmentAudit.metadata.create_all(bind=engine)
         print("Γ£à Customer support tables created/verified successfully")
     except Exception as e:
         print(f"Γ¥î Error creating customer support tables: {e}")
@@ -377,7 +380,7 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
         ]
         
         # Get deals for current user's organization
-        org_id = current_user.organization_id or 1
+        org_id = current_user.organization_id or 8
         deals = db.query(Deal).filter(Deal.organization_id == org_id).all()
         deals_data = [
             {
@@ -515,7 +518,35 @@ if AUTH_AVAILABLE:
         
         # Authenticate user (email is unique per organization now)
         user = db.query(User).filter(User.email == user_credentials.email).first()
-        if not user or not verify_password(user_credentials.password, user.password_hash):
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Handle legacy plaintext hashes by migrating to bcrypt on-the-fly
+        is_valid = False
+        migrated = False
+        try:
+            is_valid = verify_password(user_credentials.password, user.password_hash)
+        except Exception:
+            # Likely an invalid bcrypt salt or non-bcrypt hash stored
+            if user_credentials.password == user.password_hash:
+                # Migrate to bcrypt
+                try:
+                    user.password_hash = get_password_hash(user_credentials.password)
+                    db.add(user)
+                    db.commit()
+                    migrated = True
+                    is_valid = True
+                except Exception:
+                    db.rollback()
+                    is_valid = False
+            else:
+                is_valid = False
+
+        if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
@@ -546,6 +577,25 @@ if AUTH_AVAILABLE:
             organization_id=current_user.organization_id or 1,
             created_at=current_user.created_at
         )
+
+    class AdminRehashRequest(BaseModel):
+        email: str
+        new_password: str
+
+    @app.post("/api/auth/admin/rehash")
+    def admin_rehash_password(payload: AdminRehashRequest, db: Session = Depends(get_db)):
+        """TEMP: Admin-only helper to set bcrypt hash for a user password (local recovery)."""
+        user = db.query(User).filter(User.email == payload.email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        try:
+            user.password_hash = get_password_hash(payload.new_password)
+            db.add(user)
+            db.commit()
+            return {"message": "Password rehashed"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to rehash: {e}")
 else:
     @app.post("/api/auth/register")
     def register():
@@ -2085,8 +2135,12 @@ def get_support_tickets(
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id
+        if not org_id:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="User organization_id is not set; cannot create support ticket")
         query = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         )
         
         # Apply filters
@@ -2138,11 +2192,12 @@ def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_cu
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id or 8
         # Generate ticket number
         ticket_count = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).count()
-        ticket_number = f"TKT-{current_user.organization_id:03d}-{ticket_count + 1:06d}"
+        ticket_number = f"TKT-{org_id:03d}-{ticket_count + 1:06d}"
         
         # Calculate SLA deadlines based on priority
         sla_hours = {
@@ -2161,9 +2216,24 @@ def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_cu
         sla_deadline = now + timedelta(hours=sla_hours_value)
         resolution_deadline = now + timedelta(hours=sla_hours_value * 2)
         
+        # Normalize optional numeric fields that may arrive as empty strings from the UI
+        def _to_int_or_none(value):
+            if value is None:
+                return None
+            if isinstance(value, str) and value.strip() == "":
+                return None
+            try:
+                return int(value)
+            except Exception:
+                return None
+
+        assigned_to_id = _to_int_or_none(ticket_data.get('assigned_to_id'))
+        customer_account_id = _to_int_or_none(ticket_data.get('customer_account_id'))
+        contact_id = _to_int_or_none(ticket_data.get('contact_id'))
+
         ticket = SupportTicket(
             ticket_number=ticket_number,
-            organization_id=current_user.organization_id,
+            organization_id=org_id,
             title=ticket_data['title'],
             description=ticket_data['description'],
             priority=priority,
@@ -2171,9 +2241,9 @@ def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_cu
             subcategory=ticket_data.get('subcategory'),
             customer_name=ticket_data['customer_name'],
             customer_email=ticket_data['customer_email'],
-            customer_account_id=ticket_data.get('customer_account_id'),
-            contact_id=ticket_data.get('contact_id'),
-            assigned_to_id=ticket_data.get('assigned_to_id'),
+            customer_account_id=customer_account_id,
+            contact_id=contact_id,
+            assigned_to_id=assigned_to_id,
             sla_deadline=sla_deadline,
             resolution_deadline=resolution_deadline,
             created_by=current_user.id
@@ -2181,6 +2251,7 @@ def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_cu
         
         db.add(ticket)
         db.commit()
+        db.refresh(ticket)
         
         return {
             "message": "Support ticket created successfully",
@@ -2195,7 +2266,8 @@ def create_support_ticket(ticket_data: dict, current_user: User = Depends(get_cu
         }
     except Exception as e:
         db.rollback()
-        return {"error": f"Failed to create support ticket: {str(e)}"}
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Failed to create support ticket: {str(e)}")
 
 @app.get("/api/support/tickets/{ticket_id}")
 def get_support_ticket(ticket_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -2204,9 +2276,10 @@ def get_support_ticket(ticket_id: int, current_user: User = Depends(get_current_
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id or 8
         ticket = db.query(SupportTicket).filter(
             SupportTicket.id == ticket_id,
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).first()
         
         if not ticket:
@@ -2270,9 +2343,10 @@ def update_support_ticket(ticket_id: int, update_data: dict, current_user: User 
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id or 8
         ticket = db.query(SupportTicket).filter(
             SupportTicket.id == ticket_id,
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).first()
         
         if not ticket:
@@ -2393,8 +2467,9 @@ def get_knowledge_base_articles(
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id or 8
         query = db.query(KnowledgeBaseArticle).filter(
-            KnowledgeBaseArticle.organization_id == current_user.organization_id
+            KnowledgeBaseArticle.organization_id == org_id
         )
         
         if status:
@@ -2444,9 +2519,10 @@ def get_knowledge_base_article(article_id: int, current_user: User = Depends(get
         return {"error": "Database not available"}
     
     try:
+        org_id = current_user.organization_id or 8
         article = db.query(KnowledgeBaseArticle).filter(
             KnowledgeBaseArticle.id == article_id,
-            KnowledgeBaseArticle.organization_id == current_user.organization_id
+            KnowledgeBaseArticle.organization_id == org_id
         ).first()
         
         if not article:
@@ -2545,28 +2621,29 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
         current_month = datetime.utcnow().strftime('%Y-%m')
         
         # Ticket metrics
+        org_id = current_user.organization_id or 8
         total_tickets = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).count()
         
         open_tickets = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
         ).count()
         
         resolved_tickets = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.status == 'resolved'
         ).count()
         
         closed_tickets = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.status == 'closed'
         ).count()
         
         # Response time metrics
         tickets_with_response = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.first_response_at.isnot(None)
         ).all()
         
@@ -2580,7 +2657,7 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
         
         # Resolution time metrics
         resolved_tickets_with_time = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.resolved_at.isnot(None)
         ).all()
         
@@ -2594,7 +2671,7 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
         
         # SLA compliance
         sla_breach_count = db.query(SupportTicket).filter(
-            SupportTicket.organization_id == current_user.organization_id,
+            SupportTicket.organization_id == org_id,
             SupportTicket.sla_deadline < datetime.utcnow(),
             SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
         ).count()
@@ -2603,7 +2680,7 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
         
         # Customer satisfaction
         satisfaction_surveys = db.query(CustomerSatisfactionSurvey).filter(
-            CustomerSatisfactionSurvey.organization_id == current_user.organization_id
+            CustomerSatisfactionSurvey.organization_id == org_id
         ).all()
         
         avg_satisfaction_rating = 0
@@ -2619,7 +2696,7 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
             SupportTicket.category,
             func.count(SupportTicket.id)
         ).filter(
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).group_by(SupportTicket.category).all()
         
         tickets_by_category = {category: count for category, count in category_counts}
@@ -2629,7 +2706,7 @@ def get_support_analytics_dashboard(current_user: User = Depends(get_current_use
             SupportTicket.priority,
             func.count(SupportTicket.id)
         ).filter(
-            SupportTicket.organization_id == current_user.organization_id
+            SupportTicket.organization_id == org_id
         ).group_by(SupportTicket.priority).all()
         
         tickets_by_priority = {priority: count for priority, count in priority_counts}
@@ -2748,6 +2825,423 @@ def create_satisfaction_survey(survey_data: dict, current_user: User = Depends(g
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to create satisfaction survey: {str(e)}"}
+
+# Support Ticket Assignment Endpoints
+@app.get("/api/support/agents")
+def get_eligible_agents(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get eligible agents for ticket assignment"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get agents in the same organization
+        agents = db.query(User).filter(
+            User.organization_id == org_id,
+            User.role.in_(['agent', 'manager', 'admin'])
+        ).all()
+        
+        agent_data = []
+        for agent in agents:
+            # Calculate current workload
+            open_tickets = db.query(SupportTicket).filter(
+                SupportTicket.assigned_to_id == agent.id,
+                SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+            ).count()
+            
+            # Get agent skills
+            skills = db.query(UserSkill).filter(
+                UserSkill.user_id == agent.id,
+                UserSkill.is_active == True
+            ).all()
+            
+            agent_data.append({
+                "id": agent.id,
+                "name": agent.name,
+                "email": agent.email,
+                "role": agent.role,
+                "workload": open_tickets,
+                "skills": [{"name": skill.skill_name, "level": skill.skill_level} for skill in skills],
+                "is_available": open_tickets < 10  # Simple availability check
+            })
+        
+        return agent_data
+    except Exception as e:
+        return {"error": f"Failed to fetch agents: {str(e)}"}
+
+@app.get("/api/support/queues")
+def get_support_queues(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get support queues for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        queues = db.query(SupportQueue).filter(SupportQueue.organization_id == org_id).all()
+        
+        return [
+            {
+                "id": queue.id,
+                "name": queue.name,
+                "description": queue.description,
+                "auto_assign": queue.auto_assign,
+                "round_robin": queue.round_robin,
+                "max_workload": queue.max_workload,
+                "business_hours_only": queue.business_hours_only,
+                "handles_priorities": queue.handles_priorities or []
+            }
+            for queue in queues
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch queues: {str(e)}"}
+
+@app.patch("/api/support/tickets/{ticket_id}/assign")
+def assign_ticket(
+    ticket_id: int, 
+    assignment_data: dict, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Assign a ticket to an agent"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        # Validate assignment data
+        assigned_to_id = assignment_data.get('assigned_to_id')
+        assignment_reason = assignment_data.get('reason', '')
+        assignment_type = assignment_data.get('type', 'manual')
+        
+        if assigned_to_id:
+            # Verify the agent exists and is in the same organization
+            agent = db.query(User).filter(
+                User.id == assigned_to_id,
+                User.organization_id == org_id,
+                User.role.in_(['agent', 'manager', 'admin'])
+            ).first()
+            
+            if not agent:
+                raise HTTPException(status_code=400, detail="Invalid agent")
+            
+            # Check agent workload
+            current_workload = db.query(SupportTicket).filter(
+                SupportTicket.assigned_to_id == assigned_to_id,
+                SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+            ).count()
+            
+            if current_workload >= 10:  # Max workload threshold
+                raise HTTPException(status_code=400, detail="Agent workload too high")
+        
+        # Store previous assignment for audit
+        previous_assigned_to_id = ticket.assigned_to_id
+        
+        # Update ticket assignment
+        ticket.assigned_to_id = assigned_to_id
+        ticket.assigned_at = datetime.utcnow()
+        ticket.assignment_reason = assignment_reason
+        ticket.assignment_type = assignment_type
+        
+        # Create audit log
+        audit = AssignmentAudit(
+            ticket_id=ticket_id,
+            assigned_to_id=assigned_to_id,
+            assigned_by_id=current_user.id,
+            assignment_type=assignment_type,
+            assignment_reason=assignment_reason,
+            previous_assigned_to_id=previous_assigned_to_id
+        )
+        
+        db.add(audit)
+        db.commit()
+        
+        return {
+            "message": "Ticket assigned successfully",
+            "ticket": {
+                "id": ticket.id,
+                "assigned_to_id": ticket.assigned_to_id,
+                "assigned_to_name": agent.name if assigned_to_id else None,
+                "assigned_at": ticket.assigned_at.isoformat(),
+                "assignment_type": ticket.assignment_type
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to assign ticket: {str(e)}"}
+
+@app.post("/api/support/tickets/{ticket_id}/escalate")
+def escalate_ticket(
+    ticket_id: int, 
+    escalation_data: dict, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Escalate a ticket to a higher tier"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        escalation_reason = escalation_data.get('reason', '')
+        escalated_to_id = escalation_data.get('escalated_to_id')
+        
+        if not escalation_reason:
+            raise HTTPException(status_code=400, detail="Escalation reason is required")
+        
+        # Update ticket
+        ticket.escalated = True
+        ticket.escalated_at = datetime.utcnow()
+        ticket.escalation_reason = escalation_reason
+        ticket.escalated_to_id = escalated_to_id
+        
+        # If escalated to a specific agent, assign to them
+        if escalated_to_id:
+            ticket.assigned_to_id = escalated_to_id
+            ticket.assigned_at = datetime.utcnow()
+            ticket.assignment_type = 'escalation'
+        
+        # Create audit log
+        audit = AssignmentAudit(
+            ticket_id=ticket_id,
+            assigned_to_id=escalated_to_id,
+            assigned_by_id=current_user.id,
+            assignment_type='escalation',
+            assignment_reason=f"Escalated: {escalation_reason}",
+            previous_assigned_to_id=ticket.assigned_to_id
+        )
+        
+        db.add(audit)
+        db.commit()
+        
+        return {
+            "message": "Ticket escalated successfully",
+            "ticket": {
+                "id": ticket.id,
+                "escalated": ticket.escalated,
+                "escalated_at": ticket.escalated_at.isoformat(),
+                "escalation_reason": ticket.escalation_reason
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to escalate ticket: {str(e)}"}
+
+@app.get("/api/support/tickets/{ticket_id}/assignment-history")
+def get_assignment_history(
+    ticket_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Get assignment history for a ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Verify ticket exists and user has access
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        # Get assignment history
+        audits = db.query(AssignmentAudit).filter(
+            AssignmentAudit.ticket_id == ticket_id
+        ).order_by(AssignmentAudit.created_at.desc()).all()
+        
+        history = []
+        for audit in audits:
+            history.append({
+                "id": audit.id,
+                "assigned_to_name": audit.assigned_to.name if audit.assigned_to else "Unassigned",
+                "assigned_by_name": audit.assigned_by.name,
+                "assignment_type": audit.assignment_type,
+                "assignment_reason": audit.assignment_reason,
+                "created_at": audit.created_at.isoformat()
+            })
+        
+        return history
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"error": f"Failed to fetch assignment history: {str(e)}"}
+
+@app.post("/api/support/tickets/{ticket_id}/auto-assign")
+def auto_assign_ticket(
+    ticket_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Automatically assign a ticket using routing rules"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == org_id
+        ).first()
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        if ticket.assigned_to_id:
+            return {"message": "Ticket already assigned", "assigned_to_id": ticket.assigned_to_id}
+        
+        # Find appropriate queue based on category/priority
+        queue = db.query(SupportQueue).filter(
+            SupportQueue.organization_id == org_id,
+            SupportQueue.auto_assign == True
+        ).first()
+        
+        if not queue:
+            return {"error": "No auto-assign queue configured"}
+        
+        # Get eligible agents
+        agents = db.query(User).filter(
+            User.organization_id == org_id,
+            User.role.in_(['agent', 'manager', 'admin'])
+        ).all()
+        
+        if not agents:
+            return {"error": "No eligible agents found"}
+        
+        # Apply routing logic
+        assigned_agent = None
+        assignment_type = "auto"
+        assignment_reason = "Auto-assigned"
+        
+        # Priority-based routing (urgent/high go to senior agents)
+        if ticket.priority in ['urgent', 'high']:
+            senior_agents = [a for a in agents if a.role in ['manager', 'admin']]
+            if senior_agents:
+                # Round-robin among senior agents
+                senior_agents.sort(key=lambda x: x.id)
+                assigned_agent = senior_agents[ticket.id % len(senior_agents)]
+                assignment_type = "priority_routing"
+                assignment_reason = f"Priority {ticket.priority} - assigned to senior agent"
+        
+        # Skills-based routing
+        if not assigned_agent and ticket.category:
+            # Find agents with matching skills
+            skilled_agents = []
+            for agent in agents:
+                skills = db.query(UserSkill).filter(
+                    UserSkill.user_id == agent.id,
+                    UserSkill.skill_name == ticket.category,
+                    UserSkill.is_active == True
+                ).all()
+                if skills:
+                    skilled_agents.append(agent)
+            
+            if skilled_agents:
+                # Round-robin among skilled agents
+                skilled_agents.sort(key=lambda x: x.id)
+                assigned_agent = skilled_agents[ticket.id % len(skilled_agents)]
+                assignment_type = "skills_based"
+                assignment_reason = f"Skills-based routing for {ticket.category}"
+        
+        # Round-robin fallback
+        if not assigned_agent:
+            agents.sort(key=lambda x: x.id)
+            assigned_agent = agents[ticket.id % len(agents)]
+            assignment_type = "round_robin"
+            assignment_reason = "Round-robin assignment"
+        
+        # Check workload before final assignment
+        if assigned_agent:
+            current_workload = db.query(SupportTicket).filter(
+                SupportTicket.assigned_to_id == assigned_agent.id,
+                SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+            ).count()
+            
+            if current_workload >= queue.max_workload:
+                # Find agent with lowest workload
+                agent_workloads = []
+                for agent in agents:
+                    workload = db.query(SupportTicket).filter(
+                        SupportTicket.assigned_to_id == agent.id,
+                        SupportTicket.status.in_(['open', 'in_progress', 'pending_customer'])
+                    ).count()
+                    agent_workloads.append((agent, workload))
+                
+                agent_workloads.sort(key=lambda x: x[1])
+                assigned_agent = agent_workloads[0][0]
+                assignment_type = "workload_balanced"
+                assignment_reason = "Assigned to agent with lowest workload"
+        
+        # Assign the ticket
+        if assigned_agent:
+            ticket.assigned_to_id = assigned_agent.id
+            ticket.assigned_at = datetime.utcnow()
+            ticket.assignment_type = assignment_type
+            ticket.assignment_reason = assignment_reason
+            ticket.queue_id = queue.id
+            
+            # Create audit log
+            audit = AssignmentAudit(
+                ticket_id=ticket_id,
+                assigned_to_id=assigned_agent.id,
+                assigned_by_id=current_user.id,
+                assignment_type=assignment_type,
+                assignment_reason=assignment_reason,
+                queue_id=queue.id
+            )
+            
+            db.add(audit)
+            db.commit()
+            
+            return {
+                "message": "Ticket auto-assigned successfully",
+                "ticket": {
+                    "id": ticket.id,
+                    "assigned_to_id": ticket.assigned_to_id,
+                    "assigned_to_name": assigned_agent.name,
+                    "assigned_at": ticket.assigned_at.isoformat(),
+                    "assignment_type": ticket.assignment_type,
+                    "assignment_reason": ticket.assignment_reason
+                }
+            }
+        else:
+            return {"error": "No suitable agent found for assignment"}
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to auto-assign ticket: {str(e)}"}
 
 # Additional API endpoints for other pages
 @app.get("/api/contacts")
