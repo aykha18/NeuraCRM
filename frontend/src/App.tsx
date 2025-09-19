@@ -16,6 +16,7 @@ import CustomerSupport from "./pages/CustomerSupport";
 import SentimentAnalysis from "./pages/SentimentAnalysis";
 import CustomerSegmentation from "./pages/CustomerSegmentation";
 import AdvancedForecasting from "./pages/AdvancedForecasting";
+import Telephony from "./pages/Telephony";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -157,6 +158,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <AdvancedForecasting />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/telephony" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Telephony />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -55,6 +55,7 @@ try:
     from .routers.chat import router as chat_router
     from .routers.predictive_analytics import router as predictive_analytics_router
     from .routers.users import router as users_router
+    from .routers.telephony import router as telephony_router
     
     # Include routers
     app.include_router(auth_router)
@@ -66,6 +67,7 @@ try:
     app.include_router(email_automation_router)
     app.include_router(predictive_analytics_router)
     app.include_router(users_router)
+    app.include_router(telephony_router)
     
     logger.info("All routers loaded successfully!")
     

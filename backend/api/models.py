@@ -30,6 +30,13 @@ class Organization(Base):
     deals = relationship('Deal', back_populates='organization')
     subscription = relationship('Subscription', back_populates='organization', uselist=False)
     chat_rooms = relationship('ChatRoom')
+    # Telephony relationships
+    pbx_providers = relationship('PBXProvider', back_populates='organization')
+    pbx_extensions = relationship('PBXExtension', back_populates='organization')
+    calls = relationship('Call', back_populates='organization')
+    call_queues = relationship('CallQueue', back_populates='organization')
+    call_campaigns = relationship('CallCampaign', back_populates='organization')
+    call_analytics = relationship('CallAnalytics', back_populates='organization')
 
 class User(Base):
     __tablename__ = 'users'
@@ -55,6 +62,13 @@ class User(Base):
     chat_messages = relationship('ChatMessage', back_populates='sender')
     attachments = relationship('Attachment', back_populates='uploader')
     watched_deals = relationship('Deal', secondary=Watcher, back_populates='watchers')
+    # Telephony relationships
+    pbx_providers = relationship('PBXProvider', back_populates='creator')
+    pbx_extensions = relationship('PBXExtension', back_populates='user')
+    call_campaigns = relationship('CallCampaign', back_populates='creator')
+    call_activities = relationship('CallActivity', back_populates='user')
+    call_queue_members = relationship('CallQueueMember', back_populates='user')
+    calls_as_agent = relationship('Call', back_populates='agent', foreign_keys='Call.agent_id')
 
 class Contact(Base):
     __tablename__ = 'contacts'
@@ -71,6 +85,9 @@ class Contact(Base):
     organization = relationship('Organization', back_populates='contacts')
     leads = relationship('Lead', back_populates='contact')
     deals = relationship('Deal', back_populates='contact')
+    # Telephony relationships
+    calls = relationship('Call', back_populates='contact')
+    campaign_calls = relationship('CampaignCall', back_populates='target_contact')
 
 class Lead(Base):
     __tablename__ = 'leads'
@@ -91,6 +108,9 @@ class Lead(Base):
     contact = relationship('Contact', back_populates='leads')
     owner = relationship('User', back_populates='leads')
     organization = relationship('Organization', back_populates='leads')
+    # Telephony relationships
+    calls = relationship('Call', back_populates='lead')
+    campaign_calls = relationship('CampaignCall', back_populates='target_lead')
 
 class Deal(Base):
     __tablename__ = 'deals'
@@ -119,6 +139,8 @@ class Deal(Base):
     tags = relationship('Tag', secondary=DealTag, back_populates='deals')
     watchers = relationship('User', secondary=Watcher, back_populates='watched_deals')
     # customer_account = relationship('CustomerAccount', back_populates='deal', uselist=False)
+    # Telephony relationships
+    calls = relationship('Call', back_populates='deal')
 
 class Stage(Base):
     __tablename__ = 'stages'
@@ -994,4 +1016,444 @@ class ForecastingAnalytics(Base):
     performance_insights = Column(JSON)
     improvement_recommendations = Column(JSON)
     generated_at = Column(DateTime, default=datetime.utcnow)
+    organization = relationship('Organization')
+
+# Telephony Models
+class PBXProvider(Base):
+    __tablename__ = 'pbx_providers'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Provider Details
+    name = Column(String, nullable=False)  # e.g., "Asterisk", "FreePBX", "3CX", "Twilio"
+    provider_type = Column(String, nullable=False)  # 'asterisk', 'freepbx', '3cx', 'twilio', 'custom'
+    display_name = Column(String, nullable=False)
+    description = Column(Text)
+    
+    # Connection Settings
+    host = Column(String, nullable=False)  # IP or domain
+    port = Column(Integer, default=8088)  # AMI port for Asterisk, API port for others
+    username = Column(String, nullable=False)
+    password = Column(String, nullable=False)  # Encrypted
+    api_key = Column(String)  # For cloud providers like Twilio
+    
+    # PBX Configuration
+    context = Column(String, default='default')  # Asterisk context
+    caller_id_field = Column(String, default='CallerIDNum')  # Field to extract caller ID
+    dialplan_context = Column(String, default='from-internal')  # Context for outbound calls
+    
+    # Advanced Settings
+    recording_enabled = Column(Boolean, default=True)
+    recording_path = Column(String, default='/var/spool/asterisk/monitor')
+    transcription_enabled = Column(Boolean, default=False)
+    cdr_enabled = Column(Boolean, default=True)
+    cdr_path = Column(String, default='/var/log/asterisk/cdr-csv')
+    
+    # Webhook Settings
+    webhook_url = Column(String)  # For incoming call notifications
+    webhook_secret = Column(String)  # Webhook authentication secret
+    
+    # Status and Settings
+    is_active = Column(Boolean, default=True)
+    is_primary = Column(Boolean, default=False)  # Primary PBX for organization
+    auto_assign_calls = Column(Boolean, default=True)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_sync = Column(DateTime)
+    
+    # Relationships
+    organization = relationship('Organization')
+    creator = relationship('User')
+    extensions = relationship('PBXExtension', back_populates='provider', cascade='all, delete-orphan')
+    calls = relationship('Call', back_populates='provider')
+    call_queues = relationship('CallQueue', back_populates='provider', cascade='all, delete-orphan')
+
+class PBXExtension(Base):
+    __tablename__ = 'pbx_extensions'
+    id = Column(Integer, primary_key=True)
+    provider_id = Column(Integer, ForeignKey('pbx_providers.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # Null for system extensions
+    
+    # Extension Details
+    extension_number = Column(String, nullable=False)  # e.g., "1001", "2001"
+    extension_name = Column(String, nullable=False)  # e.g., "John Doe", "Sales Queue"
+    extension_type = Column(String, default='user')  # 'user', 'queue', 'ivr', 'conference', 'voicemail'
+    
+    # Technical Settings
+    device_type = Column(String)  # 'sip', 'pjsip', 'iax', 'dahdi'
+    device_config = Column(JSON)  # Device-specific configuration
+    voicemail_enabled = Column(Boolean, default=True)
+    voicemail_password = Column(String)
+    
+    # Call Handling
+    ring_timeout = Column(Integer, default=30)  # Seconds
+    max_ring_timeout = Column(Integer, default=60)  # Maximum ring time
+    call_forward_enabled = Column(Boolean, default=False)
+    call_forward_number = Column(String)
+    call_forward_conditions = Column(JSON)  # When to forward (busy, no-answer, etc.)
+    
+    # Presence and Status
+    presence_status = Column(String, default='available')  # available, busy, away, offline
+    dnd_enabled = Column(Boolean, default=False)  # Do Not Disturb
+    auto_answer = Column(Boolean, default=False)
+    
+    # Queue Settings (for queue extensions)
+    queue_strategy = Column(String, default='ringall')  # ringall, leastrecent, fewestcalls, etc.
+    queue_timeout = Column(Integer, default=30)
+    queue_retry = Column(Integer, default=5)
+    queue_wrapup_time = Column(Integer, default=30)
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_registered = Column(Boolean, default=False)  # Registration status with PBX
+    last_registered = Column(DateTime)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    provider = relationship('PBXProvider', back_populates='extensions')
+    organization = relationship('Organization')
+    user = relationship('User')
+    calls = relationship('Call', back_populates='extension')
+
+class Call(Base):
+    __tablename__ = 'calls'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    provider_id = Column(Integer, ForeignKey('pbx_providers.id'), nullable=False)
+    extension_id = Column(Integer, ForeignKey('pbx_extensions.id'), nullable=True)
+    
+    # Call Identification
+    unique_id = Column(String, unique=True, nullable=False)  # PBX unique call ID
+    pbx_call_id = Column(String)  # Additional PBX-specific call identifier
+    session_id = Column(String)  # Session identifier for multi-leg calls
+    
+    # Call Details
+    caller_id = Column(String, nullable=False)  # Calling number
+    caller_name = Column(String)  # Caller ID name
+    called_number = Column(String, nullable=False)  # Called number
+    called_name = Column(String)  # Called party name
+    
+    # Call Direction and Type
+    direction = Column(String, nullable=False)  # 'inbound', 'outbound', 'internal'
+    call_type = Column(String, default='voice')  # 'voice', 'video', 'conference'
+    
+    # Contact Association
+    contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
+    lead_id = Column(Integer, ForeignKey('leads.id'), nullable=True)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=True)
+    
+    # Agent Assignment
+    agent_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    queue_id = Column(Integer, ForeignKey('call_queues.id'), nullable=True)
+    
+    # Call Status and Timing
+    status = Column(String, nullable=False)  # 'ringing', 'answered', 'busy', 'no-answer', 'failed', 'completed'
+    start_time = Column(DateTime, nullable=False)
+    answer_time = Column(DateTime)
+    end_time = Column(DateTime)
+    duration = Column(Integer, default=0)  # Duration in seconds
+    talk_time = Column(Integer, default=0)  # Talk time in seconds
+    hold_time = Column(Integer, default=0)  # Hold time in seconds
+    wait_time = Column(Integer, default=0)  # Wait time in queue
+    
+    # Call Quality and Recording
+    quality_score = Column(Float)  # 0-100 call quality score
+    recording_url = Column(String)  # URL to call recording
+    recording_duration = Column(Integer)  # Recording duration in seconds
+    transcription_url = Column(String)  # URL to transcription
+    transcription_text = Column(Text)  # Call transcription
+    
+    # Call Disposition
+    disposition = Column(String)  # 'answered', 'busy', 'no-answer', 'failed', 'abandoned'
+    hangup_cause = Column(String)  # Technical hangup cause
+    notes = Column(Text)  # Agent notes about the call
+    
+    # Cost Information (for outbound calls)
+    cost = Column(Float, default=0.0)
+    cost_currency = Column(String, default='USD')
+    
+    # Call Data Records
+    cdr_data = Column(JSON)  # Complete CDR data from PBX
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    provider = relationship('PBXProvider', back_populates='calls')
+    extension = relationship('PBXExtension', back_populates='calls')
+    contact = relationship('Contact')
+    lead = relationship('Lead')
+    deal = relationship('Deal')
+    agent = relationship('User')
+    queue = relationship('CallQueue')
+    call_activities = relationship('CallActivity', back_populates='call', cascade='all, delete-orphan')
+
+class CallActivity(Base):
+    __tablename__ = 'call_activities'
+    id = Column(Integer, primary_key=True)
+    call_id = Column(Integer, ForeignKey('calls.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    
+    # Activity Details
+    activity_type = Column(String, nullable=False)  # 'answered', 'hold', 'transfer', 'conference', 'mute', 'unmute'
+    activity_data = Column(JSON)  # Additional activity-specific data
+    
+    # Timing
+    timestamp = Column(DateTime, nullable=False)
+    duration = Column(Integer, default=0)  # Duration of this activity in seconds
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    call = relationship('Call', back_populates='call_activities')
+    user = relationship('User')
+
+class CallQueue(Base):
+    __tablename__ = 'call_queues'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    provider_id = Column(Integer, ForeignKey('pbx_providers.id'), nullable=False)
+    
+    # Queue Details
+    name = Column(String, nullable=False)  # e.g., "Sales Queue", "Support Queue"
+    description = Column(Text)
+    queue_number = Column(String, nullable=False)  # Queue extension number
+    
+    # Queue Strategy
+    strategy = Column(String, default='ringall')  # ringall, leastrecent, fewestcalls, etc.
+    timeout = Column(Integer, default=30)  # Ring timeout in seconds
+    retry = Column(Integer, default=5)  # Number of retries
+    wrapup_time = Column(Integer, default=30)  # Wrap-up time in seconds
+    max_wait_time = Column(Integer, default=300)  # Maximum wait time in queue
+    
+    # Queue Settings
+    music_on_hold = Column(String, default='default')  # MOH class
+    announce_frequency = Column(Integer, default=30)  # Announcement frequency in seconds
+    announce_position = Column(Boolean, default=True)  # Announce queue position
+    announce_hold_time = Column(Boolean, default=True)  # Announce estimated hold time
+    
+    # Queue Members
+    max_calls_per_agent = Column(Integer, default=1)
+    join_empty = Column(Boolean, default=True)  # Join queue when no agents available
+    leave_when_empty = Column(Boolean, default=False)  # Leave queue when no callers
+    
+    # Priority and Routing
+    priority = Column(Integer, default=0)  # Queue priority
+    skill_based_routing = Column(Boolean, default=False)
+    required_skills = Column(JSON)  # Required skills for this queue
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    current_calls = Column(Integer, default=0)  # Current number of calls in queue
+    current_agents = Column(Integer, default=0)  # Current number of logged-in agents
+    
+    # Statistics
+    total_calls = Column(Integer, default=0)
+    answered_calls = Column(Integer, default=0)
+    abandoned_calls = Column(Integer, default=0)
+    avg_wait_time = Column(Float, default=0.0)
+    avg_talk_time = Column(Float, default=0.0)
+    service_level = Column(Float, default=0.0)  # Service level percentage
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    provider = relationship('PBXProvider', back_populates='call_queues')
+    queue_members = relationship('CallQueueMember', back_populates='queue', cascade='all, delete-orphan')
+    calls = relationship('Call', back_populates='queue')
+
+class CallQueueMember(Base):
+    __tablename__ = 'call_queue_members'
+    id = Column(Integer, primary_key=True)
+    queue_id = Column(Integer, ForeignKey('call_queues.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    
+    # Member Settings
+    extension_number = Column(String, nullable=False)
+    member_name = Column(String, nullable=False)
+    penalty = Column(Integer, default=0)  # Penalty for this member (lower = higher priority)
+    paused = Column(Boolean, default=False)  # Paused from queue
+    paused_reason = Column(String)  # Reason for pause
+    
+    # Skills (for skill-based routing)
+    skills = Column(JSON)  # Skills and proficiency levels
+    
+    # Status
+    status = Column(String, default='logged_out')  # logged_in, logged_out, on_break, busy, unavailable
+    last_status_change = Column(DateTime)
+    
+    # Statistics
+    total_calls = Column(Integer, default=0)
+    answered_calls = Column(Integer, default=0)
+    missed_calls = Column(Integer, default=0)
+    avg_talk_time = Column(Float, default=0.0)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    queue = relationship('CallQueue', back_populates='queue_members')
+    user = relationship('User')
+
+class CallCampaign(Base):
+    __tablename__ = 'call_campaigns'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Campaign Details
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    campaign_type = Column(String, default='outbound')  # 'outbound', 'survey', 'follow_up'
+    
+    # Target Settings
+    target_contacts = Column(JSON)  # List of contact IDs or criteria
+    target_leads = Column(JSON)  # List of lead IDs or criteria
+    target_segments = Column(JSON)  # List of customer segment IDs
+    
+    # Campaign Settings
+    max_concurrent_calls = Column(Integer, default=5)
+    call_timeout = Column(Integer, default=30)
+    retry_attempts = Column(Integer, default=3)
+    retry_interval = Column(Integer, default=3600)  # Seconds between retries
+    
+    # Scheduling
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    business_hours_only = Column(Boolean, default=True)
+    business_hours_start = Column(String, default='09:00')
+    business_hours_end = Column(String, default='17:00')
+    business_days = Column(JSON, default=['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
+    timezone = Column(String, default='UTC')
+    
+    # Call Script and Settings
+    script_template = Column(Text)  # Call script template
+    recording_enabled = Column(Boolean, default=True)
+    transcription_enabled = Column(Boolean, default=False)
+    
+    # Status
+    status = Column(String, default='draft')  # draft, scheduled, running, paused, completed, cancelled
+    progress = Column(JSON)  # Campaign progress tracking
+    
+    # Results
+    total_targets = Column(Integer, default=0)
+    calls_made = Column(Integer, default=0)
+    calls_answered = Column(Integer, default=0)
+    calls_completed = Column(Integer, default=0)
+    success_rate = Column(Float, default=0.0)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    creator = relationship('User')
+    campaign_calls = relationship('CampaignCall', back_populates='campaign', cascade='all, delete-orphan')
+
+class CampaignCall(Base):
+    __tablename__ = 'campaign_calls'
+    id = Column(Integer, primary_key=True)
+    campaign_id = Column(Integer, ForeignKey('call_campaigns.id'), nullable=False)
+    call_id = Column(Integer, ForeignKey('calls.id'), nullable=False)
+    
+    # Campaign Call Details
+    target_contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
+    target_lead_id = Column(Integer, ForeignKey('leads.id'), nullable=True)
+    
+    # Attempt Tracking
+    attempt_number = Column(Integer, default=1)
+    scheduled_time = Column(DateTime)
+    actual_call_time = Column(DateTime)
+    
+    # Results
+    outcome = Column(String)  # 'answered', 'no_answer', 'busy', 'failed', 'completed'
+    disposition = Column(String)  # Campaign-specific disposition
+    notes = Column(Text)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    campaign = relationship('CallCampaign', back_populates='campaign_calls')
+    call = relationship('Call')
+    target_contact = relationship('Contact')
+    target_lead = relationship('Lead')
+
+class CallAnalytics(Base):
+    __tablename__ = 'call_analytics'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Time Period
+    period_type = Column(String, nullable=False)  # daily, weekly, monthly, quarterly, yearly
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    
+    # Call Volume Metrics
+    total_calls = Column(Integer, default=0)
+    inbound_calls = Column(Integer, default=0)
+    outbound_calls = Column(Integer, default=0)
+    internal_calls = Column(Integer, default=0)
+    answered_calls = Column(Integer, default=0)
+    missed_calls = Column(Integer, default=0)
+    abandoned_calls = Column(Integer, default=0)
+    
+    # Performance Metrics
+    answer_rate = Column(Float, default=0.0)  # Percentage
+    abandonment_rate = Column(Float, default=0.0)  # Percentage
+    avg_call_duration = Column(Float, default=0.0)  # Seconds
+    avg_talk_time = Column(Float, default=0.0)  # Seconds
+    avg_wait_time = Column(Float, default=0.0)  # Seconds
+    avg_hold_time = Column(Float, default=0.0)  # Seconds
+    
+    # Queue Metrics
+    queue_calls = Column(Integer, default=0)
+    queue_answered = Column(Integer, default=0)
+    queue_abandoned = Column(Integer, default=0)
+    service_level = Column(Float, default=0.0)  # Percentage
+    avg_queue_wait = Column(Float, default=0.0)  # Seconds
+    
+    # Agent Performance
+    active_agents = Column(Integer, default=0)
+    total_agent_time = Column(Integer, default=0)  # Seconds
+    avg_agent_utilization = Column(Float, default=0.0)  # Percentage
+    
+    # Cost Metrics
+    total_cost = Column(Float, default=0.0)
+    avg_cost_per_call = Column(Float, default=0.0)
+    
+    # Quality Metrics
+    avg_quality_score = Column(Float, default=0.0)
+    recordings_count = Column(Integer, default=0)
+    transcriptions_count = Column(Integer, default=0)
+    
+    # Breakdown by Queue/Agent
+    queue_breakdown = Column(JSON)  # Per-queue statistics
+    agent_breakdown = Column(JSON)  # Per-agent statistics
+    hourly_breakdown = Column(JSON)  # Hour-by-hour statistics
+    
+    # Trends and Insights
+    trends = Column(JSON)  # Trend analysis
+    insights = Column(JSON)  # AI-generated insights
+    recommendations = Column(JSON)  # Recommendations for improvement
+    
+    # Metadata
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
     organization = relationship('Organization') 

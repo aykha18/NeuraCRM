@@ -14,7 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 import math
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func, or_
+from sqlalchemy import text, func, or_, and_, desc
 from pydantic import BaseModel
 from typing import Optional, Union
 
@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -5054,6 +5054,255 @@ def generate_segment_insights(segment_id: int, db: Session):
         db.commit()
     except Exception as e:
         logger.error(f"Error generating segment insights: {e}")
+
+# ============================================================================
+# TELEPHONY MODULE ENDPOINTS
+# ============================================================================
+
+# PBX Provider Management
+@app.get("/api/telephony/providers")
+def get_pbx_providers(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all PBX providers for the organization"""
+    try:
+        providers = db.query(PBXProvider).filter(
+            PBXProvider.organization_id == current_user.organization_id
+        ).all()
+        
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "provider_type": p.provider_type,
+                "display_name": p.display_name,
+                "host": p.host,
+                "port": p.port,
+                "is_active": p.is_active,
+                "is_primary": p.is_primary,
+                "recording_enabled": p.recording_enabled,
+                "transcription_enabled": p.transcription_enabled,
+                "created_at": p.created_at,
+                "last_sync": p.last_sync
+            }
+            for p in providers
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching PBX providers: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch PBX providers: {str(e)}")
+
+# Call Center Dashboard
+@app.get("/api/telephony/dashboard")
+def get_call_center_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get call center dashboard data"""
+    try:
+        # Active calls
+        active_calls = db.query(Call).filter(
+            and_(
+                Call.organization_id == current_user.organization_id,
+                Call.status.in_(["ringing", "answered"])
+            )
+        ).count()
+        
+        # Queued calls
+        queued_calls = db.query(Call).filter(
+            and_(
+                Call.organization_id == current_user.organization_id,
+                Call.status == "ringing",
+                Call.queue_id.isnot(None)
+            )
+        ).count()
+        
+        # Agent status counts
+        available_agents = db.query(CallQueueMember).filter(
+            and_(
+                CallQueueMember.status == "logged_in",
+                CallQueueMember.queue.has(
+                    CallQueue.organization_id == current_user.organization_id
+                )
+            )
+        ).count()
+        
+        busy_agents = db.query(Call).filter(
+            and_(
+                Call.organization_id == current_user.organization_id,
+                Call.status == "answered",
+                Call.agent_id.isnot(None)
+            )
+        ).distinct(Call.agent_id).count()
+        
+        offline_agents = db.query(CallQueueMember).filter(
+            and_(
+                CallQueueMember.status.in_(["logged_out", "offline"]),
+                CallQueueMember.queue.has(
+                    CallQueue.organization_id == current_user.organization_id
+                )
+            )
+        ).count()
+        
+        # Current queue status
+        queues = db.query(CallQueue).filter(
+            CallQueue.organization_id == current_user.organization_id
+        ).all()
+        
+        queue_status = []
+        for queue in queues:
+            queue_calls = db.query(Call).filter(
+                and_(
+                    Call.queue_id == queue.id,
+                    Call.status == "ringing"
+                )
+            ).count()
+            
+            queue_status.append({
+                "id": queue.id,
+                "name": queue.name,
+                "queue_number": queue.queue_number,
+                "current_calls": queue_calls,
+                "current_agents": queue.current_agents,
+                "wait_time": queue.avg_wait_time
+            })
+        
+        # Recent calls (last 10)
+        recent_calls = db.query(Call).filter(
+            Call.organization_id == current_user.organization_id
+        ).order_by(desc(Call.start_time)).limit(10).all()
+        
+        recent_calls_data = [
+            {
+                "id": c.id,
+                "caller_id": c.caller_id,
+                "called_number": c.called_number,
+                "direction": c.direction,
+                "status": c.status,
+                "start_time": c.start_time,
+                "duration": c.duration,
+                "agent_id": c.agent_id
+            }
+            for c in recent_calls
+        ]
+        
+        # Agent status
+        agent_status = []
+        agents = db.query(User).filter(
+            User.organization_id == current_user.organization_id
+        ).all()
+        
+        for agent in agents:
+            agent_calls = db.query(Call).filter(
+                and_(
+                    Call.agent_id == agent.id,
+                    Call.status.in_(["ringing", "answered"])
+                )
+            ).count()
+            
+            queue_memberships = db.query(CallQueueMember).filter(
+                CallQueueMember.user_id == agent.id
+            ).all()
+            
+            status = "offline"
+            if queue_memberships:
+                for membership in queue_memberships:
+                    if membership.status == "logged_in":
+                        status = "available"
+                        break
+                    elif membership.status == "busy":
+                        status = "busy"
+            
+            agent_status.append({
+                "id": agent.id,
+                "name": agent.name,
+                "email": agent.email,
+                "status": status,
+                "active_calls": agent_calls,
+                "queues": [m.queue.name for m in queue_memberships]
+            })
+        
+        # Queue metrics
+        queue_metrics = []
+        for queue in queues:
+            today = datetime.now().date()
+            today_calls = db.query(Call).filter(
+                and_(
+                    Call.queue_id == queue.id,
+                    func.date(Call.start_time) == today
+                )
+            ).count()
+            
+            answered_today = db.query(Call).filter(
+                and_(
+                    Call.queue_id == queue.id,
+                    func.date(Call.start_time) == today,
+                    Call.status == "answered"
+                )
+            ).count()
+            
+            queue_metrics.append({
+                "id": queue.id,
+                "name": queue.name,
+                "calls_today": today_calls,
+                "answered_today": answered_today,
+                "answer_rate": (answered_today / today_calls * 100) if today_calls > 0 else 0,
+                "avg_wait_time": queue.avg_wait_time,
+                "service_level": queue.service_level
+            })
+        
+        # Hourly stats for today
+        hourly_stats = {}
+        for hour in range(24):
+            hour_calls = db.query(Call).filter(
+                and_(
+                    Call.organization_id == current_user.organization_id,
+                    func.date(Call.start_time) == datetime.now().date(),
+                    func.extract('hour', Call.start_time) == hour
+                )
+            ).count()
+            hourly_stats[str(hour)] = hour_calls
+        
+        # Daily stats for last 7 days
+        daily_stats = {}
+        for i in range(7):
+            date = (datetime.now() - timedelta(days=i)).date()
+            day_calls = db.query(Call).filter(
+                and_(
+                    Call.organization_id == current_user.organization_id,
+                    func.date(Call.start_time) == date
+                )
+            ).count()
+            daily_stats[date.isoformat()] = day_calls
+        
+        # Alerts
+        alerts = []
+        if queued_calls > 10:
+            alerts.append({
+                "type": "warning",
+                "message": f"High queue volume: {queued_calls} calls waiting"
+            })
+        
+        if available_agents == 0:
+            alerts.append({
+                "type": "error",
+                "message": "No agents available"
+            })
+        
+        return {
+            "active_calls": active_calls,
+            "queued_calls": queued_calls,
+            "available_agents": available_agents,
+            "busy_agents": busy_agents,
+            "offline_agents": offline_agents,
+            "current_queue_status": queue_status,
+            "recent_calls": recent_calls_data,
+            "agent_status": agent_status,
+            "queue_metrics": queue_metrics,
+            "hourly_stats": hourly_stats,
+            "daily_stats": daily_stats,
+            "alerts": alerts
+        }
+    except Exception as e:
+        logger.error(f"Error fetching call center dashboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard: {str(e)}")
 
 # Serve frontend (AFTER all API routes)
 frontend_path = "frontend_dist"

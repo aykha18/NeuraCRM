@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -39,6 +39,7 @@ const navigationSections = [
       { name: "Customer Accounts", icon: <Building2 />, path: "/customer-accounts" },
       { name: "Financial Management", icon: <DollarSign />, path: "/financial-management" },
       { name: "Customer Support", icon: <Headphones />, path: "/customer-support" },
+      { name: "Call Center", icon: <Phone />, path: "/telephony" },
     ]
   },
   {
