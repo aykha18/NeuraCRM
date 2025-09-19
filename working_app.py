@@ -456,8 +456,16 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
         # Get deals for current user's organization
         org_id = current_user.organization_id or 8
         deals = db.query(Deal).filter(Deal.organization_id == org_id).all()
-        deals_data = [
-            {
+        deals_data = []
+        for deal in deals:
+            # Get watchers for this deal
+            watchers_result = db.execute(
+                text("SELECT user_id FROM watcher WHERE deal_id = :deal_id"),
+                {"deal_id": deal.id}
+            ).fetchall()
+            watcher_ids = [row[0] for row in watchers_result]
+            
+            deal_data = {
                 "id": deal.id,
                 "title": deal.title,
                 "description": deal.description or "",
@@ -470,14 +478,14 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
                 "created_at": deal.created_at.isoformat() if deal.created_at else None,
                 "owner_name": deal.owner.name if deal.owner else None,
                 "contact_name": deal.contact.name if deal.contact else None,
-                "watchers": [],  # Could be populated from watchers relationship
+                "watchers": watcher_ids,
+                "is_watched": current_user.id in watcher_ids,
                 "status": getattr(deal, 'status', 'open'),  # Default to 'open' if not set
                 "closed_at": deal.closed_at.isoformat() if deal.closed_at else None,
                 "outcome_reason": getattr(deal, 'outcome_reason', None),
                 "customer_account_id": getattr(deal, 'customer_account_id', None)
             }
-            for deal in deals
-        ]
+            deals_data.append(deal_data)
         
         return {
             "stages": stages_data,
