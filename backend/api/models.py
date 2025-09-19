@@ -1280,28 +1280,14 @@ class CallQueueMember(Base):
     id = Column(Integer, primary_key=True)
     queue_id = Column(Integer, ForeignKey('call_queues.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    
-    # Member Settings
-    extension_number = Column(String, nullable=False)
-    member_name = Column(String, nullable=False)
+    extension_id = Column(Integer, ForeignKey('pbx_extensions.id'), nullable=True)
     penalty = Column(Integer, default=0)  # Penalty for this member (lower = higher priority)
     paused = Column(Boolean, default=False)  # Paused from queue
-    paused_reason = Column(String)  # Reason for pause
-    
-    # Skills (for skill-based routing)
-    skills = Column(JSON)  # Skills and proficiency levels
-    
-    # Status
-    status = Column(String, default='logged_out')  # logged_in, logged_out, on_break, busy, unavailable
-    last_status_change = Column(DateTime)
-    
-    # Statistics
+    status = Column(String, default='logged_out')  # logged_in, logged_out, busy, offline
+    last_call_time = Column(DateTime)
     total_calls = Column(Integer, default=0)
     answered_calls = Column(Integer, default=0)
-    missed_calls = Column(Integer, default=0)
-    avg_talk_time = Column(Float, default=0.0)
-    
-    # Metadata
+    talk_time = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
