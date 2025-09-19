@@ -19,7 +19,7 @@ RAILWAY_DB_CONFIG = {
     'host': 'nozomi.proxy.rlwy.net',
     'database': 'railway',
     'user': 'postgres',
-    'password': 'xxxxxxxx',
+    'password': 'irUsikIqAifdrCMNOlGtApioMQJDjDfE',
     'port': 49967
 }
 
