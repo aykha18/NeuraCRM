@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics, Watcher
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -1665,6 +1665,57 @@ def move_deal(deal_id: int, move_data: dict, current_user: User = Depends(get_cu
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to move deal: {str(e)}"}
+
+# Deal Watch/Unwatch Endpoint
+@app.post("/api/kanban/deals/{deal_id}/watch")
+def watch_deal(deal_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Watch/unwatch a deal"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id,
+            Deal.organization_id == current_user.organization_id
+        ).first()
+        
+        if not deal:
+            return {"error": "Deal not found"}
+        
+        # Check if user is already watching this deal using the association table
+        existing_watcher = db.execute(
+            text("SELECT 1 FROM watcher WHERE deal_id = :deal_id AND user_id = :user_id"),
+            {"deal_id": deal_id, "user_id": current_user.id}
+        ).first()
+        
+        if existing_watcher:
+            # User is watching, so unwatch (remove from watchers)
+            db.execute(
+                text("DELETE FROM watcher WHERE deal_id = :deal_id AND user_id = :user_id"),
+                {"deal_id": deal_id, "user_id": current_user.id}
+            )
+            action = "unwatched"
+        else:
+            # User is not watching, so watch (add to watchers)
+            db.execute(
+                text("INSERT INTO watcher (deal_id, user_id) VALUES (:deal_id, :user_id)"),
+                {"deal_id": deal_id, "user_id": current_user.id}
+            )
+            action = "watched"
+        
+        db.commit()
+        
+        return {
+            "message": f"Deal {action} successfully",
+            "action": action,
+            "deal_id": deal_id,
+            "user_id": current_user.id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to watch/unwatch deal: {str(e)}"}
 
 # Post-Sale Workflow Endpoints
 @app.put("/api/deals/{deal_id}/status")
