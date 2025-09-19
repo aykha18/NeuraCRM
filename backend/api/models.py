@@ -927,4 +927,71 @@ class SegmentAnalytics(Base):
     
     # Relationships
     segment = relationship('CustomerSegment')
+    organization = relationship('Organization')
+
+# Advanced Forecasting Models
+class ForecastingModel(Base):
+    __tablename__ = 'forecasting_models'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    model_type = Column(String, nullable=False)  # 'revenue', 'pipeline', 'customer_growth', 'churn'
+    data_source = Column(String, nullable=False)  # 'deals', 'contacts', 'activities'
+    model_algorithm = Column(String, nullable=False)  # 'ARIMA', 'Prophet', 'Linear_Regression', 'Exponential_Smoothing'
+    model_parameters = Column(JSON)
+    training_data_period = Column(String, nullable=False)  # '3_months', '6_months', '12_months', '24_months'
+    forecast_horizon = Column(String, nullable=False)  # '1_month', '3_months', '6_months', '12_months'
+    accuracy_metrics = Column(JSON)
+    is_active = Column(Boolean, default=True)
+    last_trained = Column(DateTime)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    organization = relationship('Organization')
+    creator = relationship('User')
+    forecasts = relationship('ForecastResult', back_populates='model', cascade='all, delete-orphan')
+
+class ForecastResult(Base):
+    __tablename__ = 'forecast_results'
+    id = Column(Integer, primary_key=True)
+    model_id = Column(Integer, ForeignKey('forecasting_models.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    forecast_type = Column(String, nullable=False)
+    forecast_period = Column(String, nullable=False)
+    forecast_date = Column(DateTime, nullable=False)
+    forecasted_value = Column(Float, nullable=False)
+    confidence_interval_lower = Column(Float)
+    confidence_interval_upper = Column(Float)
+    actual_value = Column(Float)
+    accuracy_score = Column(Float)
+    trend_direction = Column(String)  # 'increasing', 'decreasing', 'stable'
+    seasonality_factor = Column(Float)
+    anomaly_detected = Column(Boolean, default=False)
+    forecast_quality_score = Column(Float)
+    insights = Column(JSON)
+    recommendations = Column(JSON)
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    model = relationship('ForecastingModel', back_populates='forecasts')
+    organization = relationship('Organization')
+
+class ForecastingAnalytics(Base):
+    __tablename__ = 'forecasting_analytics'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    analytics_type = Column(String, nullable=False)  # 'model_performance', 'forecast_accuracy', 'trend_analysis'
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    total_forecasts = Column(Integer, default=0)
+    accurate_forecasts = Column(Integer, default=0)
+    accuracy_rate = Column(Float, default=0.0)
+    avg_forecast_error = Column(Float, default=0.0)
+    best_performing_model = Column(String)
+    worst_performing_model = Column(String)
+    trend_analysis = Column(JSON)
+    seasonality_analysis = Column(JSON)
+    anomaly_detection = Column(JSON)
+    performance_insights = Column(JSON)
+    improvement_recommendations = Column(JSON)
+    generated_at = Column(DateTime, default=datetime.utcnow)
     organization = relationship('Organization') 

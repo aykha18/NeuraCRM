@@ -23,6 +23,7 @@ const navigationSections = [
       { name: "Predictive Analytics", icon: <Brain />, path: "/predictive-analytics" },
       { name: "Sentiment Analysis", icon: <TrendingUp />, path: "/sentiment-analysis" },
       { name: "Customer Segmentation", icon: <Users />, path: "/customer-segmentation" },
+      { name: "Advanced Forecasting", icon: <TrendingUp />, path: "/advanced-forecasting" },
     ]
   },
   {

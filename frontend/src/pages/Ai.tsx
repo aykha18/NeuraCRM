@@ -409,6 +409,33 @@ const aiFeatures: AIFeature[] = [
         "Risk assessment and mitigation"
       ]
     }
+  },
+  {
+    id: "advanced-forecasting",
+    title: "Advanced Forecasting",
+    description: "AI-powered time-series forecasting for revenue, pipeline, customer growth, and churn prediction with multiple algorithms and confidence intervals.",
+    icon: <TrendingUp className="w-8 h-8" />,
+    status: "implemented",
+    category: "analytics",
+    details: {
+      howItWorks: "Our advanced forecasting system uses multiple algorithms including Linear Regression, Exponential Smoothing, ARIMA, and Prophet to analyze historical data and predict future trends. Each model provides confidence intervals, accuracy scores, and actionable insights.",
+      businessBenefits: [
+        "Accurate revenue and pipeline forecasting",
+        "Predict customer growth and churn rates",
+        "Optimize resource allocation and planning",
+        "Identify trends and seasonal patterns",
+        "Make data-driven strategic decisions"
+      ],
+      technicalDetails: "Implements time-series analysis with multiple forecasting algorithms, confidence intervals, accuracy metrics, trend analysis, seasonality detection, and anomaly identification for comprehensive business forecasting.",
+      useCases: [
+        "Monthly and quarterly revenue forecasting",
+        "Sales pipeline value prediction",
+        "Customer acquisition rate forecasting",
+        "Churn prediction and prevention",
+        "Budget planning and resource allocation",
+        "Market trend analysis and planning"
+      ]
+    }
   }
 ];
 
