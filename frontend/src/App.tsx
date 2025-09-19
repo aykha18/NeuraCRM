@@ -14,6 +14,7 @@ import CustomerAccounts from "./pages/CustomerAccounts";
 import FinancialManagement from "./pages/FinancialManagement";
 import CustomerSupport from "./pages/CustomerSupport";
 import SentimentAnalysis from "./pages/SentimentAnalysis";
+import CustomerSegmentation from "./pages/CustomerSegmentation";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -141,6 +142,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SentimentAnalysis />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/customer-segmentation" element={
+              <ProtectedRoute>
+                <Layout>
+                  <CustomerSegmentation />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -22,6 +22,7 @@ const navigationSections = [
       { name: "AI Help Guide", icon: <BookOpen />, path: "/ai-help" },
       { name: "Predictive Analytics", icon: <Brain />, path: "/predictive-analytics" },
       { name: "Sentiment Analysis", icon: <TrendingUp />, path: "/sentiment-analysis" },
+      { name: "Customer Segmentation", icon: <Users />, path: "/customer-segmentation" },
     ]
   },
   {
@@ -78,7 +79,7 @@ export default function Sidebar({ open: _open, onClose }: { open: boolean; onClo
 
   return (
     <aside className="bg-[#181E36] text-white w-64 min-h-screen flex flex-col justify-between shadow-2xl relative">
-      <div>
+      <div className="bg-[#181E36]">
         {/* Logo and subtitle (compact) */}
         <div className="flex flex-col items-center py-6">
           <div className="flex flex-col items-center mb-2">
@@ -87,13 +88,13 @@ export default function Sidebar({ open: _open, onClose }: { open: boolean; onClo
           </div>
         </div>
         {/* Navigation (collapsible sections) */}
-        <nav className="flex-1 relative px-3">
+        <nav className="flex-1 relative px-3 bg-[#181E36]">
           {navigationSections.map((section) => {
             const isExpanded = expandedSections.has(section.title);
             const hasActiveItem = isSectionActive(section);
             
             return (
-              <div key={section.title} className="mb-2">
+              <div key={section.title} className="mb-2 bg-[#181E36]">
                 {/* Section Header */}
                 <button
                   onClick={() => toggleSection(section.title)}
@@ -161,7 +162,7 @@ export default function Sidebar({ open: _open, onClose }: { open: boolean; onClo
         </nav>
       </div>
       {/* Bottom section (compact) */}
-      <div className="mb-6">
+      <div className="mb-6 bg-[#181E36]">
         <ul>
           {bottomItems.map((item) => (
             <li key={item.name}>

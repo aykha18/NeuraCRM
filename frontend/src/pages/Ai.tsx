@@ -170,6 +170,30 @@ const aiFeatures: AIFeature[] = [
     }
   },
   {
+    id: "customer-segmentation",
+    title: "AI Customer Segmentation",
+    description: "Automatically segment customers based on behavior, value, and engagement patterns for targeted marketing and sales strategies.",
+    icon: <Users className="w-8 h-8" />,
+    status: "implemented",
+    category: "analytics",
+    details: {
+      howItWorks: "Our AI analyzes customer data including deal values, engagement patterns, company size, and activity levels to automatically create meaningful customer segments. The system continuously updates segments and provides actionable insights for each group.",
+      businessBenefits: [
+        "Target high-value customers for upselling",
+        "Identify at-risk customers early",
+        "Personalize marketing campaigns by segment",
+        "Improve sales efficiency and conversion rates"
+      ],
+      technicalDetails: "Uses machine learning algorithms to analyze customer behavior patterns, deal history, and engagement metrics. Creates dynamic segments with real-time updates and provides risk/opportunity scoring for each segment.",
+      useCases: [
+        "High-value customer identification",
+        "At-risk customer early warning",
+        "Targeted marketing campaigns",
+        "Sales team prioritization"
+      ]
+    }
+  },
+  {
     id: "smart-scheduling",
     title: "AI Meeting Scheduler",
     description: "Intelligent scheduling that optimizes meeting times based on availability, time zones, and preferences.",

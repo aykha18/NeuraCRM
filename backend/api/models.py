@@ -818,4 +818,113 @@ class AssignmentAudit(Base):
     assigned_to = relationship('User', foreign_keys=[assigned_to_id])
     assigned_by = relationship('User', foreign_keys=[assigned_by_id])
     previous_assigned_to = relationship('User', foreign_keys=[previous_assigned_to_id])
-    queue = relationship('SupportQueue') 
+    queue = relationship('SupportQueue')
+
+# Customer Segmentation Models
+class CustomerSegment(Base):
+    __tablename__ = 'customer_segments'
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Segment Details
+    name = Column(String, nullable=False)  # e.g., "High-Value Customers", "At-Risk Customers"
+    description = Column(Text)
+    segment_type = Column(String, default='behavioral')  # behavioral, demographic, transactional, predictive
+    
+    # Segmentation Criteria (JSON)
+    criteria = Column(JSON, nullable=False)  # Rules and conditions for segment membership
+    criteria_description = Column(Text)  # Human-readable description of criteria
+    
+    # Segment Statistics
+    customer_count = Column(Integer, default=0)
+    total_deal_value = Column(Float, default=0.0)
+    avg_deal_value = Column(Float, default=0.0)
+    conversion_rate = Column(Float, default=0.0)
+    
+    # AI-Generated Insights
+    insights = Column(JSON)  # AI-generated insights about the segment
+    recommendations = Column(JSON)  # AI recommendations for this segment
+    risk_score = Column(Float, default=0.0)  # 0-100 risk assessment
+    opportunity_score = Column(Float, default=0.0)  # 0-100 opportunity assessment
+    
+    # Status and Settings
+    is_active = Column(Boolean, default=True)
+    is_auto_updated = Column(Boolean, default=True)  # Auto-update when criteria change
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    # Metadata
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    organization = relationship('Organization')
+    creator = relationship('User')
+    segment_members = relationship('CustomerSegmentMember', back_populates='segment', cascade='all, delete-orphan')
+
+class CustomerSegmentMember(Base):
+    __tablename__ = 'customer_segment_members'
+    id = Column(Integer, primary_key=True)
+    segment_id = Column(Integer, ForeignKey('customer_segments.id'), nullable=False)
+    contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=False)
+    
+    # Membership Details
+    membership_score = Column(Float, default=1.0)  # How well they fit the segment (0-1)
+    membership_reasons = Column(JSON)  # Reasons why they're in this segment
+    added_by_ai = Column(Boolean, default=False)  # Was this membership AI-generated?
+    
+    # Engagement Metrics for this segment
+    segment_engagement_score = Column(Float, default=0.0)  # 0-100
+    last_activity_in_segment = Column(DateTime)
+    
+    # Metadata
+    added_at = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    segment = relationship('CustomerSegment', back_populates='segment_members')
+    contact = relationship('Contact')
+
+class SegmentAnalytics(Base):
+    __tablename__ = 'segment_analytics'
+    id = Column(Integer, primary_key=True)
+    segment_id = Column(Integer, ForeignKey('customer_segments.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    
+    # Time Period
+    period_type = Column(String, nullable=False)  # daily, weekly, monthly, quarterly
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    
+    # Segment Performance Metrics
+    customer_count = Column(Integer, default=0)
+    new_members = Column(Integer, default=0)
+    lost_members = Column(Integer, default=0)
+    
+    # Revenue Metrics
+    total_revenue = Column(Float, default=0.0)
+    avg_revenue_per_customer = Column(Float, default=0.0)
+    revenue_growth_rate = Column(Float, default=0.0)
+    
+    # Engagement Metrics
+    avg_engagement_score = Column(Float, default=0.0)
+    active_customers = Column(Integer, default=0)
+    churn_rate = Column(Float, default=0.0)
+    
+    # Deal Metrics
+    total_deals = Column(Integer, default=0)
+    closed_deals = Column(Integer, default=0)
+    avg_deal_size = Column(Float, default=0.0)
+    conversion_rate = Column(Float, default=0.0)
+    
+    # AI Insights
+    trends = Column(JSON)  # Trending patterns in this segment
+    predictions = Column(JSON)  # Future predictions for this segment
+    recommendations = Column(JSON)  # Actionable recommendations
+    
+    # Metadata
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    segment = relationship('CustomerSegment')
+    organization = relationship('Organization') 

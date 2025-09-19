@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func, or_
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 # Try to import authentication dependencies
 try:
@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -207,6 +207,74 @@ class CustomerSuccessMetric(BaseModel):
     last_activity: Optional[datetime]
     renewal_probability: int  # 1-100
     satisfaction_score: Optional[int]  # 1-10
+
+# Customer Segmentation Models
+class CustomerSegmentCreate(BaseModel):
+    """Request schema for creating customer segment"""
+    name: str
+    description: Optional[str] = None
+    segment_type: str = "behavioral"  # behavioral, demographic, transactional, predictive
+    criteria: dict  # Segmentation rules and conditions
+    criteria_description: Optional[str] = None
+
+class CustomerSegmentResponse(BaseModel):
+    """Response schema for customer segment"""
+    id: int
+    name: str
+    description: Optional[str]
+    segment_type: str
+    criteria: dict
+    criteria_description: Optional[str]
+    customer_count: int
+    total_deal_value: float
+    avg_deal_value: float
+    conversion_rate: float
+    insights: Optional[dict]
+    recommendations: Optional[Union[dict, list]]
+    risk_score: float
+    opportunity_score: float
+    is_active: bool
+    is_auto_updated: bool
+    last_updated: datetime
+    created_at: datetime
+
+class CustomerSegmentMemberResponse(BaseModel):
+    """Response schema for segment member"""
+    id: int
+    contact_id: int
+    contact_name: str
+    contact_email: Optional[str]
+    contact_company: Optional[str]
+    membership_score: float
+    membership_reasons: Optional[dict]
+    segment_engagement_score: float
+    last_activity_in_segment: Optional[datetime]
+    added_at: datetime
+
+class SegmentAnalyticsResponse(BaseModel):
+    """Response schema for segment analytics"""
+    id: int
+    segment_id: int
+    period_type: str
+    period_start: datetime
+    period_end: datetime
+    customer_count: int
+    new_members: int
+    lost_members: int
+    total_revenue: float
+    avg_revenue_per_customer: float
+    revenue_growth_rate: float
+    avg_engagement_score: float
+    active_customers: int
+    churn_rate: float
+    total_deals: int
+    closed_deals: int
+    avg_deal_size: float
+    conversion_rate: float
+    trends: Optional[dict]
+    predictions: Optional[dict]
+    recommendations: Optional[dict]
+    generated_at: datetime
 
 # Authentication functions (only if auth is available)
 if AUTH_AVAILABLE:
@@ -4389,6 +4457,310 @@ async def get_activity_sentiment(
         return {"error": f"Failed to get activity sentiment: {str(e)}"}
 
 # ===== END SENTIMENT ANALYSIS ENDPOINTS =====
+
+# Customer Segmentation API Endpoints
+@app.get("/api/customer-segments", response_model=list[CustomerSegmentResponse])
+def get_customer_segments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all customer segments for the organization"""
+    try:
+        segments = db.query(CustomerSegment).filter(
+            CustomerSegment.organization_id == current_user.organization_id,
+            CustomerSegment.is_active == True
+        ).all()
+        
+        return [
+            CustomerSegmentResponse(
+                id=segment.id,
+                name=segment.name,
+                description=segment.description,
+                segment_type=segment.segment_type,
+                criteria=segment.criteria,
+                criteria_description=segment.criteria_description,
+                customer_count=segment.customer_count,
+                total_deal_value=segment.total_deal_value,
+                avg_deal_value=segment.avg_deal_value,
+                conversion_rate=segment.conversion_rate,
+                insights=segment.insights,
+                recommendations=segment.recommendations,
+                risk_score=segment.risk_score,
+                opportunity_score=segment.opportunity_score,
+                is_active=segment.is_active,
+                is_auto_updated=segment.is_auto_updated,
+                last_updated=segment.last_updated,
+                created_at=segment.created_at
+            )
+            for segment in segments
+        ]
+    except Exception as e:
+        logger.error(f"Error getting customer segments: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get customer segments")
+
+@app.post("/api/customer-segments", response_model=CustomerSegmentResponse)
+def create_customer_segment(
+    segment_data: CustomerSegmentCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new customer segment"""
+    try:
+        # Create the segment
+        new_segment = CustomerSegment(
+            name=segment_data.name,
+            description=segment_data.description,
+            segment_type=segment_data.segment_type,
+            criteria=segment_data.criteria,
+            criteria_description=segment_data.criteria_description,
+            organization_id=current_user.organization_id,
+            created_by=current_user.id
+        )
+        
+        db.add(new_segment)
+        db.commit()
+        db.refresh(new_segment)
+        
+        # Calculate initial statistics
+        update_segment_statistics(new_segment.id, db)
+        
+        return CustomerSegmentResponse(
+            id=new_segment.id,
+            name=new_segment.name,
+            description=new_segment.description,
+            segment_type=new_segment.segment_type,
+            criteria=new_segment.criteria,
+            criteria_description=new_segment.criteria_description,
+            customer_count=new_segment.customer_count,
+            total_deal_value=new_segment.total_deal_value,
+            avg_deal_value=new_segment.avg_deal_value,
+            conversion_rate=new_segment.conversion_rate,
+            insights=new_segment.insights,
+            recommendations=new_segment.recommendations,
+            risk_score=new_segment.risk_score,
+            opportunity_score=new_segment.opportunity_score,
+            is_active=new_segment.is_active,
+            is_auto_updated=new_segment.is_auto_updated,
+            last_updated=new_segment.last_updated,
+            created_at=new_segment.created_at
+        )
+    except Exception as e:
+        logger.error(f"Error creating customer segment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create customer segment")
+
+@app.get("/api/customer-segments/{segment_id}/members", response_model=list[CustomerSegmentMemberResponse])
+def get_segment_members(
+    segment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all members of a customer segment"""
+    try:
+        # Verify segment exists and belongs to organization
+        segment = db.query(CustomerSegment).filter(
+            CustomerSegment.id == segment_id,
+            CustomerSegment.organization_id == current_user.organization_id
+        ).first()
+        
+        if not segment:
+            raise HTTPException(status_code=404, detail="Customer segment not found")
+        
+        # Get segment members with contact information
+        members = db.query(CustomerSegmentMember, Contact).join(
+            Contact, CustomerSegmentMember.contact_id == Contact.id
+        ).filter(
+            CustomerSegmentMember.segment_id == segment_id
+        ).all()
+        
+        return [
+            CustomerSegmentMemberResponse(
+                id=member.id,
+                contact_id=member.contact_id,
+                contact_name=contact.name,
+                contact_email=contact.email,
+                contact_company=contact.company,
+                membership_score=member.membership_score,
+                membership_reasons=member.membership_reasons,
+                segment_engagement_score=member.segment_engagement_score,
+                last_activity_in_segment=member.last_activity_in_segment,
+                added_at=member.added_at
+            )
+            for member, contact in members
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting segment members: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get segment members")
+
+@app.post("/api/customer-segments/{segment_id}/refresh")
+def refresh_segment(
+    segment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Refresh a customer segment - recalculate members and statistics"""
+    try:
+        segment = db.query(CustomerSegment).filter(
+            CustomerSegment.id == segment_id,
+            CustomerSegment.organization_id == current_user.organization_id
+        ).first()
+        
+        if not segment:
+            raise HTTPException(status_code=404, detail="Customer segment not found")
+        
+        # Clear existing members
+        db.query(CustomerSegmentMember).filter(
+            CustomerSegmentMember.segment_id == segment_id
+        ).delete()
+        
+        # Apply segmentation criteria to find new members
+        members_added = apply_segmentation_criteria(segment, db)
+        
+        # Update segment statistics
+        update_segment_statistics(segment_id, db)
+        
+        # Generate AI insights
+        generate_segment_insights(segment_id, db)
+        
+        db.commit()
+        
+        return {
+            "message": "Segment refreshed successfully",
+            "members_added": members_added,
+            "segment_id": segment_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error refreshing segment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to refresh segment")
+
+def apply_segmentation_criteria(segment: CustomerSegment, db: Session) -> int:
+    """Apply segmentation criteria to find matching contacts"""
+    try:
+        criteria = segment.criteria
+        organization_id = segment.organization_id
+        
+        # Start with all contacts in the organization
+        query = db.query(Contact).filter(Contact.organization_id == organization_id)
+        
+        # Apply criteria filters
+        if criteria.get("deal_value_range"):
+            value_range = criteria["deal_value_range"]
+            # Join with deals to filter by deal value
+            query = query.join(Deal, Contact.id == Deal.contact_id)
+            if value_range.get("min_value"):
+                query = query.filter(Deal.value >= value_range["min_value"])
+            if value_range.get("max_value"):
+                query = query.filter(Deal.value <= value_range["max_value"])
+        
+        if criteria.get("last_activity_days"):
+            days = criteria["last_activity_days"]
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            # Join with activities to filter by last activity
+            query = query.join(Activity, Contact.id == Activity.contact_id)
+            query = query.filter(Activity.timestamp >= cutoff_date)
+        
+        # Get matching contacts
+        matching_contacts = query.distinct().all()
+        
+        # Create segment members
+        members_added = 0
+        for contact in matching_contacts:
+            # Check if member already exists
+            existing_member = db.query(CustomerSegmentMember).filter(
+                CustomerSegmentMember.segment_id == segment.id,
+                CustomerSegmentMember.contact_id == contact.id
+            ).first()
+            
+            if not existing_member:
+                new_member = CustomerSegmentMember(
+                    segment_id=segment.id,
+                    contact_id=contact.id,
+                    membership_score=1.0,  # Default score
+                    added_by_ai=True
+                )
+                db.add(new_member)
+                members_added += 1
+        
+        return members_added
+    except Exception as e:
+        logger.error(f"Error applying segmentation criteria: {e}")
+        return 0
+
+def update_segment_statistics(segment_id: int, db: Session):
+    """Update segment statistics based on current members"""
+    try:
+        segment = db.query(CustomerSegment).filter(CustomerSegment.id == segment_id).first()
+        if not segment:
+            return
+        
+        # Count members
+        member_count = db.query(CustomerSegmentMember).filter(
+            CustomerSegmentMember.segment_id == segment_id
+        ).count()
+        
+        # Calculate deal metrics
+        deal_stats = db.query(
+            func.count(Deal.id).label('total_deals'),
+            func.sum(Deal.value).label('total_value'),
+            func.avg(Deal.value).label('avg_value'),
+            func.count(Deal.id).filter(Deal.status == 'won').label('closed_deals')
+        ).join(Contact, Deal.contact_id == Contact.id).join(
+            CustomerSegmentMember, Contact.id == CustomerSegmentMember.contact_id
+        ).filter(CustomerSegmentMember.segment_id == segment_id).first()
+        
+        # Update segment
+        segment.customer_count = member_count
+        segment.total_deal_value = float(deal_stats.total_value or 0)
+        segment.avg_deal_value = float(deal_stats.avg_value or 0)
+        
+        if deal_stats.total_deals > 0:
+            segment.conversion_rate = (deal_stats.closed_deals / deal_stats.total_deals) * 100
+        else:
+            segment.conversion_rate = 0
+        
+        segment.last_updated = datetime.utcnow()
+        
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error updating segment statistics: {e}")
+
+def generate_segment_insights(segment_id: int, db: Session):
+    """Generate AI insights for a customer segment"""
+    try:
+        segment = db.query(CustomerSegment).filter(CustomerSegment.id == segment_id).first()
+        if not segment:
+            return
+        
+        # Generate basic insights based on segment data
+        insights = {
+            "segment_health": "healthy" if segment.conversion_rate > 20 else "needs_attention",
+            "growth_trend": "positive" if segment.customer_count > 0 else "stable",
+            "key_characteristics": [
+                f"Average deal value: ${segment.avg_deal_value:,.2f}",
+                f"Conversion rate: {segment.conversion_rate:.1f}%",
+                f"Total customers: {segment.customer_count}"
+            ]
+        }
+        
+        recommendations = [
+            "Focus on high-value customers for upselling opportunities",
+            "Implement targeted marketing campaigns for this segment",
+            "Monitor conversion rates and adjust sales strategies accordingly"
+        ]
+        
+        # Calculate risk and opportunity scores
+        risk_score = max(0, 100 - segment.conversion_rate * 2)  # Higher conversion = lower risk
+        opportunity_score = min(100, segment.avg_deal_value / 1000 * 10)  # Higher deal value = more opportunity
+        
+        # Update segment with insights
+        segment.insights = insights
+        segment.recommendations = recommendations
+        segment.risk_score = risk_score
+        segment.opportunity_score = opportunity_score
+        
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error generating segment insights: {e}")
 
 # Serve frontend (AFTER all API routes)
 frontend_path = "frontend_dist"
