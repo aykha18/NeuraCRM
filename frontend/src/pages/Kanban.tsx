@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, updateDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
 import StageManagementModal from '../components/StageManagementModal';
 import { Plus, Eye, Calendar } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 // import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
 import AnimatedModal from '../components/AnimatedModal';
@@ -215,8 +216,9 @@ export default function Kanban() {
     return Array.from(new Set(allDeals.map(d => d.owner)));
   }, [dealsByStage]);
 
-  // Mock current user
-  const currentUser = 'Imran Patel';
+  // Get current user from auth context
+  const { user } = useAuth();
+  const currentUser = user?.name || 'Unknown User';
   
   // Mock user avatars for activity log
   const userAvatars: Record<string, {color: string}> = {

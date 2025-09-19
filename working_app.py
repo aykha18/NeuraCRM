@@ -458,11 +458,18 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
         deals = db.query(Deal).filter(Deal.organization_id == org_id).all()
         deals_data = []
         for deal in deals:
-            # Get watchers for this deal
+            # Get watchers for this deal with user names
             watchers_result = db.execute(
-                text("SELECT user_id FROM watcher WHERE deal_id = :deal_id"),
+                text("""
+                    SELECT u.id, u.name 
+                    FROM watcher w 
+                    JOIN users u ON w.user_id = u.id 
+                    WHERE w.deal_id = :deal_id
+                """),
                 {"deal_id": deal.id}
             ).fetchall()
+            watcher_data = [{"id": row[0], "name": row[1]} for row in watchers_result]
+            watcher_names = [row[1] for row in watchers_result]
             watcher_ids = [row[0] for row in watchers_result]
             
             deal_data = {
@@ -478,7 +485,8 @@ def get_kanban_board(current_user: User = Depends(get_current_user), db: Session
                 "created_at": deal.created_at.isoformat() if deal.created_at else None,
                 "owner_name": deal.owner.name if deal.owner else None,
                 "contact_name": deal.contact.name if deal.contact else None,
-                "watchers": watcher_ids,
+                "watchers": watcher_names,  # Return user names instead of IDs for frontend compatibility
+                "watcher_data": watcher_data,  # Include full watcher data if needed
                 "is_watched": current_user.id in watcher_ids,
                 "status": getattr(deal, 'status', 'open'),  # Default to 'open' if not set
                 "closed_at": deal.closed_at.isoformat() if deal.closed_at else None,

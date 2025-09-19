@@ -135,6 +135,6 @@ export const watchDeal = async (dealId: number): Promise<Deal> => {
 
 export const unwatchDeal = async (dealId: number): Promise<Deal> => {
   return apiRequest<Deal>(`/api/kanban/deals/${dealId}/watch`, {
-    method: 'DELETE',
+    method: 'POST',
   });
 };
