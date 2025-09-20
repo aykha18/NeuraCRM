@@ -6026,14 +6026,25 @@ def create_pbx_provider(
             name=provider_data['name'],
             provider_type=provider_data['provider_type'],
             display_name=provider_data.get('display_name', provider_data['name']),
+            description=provider_data.get('description'),
             host=provider_data['host'],
             port=provider_data['port'],
             username=provider_data.get('username'),
             password=provider_data.get('password'),
+            api_key=provider_data.get('api_key'),
+            context=provider_data.get('context', 'default'),
+            caller_id_field=provider_data.get('caller_id_field', 'CallerIDNum'),
+            dialplan_context=provider_data.get('dialplan_context', 'from-internal'),
+            recording_enabled=provider_data.get('recording_enabled', False),
+            recording_path=provider_data.get('recording_path', '/var/spool/asterisk/monitor'),
+            transcription_enabled=provider_data.get('transcription_enabled', False),
+            cdr_enabled=provider_data.get('cdr_enabled', True),
+            cdr_path=provider_data.get('cdr_path', '/var/log/asterisk/cdr-csv'),
+            webhook_url=provider_data.get('webhook_url'),
+            webhook_secret=provider_data.get('webhook_secret'),
+            auto_assign_calls=provider_data.get('auto_assign_calls', True),
             is_active=provider_data.get('is_active', True),
             is_primary=provider_data.get('is_primary', False),
-            recording_enabled=provider_data.get('recording_enabled', False),
-            transcription_enabled=provider_data.get('transcription_enabled', False),
             organization_id=current_user.organization_id,
             created_by=current_user.id
         )
@@ -6126,6 +6137,8 @@ def update_pbx_provider(
             provider.provider_type = provider_data['provider_type']
         if 'display_name' in provider_data:
             provider.display_name = provider_data['display_name']
+        if 'description' in provider_data:
+            provider.description = provider_data['description']
         if 'host' in provider_data:
             provider.host = provider_data['host']
         if 'port' in provider_data:
@@ -6134,14 +6147,34 @@ def update_pbx_provider(
             provider.username = provider_data['username']
         if 'password' in provider_data:
             provider.password = provider_data['password']
+        if 'api_key' in provider_data:
+            provider.api_key = provider_data['api_key']
+        if 'context' in provider_data:
+            provider.context = provider_data['context']
+        if 'caller_id_field' in provider_data:
+            provider.caller_id_field = provider_data['caller_id_field']
+        if 'dialplan_context' in provider_data:
+            provider.dialplan_context = provider_data['dialplan_context']
+        if 'recording_enabled' in provider_data:
+            provider.recording_enabled = provider_data['recording_enabled']
+        if 'recording_path' in provider_data:
+            provider.recording_path = provider_data['recording_path']
+        if 'transcription_enabled' in provider_data:
+            provider.transcription_enabled = provider_data['transcription_enabled']
+        if 'cdr_enabled' in provider_data:
+            provider.cdr_enabled = provider_data['cdr_enabled']
+        if 'cdr_path' in provider_data:
+            provider.cdr_path = provider_data['cdr_path']
+        if 'webhook_url' in provider_data:
+            provider.webhook_url = provider_data['webhook_url']
+        if 'webhook_secret' in provider_data:
+            provider.webhook_secret = provider_data['webhook_secret']
+        if 'auto_assign_calls' in provider_data:
+            provider.auto_assign_calls = provider_data['auto_assign_calls']
         if 'is_active' in provider_data:
             provider.is_active = provider_data['is_active']
         if 'is_primary' in provider_data:
             provider.is_primary = provider_data['is_primary']
-        if 'recording_enabled' in provider_data:
-            provider.recording_enabled = provider_data['recording_enabled']
-        if 'transcription_enabled' in provider_data:
-            provider.transcription_enabled = provider_data['transcription_enabled']
         
         db.commit()
         db.refresh(provider)

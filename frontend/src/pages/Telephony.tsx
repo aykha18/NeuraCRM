@@ -129,6 +129,17 @@ const TelephonyEnhanced: React.FC = () => {
     port: 5060,
     username: '',
     password: '',
+    api_key: '',
+    description: '',
+    context: 'default',
+    caller_id_field: 'CallerIDNum',
+    dialplan_context: 'from-internal',
+    recording_path: '/var/spool/asterisk/monitor',
+    cdr_enabled: true,
+    cdr_path: '/var/log/asterisk/cdr-csv',
+    webhook_url: '',
+    webhook_secret: '',
+    auto_assign_calls: true,
     is_active: true,
     is_primary: false,
     recording_enabled: false,
@@ -193,6 +204,17 @@ const TelephonyEnhanced: React.FC = () => {
       port: 5060,
       username: '',
       password: '',
+      api_key: '',
+      description: '',
+      context: 'default',
+      caller_id_field: 'CallerIDNum',
+      dialplan_context: 'from-internal',
+      recording_path: '/var/spool/asterisk/monitor',
+      cdr_enabled: true,
+      cdr_path: '/var/log/asterisk/cdr-csv',
+      webhook_url: '',
+      webhook_secret: '',
+      auto_assign_calls: true,
       is_active: true,
       is_primary: false,
       recording_enabled: false,
@@ -211,6 +233,17 @@ const TelephonyEnhanced: React.FC = () => {
       port: provider.port,
       username: provider.username || '',
       password: provider.password || '',
+      api_key: provider.api_key || '',
+      description: provider.description || '',
+      context: provider.context || 'default',
+      caller_id_field: provider.caller_id_field || 'CallerIDNum',
+      dialplan_context: provider.dialplan_context || 'from-internal',
+      recording_path: provider.recording_path || '/var/spool/asterisk/monitor',
+      cdr_enabled: provider.cdr_enabled !== undefined ? provider.cdr_enabled : true,
+      cdr_path: provider.cdr_path || '/var/log/asterisk/cdr-csv',
+      webhook_url: provider.webhook_url || '',
+      webhook_secret: provider.webhook_secret || '',
+      auto_assign_calls: provider.auto_assign_calls !== undefined ? provider.auto_assign_calls : true,
       is_active: provider.is_active,
       is_primary: provider.is_primary,
       recording_enabled: provider.recording_enabled,
@@ -1117,6 +1150,127 @@ const TelephonyEnhanced: React.FC = () => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={providerForm.api_key}
+                    onChange={(e) => setProviderForm({...providerForm, api_key: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter API key for PBX integration"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Required for API-based PBX systems like 3CX, FreePBX</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={providerForm.description}
+                    onChange={(e) => setProviderForm({...providerForm, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional description for this PBX provider"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Context
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.context}
+                      onChange={(e) => setProviderForm({...providerForm, context: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="default"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Caller ID Field
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.caller_id_field}
+                      onChange={(e) => setProviderForm({...providerForm, caller_id_field: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="CallerIDNum"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Dialplan Context
+                  </label>
+                  <input
+                    type="text"
+                    value={providerForm.dialplan_context}
+                    onChange={(e) => setProviderForm({...providerForm, dialplan_context: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="from-internal"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Recording Path
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.recording_path}
+                      onChange={(e) => setProviderForm({...providerForm, recording_path: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="/var/spool/asterisk/monitor"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CDR Path
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.cdr_path}
+                      onChange={(e) => setProviderForm({...providerForm, cdr_path: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="/var/log/asterisk/cdr-csv"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Webhook URL
+                    </label>
+                    <input
+                      type="url"
+                      value={providerForm.webhook_url}
+                      onChange={(e) => setProviderForm({...providerForm, webhook_url: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://example.com/webhook"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Webhook Secret
+                    </label>
+                    <input
+                      type="password"
+                      value={providerForm.webhook_secret}
+                      onChange={(e) => setProviderForm({...providerForm, webhook_secret: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1182,6 +1336,40 @@ const TelephonyEnhanced: React.FC = () => {
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
                         providerForm.transcription_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">CDR Enabled</h4>
+                      <p className="text-sm text-gray-500">Enable Call Detail Records</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, cdr_enabled: !providerForm.cdr_enabled})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.cdr_enabled ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.cdr_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Auto Assign Calls</h4>
+                      <p className="text-sm text-gray-500">Automatically assign incoming calls</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, auto_assign_calls: !providerForm.auto_assign_calls})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.auto_assign_calls ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.auto_assign_calls ? 'translate-x-6' : 'translate-x-1'
                       }`} />
                     </button>
                   </div>

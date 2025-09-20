@@ -9,6 +9,17 @@ export interface PBXProvider {
   port: number;
   username?: string;
   password?: string;
+  api_key?: string;
+  description?: string;
+  context?: string;
+  caller_id_field?: string;
+  dialplan_context?: string;
+  recording_path?: string;
+  cdr_enabled?: boolean;
+  cdr_path?: string;
+  webhook_url?: string;
+  webhook_secret?: string;
+  auto_assign_calls?: boolean;
   is_active: boolean;
   is_primary: boolean;
   recording_enabled: boolean;
