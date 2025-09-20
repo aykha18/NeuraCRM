@@ -35,6 +35,7 @@ export default function Contacts() {
   const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
   const [editCellValue, setEditCellValue] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [newContact, setNewContact] = useState<NewContact>({
     name: '',
@@ -101,16 +102,32 @@ export default function Contacts() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this contact?')) return;
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setActionLoading(true);
     try {
-      await deleteContact(id);
-      setContacts((prev) => prev.filter((c) => c.id !== id));
+      await deleteContact(confirmDeleteId);
+      setContacts((prev) => prev.filter((c) => c.id !== confirmDeleteId));
       setToast('Contact deleted successfully!');
       setTimeout(() => setToast(null), 3000);
-    } catch {
-      setToast('Failed to delete contact');
-      setTimeout(() => setToast(null), 3000);
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      if (error?.response?.data?.type === 'foreign_key_violation') {
+        setToast('Cannot delete contact: Contact is referenced by deals or other records. Please remove associated records first.');
+      } else {
+        setToast('Failed to delete contact');
+      }
+      setTimeout(() => setToast(null), 5000);
     }
+    setActionLoading(false);
+    setConfirmDeleteId(null);
+  };
+
+  const cancelDelete = () => {
+    setConfirmDeleteId(null);
   };
 
   // Convert contact to lead
@@ -457,6 +474,27 @@ export default function Contacts() {
             <div><b>Created:</b> {detailContact.created_at?.slice(0, 10)}</div>
           </>
         )}
+      </DetailModal>
+
+      {/* Confirmation Modal for Delete */}
+      <DetailModal open={confirmDeleteId !== null} onClose={cancelDelete} title="Delete Contact?">
+        <div>Are you sure you want to delete this contact? This action cannot be undone.</div>
+        <div className="flex gap-4 mt-6 justify-end">
+          <button
+            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+            onClick={cancelDelete}
+            disabled={actionLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
+            onClick={confirmDelete}
+            disabled={actionLoading}
+          >
+            {actionLoading ? 'Deleting...' : 'Delete Contact'}
+          </button>
+        </div>
       </DetailModal>
     </div>
   );
