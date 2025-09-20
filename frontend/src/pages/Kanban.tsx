@@ -10,7 +10,7 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, updateDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
 import StageManagementModal from '../components/StageManagementModal';
-import { Plus, Eye, Calendar } from 'lucide-react';
+import { Plus, Eye, Calendar, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 // import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
@@ -150,6 +150,10 @@ export default function Kanban() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const dealToDelete = useRef<FrontendDeal | null>(null);
+  
+  // State for stage selection modal
+  const [showStageSelection, setShowStageSelection] = useState(false);
+  const [dealForStageChange, setDealForStageChange] = useState<FrontendDeal | null>(null);
   
   // State for comments and attachments
   const [comments, setComments] = useState<Record<string, Array<{id: string, author: string, text: string, timestamp: string}>>>({});
@@ -439,6 +443,25 @@ export default function Kanban() {
     
     setDeleteStage(null);
   }, [queryClient]);
+
+  // Stage selection functions
+  const handleStageSelection = useCallback((deal: FrontendDeal) => {
+    setDealForStageChange(deal);
+    setShowStageSelection(true);
+  }, []);
+
+  const handleStageChange = useCallback(async (newStageId: number) => {
+    if (!dealForStageChange) return;
+    
+    try {
+      await moveDeal(parseInt(dealForStageChange.id), newStageId, 0);
+      queryClient.invalidateQueries({ queryKey: ['kanban'] });
+      setShowStageSelection(false);
+      setDealForStageChange(null);
+    } catch (error) {
+      console.error('Failed to move deal:', error);
+    }
+  }, [dealForStageChange, queryClient]);
 
   // Handle drag and drop
   const onDragEnd = useCallback((result: DropResult) => {
@@ -793,6 +816,13 @@ export default function Kanban() {
                                         title="Edit Deal"
                                       >
                                         Edit
+                                      </button>
+                                      <button 
+                                        className="px-2 py-1 rounded-full bg-gradient-to-r from-green-500 to-blue-500 text-white text-xs font-semibold shadow hover:from-green-600 hover:to-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform flex items-center gap-1" 
+                                        onClick={e => {e.stopPropagation(); handleStageSelection(deal);}}
+                                        title="Move to Stage"
+                                      >
+                                        <ArrowRight size={12} />
                                       </button>
                                     </div>
                                     <div className="flex items-center gap-1">
@@ -1287,6 +1317,51 @@ export default function Kanban() {
                             </button>
                       </div>
                   </div>
+      </AnimatedModal>
+
+      {/* Stage Selection Modal */}
+      <AnimatedModal
+        open={showStageSelection}
+        onClose={() => setShowStageSelection(false)}
+        title={dealForStageChange ? `Move "${dealForStageChange.title}" to Stage` : 'Select Stage'}
+        animationType="scale"
+        size="sm"
+      >
+        {dealForStageChange && (
+          <div className="p-4">
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Select a new stage for this deal:
+            </p>
+            <div className="space-y-2">
+              {kanbanData?.stages
+                ?.filter(stage => stage.id !== dealForStageChange.stage_id)
+                ?.map((stage) => (
+                  <button
+                    key={stage.id}
+                    onClick={() => handleStageChange(stage.id)}
+                    className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {stage.name}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {dealsByStage[stage.id]?.length || 0} deals
+                      </span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowStageSelection(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </AnimatedModal>
 
       {/* Delete Stage Confirmation Dialog */}
