@@ -4,6 +4,7 @@ Working CRM App - Actually serves the frontend with real database
 """
 import os
 import sys
+import json
 import uvicorn
 import logging
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -4429,7 +4430,7 @@ def convert_contact_to_lead(contact_id: int, lead_data: dict, current_user: User
         if not contact:
             return {"error": "Contact not found"}
         
-        # Create lead from contact
+        # Create lead from contact (let SQLAlchemy auto-generate ID)
         lead = Lead(
             title=lead_data.get("title", f"Lead from {contact.name}"),
             contact_id=contact_id,
@@ -4438,6 +4439,9 @@ def convert_contact_to_lead(contact_id: int, lead_data: dict, current_user: User
             status=lead_data.get("status", "new"),
             source=lead_data.get("source", "contact_conversion"),
             score=lead_data.get("score", 50),
+            score_updated_at=datetime.utcnow(),
+            score_factors=json.dumps({"source": "contact_conversion", "manual_score": True}),
+            score_confidence=0.8,
             created_at=datetime.utcnow()
         )
         
@@ -4479,7 +4483,7 @@ def convert_lead_to_deal(lead_id: int, deal_data: dict, current_user: User = Dep
         if not default_stage:
             return {"error": "No stages found. Please create a stage first."}
         
-        # Create deal from lead
+        # Create deal from lead (let SQLAlchemy auto-generate ID)
         deal = Deal(
             title=deal_data.get("title", f"Deal from {lead.title}"),
             description=deal_data.get("description", f"Deal converted from lead: {lead.title}"),
