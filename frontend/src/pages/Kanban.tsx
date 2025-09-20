@@ -503,7 +503,7 @@ export default function Kanban() {
   const allDeals = Object.values(dealsByStage).flat();
   const stageCounts = stages.map(stage => ({ 
     stage: stage.name, 
-    count: (dealsByStage[stage.id] || []).length 
+    count: stage.deal_count || (dealsByStage[stage.id] || []).length 
   }));
   const avgDealSizeByStage = stages.map(stage => {
     const stageDeals = (dealsByStage[stage.id] || []);
@@ -602,7 +602,7 @@ export default function Kanban() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
       </div>
-          <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">{allDeals.length}</div>
+          <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">{kanbanData?.total_deals || allDeals.length}</div>
           <div className="text-gray-700 dark:text-gray-200 text-lg font-semibold mb-1">Total Deals</div>
           <div className="text-xs text-purple-500">Active pipeline</div>
         </div>
@@ -686,7 +686,7 @@ export default function Kanban() {
                       <span className={`inline-block w-3 h-3 rounded-full mr-2 ${stageColors[stage.name] || 'bg-gray-500'}`}></span>
                       {stage.name}
                       <span className="bg-pink-100 dark:bg-pink-900 text-pink-600 dark:text-pink-200 rounded-full px-2 py-0.5 text-xs font-semibold">
-                        {filteredDealsByStage[stage.id]?.length || 0}
+                        {stage.deal_count || filteredDealsByStage[stage.id]?.length || 0}
                       </span>
                     </div>
                     <Droppable droppableId={String(stage.id)} isDropDisabled={false}>

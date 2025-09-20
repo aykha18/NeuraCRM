@@ -6,6 +6,7 @@ export interface Stage {
   name: string;
   order: number;
   wip_limit?: number;
+  deal_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -30,6 +31,20 @@ export interface Deal {
 export interface KanbanBoard {
   stages: Stage[];
   deals: Deal[];
+  total_deals?: number;
+  pagination?: {
+    page: number;
+    page_size: number;
+    total_count: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+  filters?: {
+    stage_id?: number;
+    owner_id?: number;
+    search?: string;
+  };
 }
 
 // Stage management interfaces
