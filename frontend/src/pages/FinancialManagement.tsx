@@ -32,7 +32,7 @@ import {
 import { apiRequest } from '../utils/api';
 import AnimatedModal from '../components/AnimatedModal';
 import Button from '../components/Button';
-import { companySettingsService, CompanySettings } from '../services/companySettings';
+import { companySettingsService, type CompanySettings } from '../services/companySettings';
 
 interface Invoice {
   id: number;
