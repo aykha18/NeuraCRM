@@ -6222,6 +6222,181 @@ def get_call_center_dashboard(
         logger.error(f"Error fetching call center dashboard: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard: {str(e)}")
 
+# Call Management
+@app.get("/api/telephony/calls")
+def get_calls(
+    provider_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    status: Optional[str] = None,
+    direction: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get calls for the organization with optional filters"""
+    try:
+        query = db.query(Call).filter(
+            Call.organization_id == current_user.organization_id
+        )
+        
+        if provider_id:
+            query = query.filter(Call.provider_id == provider_id)
+        if agent_id:
+            query = query.filter(Call.agent_id == agent_id)
+        if status:
+            query = query.filter(Call.status == status)
+        if direction:
+            query = query.filter(Call.direction == direction)
+        
+        calls = query.order_by(desc(Call.start_time)).offset(offset).limit(limit).all()
+        
+        return [
+            {
+                "id": c.id,
+                "unique_id": c.unique_id,
+                "caller_id": c.caller_id,
+                "caller_name": c.caller_name,
+                "called_number": c.called_number,
+                "called_name": c.called_name,
+                "direction": c.direction,
+                "call_type": c.call_type,
+                "status": c.status,
+                "start_time": c.start_time.isoformat() if c.start_time else None,
+                "answer_time": c.answer_time.isoformat() if c.answer_time else None,
+                "end_time": c.end_time.isoformat() if c.end_time else None,
+                "duration": c.duration,
+                "talk_time": c.talk_time,
+                "hold_time": c.hold_time,
+                "wait_time": c.wait_time,
+                "quality_score": c.quality_score,
+                "recording_url": c.recording_url,
+                "transcription_text": c.transcription_text,
+                "disposition": c.disposition,
+                "notes": c.notes,
+                "cost": c.cost,
+                "cost_currency": c.cost_currency,
+                "agent_id": c.agent_id,
+                "queue_id": c.queue_id,
+                "contact_id": c.contact_id,
+                "lead_id": c.lead_id,
+                "deal_id": c.deal_id,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            }
+            for c in calls
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching calls: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch calls: {str(e)}")
+
+# Call Queue Management
+@app.get("/api/telephony/queues")
+def get_call_queues(
+    provider_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get call queues for the organization"""
+    try:
+        query = db.query(CallQueue).filter(
+            CallQueue.organization_id == current_user.organization_id
+        )
+        
+        if provider_id:
+            query = query.filter(CallQueue.provider_id == provider_id)
+        
+        queues = query.all()
+        return [
+            {
+                "id": q.id,
+                "name": q.name,
+                "description": q.description,
+                "queue_number": q.queue_number,
+                "strategy": q.strategy,
+                "timeout": q.timeout,
+                "retry": q.retry,
+                "wrapup_time": q.wrapup_time,
+                "max_wait_time": q.max_wait_time,
+                "music_on_hold": q.music_on_hold,
+                "announce_frequency": q.announce_frequency,
+                "announce_position": q.announce_position,
+                "announce_hold_time": q.announce_hold_time,
+                "max_calls_per_agent": q.max_calls_per_agent,
+                "join_empty": q.join_empty,
+                "leave_when_empty": q.leave_when_empty,
+                "priority": q.priority,
+                "skill_based_routing": q.skill_based_routing,
+                "required_skills": q.required_skills,
+                "is_active": q.is_active,
+                "current_calls": q.current_calls,
+                "current_agents": q.current_agents,
+                "total_calls": q.total_calls,
+                "answered_calls": q.answered_calls,
+                "abandoned_calls": q.abandoned_calls,
+                "avg_wait_time": q.avg_wait_time,
+                "avg_talk_time": q.avg_talk_time,
+                "service_level": q.service_level,
+                "created_at": q.created_at.isoformat() if q.created_at else None
+            }
+            for q in queues
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching call queues: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch call queues: {str(e)}")
+
+# Queue Members Management
+@app.get("/api/telephony/queue-members")
+def get_queue_members(
+    queue_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get queue members (agents) for the organization"""
+    try:
+        query = db.query(CallQueueMember).join(CallQueue).filter(
+            CallQueue.organization_id == current_user.organization_id
+        )
+        
+        if queue_id:
+            query = query.filter(CallQueueMember.queue_id == queue_id)
+        
+        members = query.all()
+        return [
+            {
+                "id": m.id,
+                "queue_id": m.queue_id,
+                "user_id": m.user_id,
+                "extension_number": m.extension_number,
+                "member_name": m.member_name,
+                "penalty": m.penalty,
+                "paused": m.paused,
+                "paused_reason": m.paused_reason,
+                "skills": m.skills,
+                "status": m.status,
+                "last_status_change": m.last_status_change.isoformat() if m.last_status_change else None,
+                "total_calls": m.total_calls,
+                "answered_calls": m.answered_calls,
+                "missed_calls": m.missed_calls,
+                "avg_talk_time": m.avg_talk_time,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+                "queue": {
+                    "id": m.queue.id,
+                    "name": m.queue.name,
+                    "queue_number": m.queue.queue_number
+                } if m.queue else None,
+                "user": {
+                    "id": m.user.id,
+                    "name": m.user.name,
+                    "email": m.user.email
+                } if hasattr(m, 'user') and m.user else None
+            }
+            for m in members
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching queue members: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch queue members: {str(e)}")
+
 # Serve frontend (AFTER all API routes)
 frontend_path = "frontend_dist"
 if os.path.exists(frontend_path):

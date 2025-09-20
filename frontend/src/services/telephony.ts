@@ -201,6 +201,53 @@ export const telephonyService = {
 
   async createQueue(queueData: Partial<CallQueue>): Promise<CallQueue> {
     return apiRequest<CallQueue>('/api/telephony/queues', 'POST', queueData);
+  },
+
+  // Queue Members (Agents)
+  async getQueueMembers(queueId?: number): Promise<any[]> {
+    const endpoint = queueId ? `/api/telephony/queues/${queueId}/members` : '/api/telephony/queue-members';
+    return apiRequest<any[]>(endpoint);
+  },
+
+  async addQueueMember(queueId: number, memberData: any): Promise<any> {
+    return apiRequest(`/api/telephony/queues/${queueId}/members`, 'POST', memberData);
+  },
+
+  async updateQueueMember(queueId: number, memberId: number, memberData: any): Promise<any> {
+    return apiRequest(`/api/telephony/queues/${queueId}/members/${memberId}`, 'PUT', memberData);
+  },
+
+  async removeQueueMember(queueId: number, memberId: number): Promise<any> {
+    return apiRequest(`/api/telephony/queues/${queueId}/members/${memberId}`, 'DELETE');
+  },
+
+  // Extensions
+  async getExtensions(providerId?: number): Promise<any[]> {
+    const endpoint = providerId ? `/api/telephony/providers/${providerId}/extensions` : '/api/telephony/extensions';
+    return apiRequest<any[]>(endpoint);
+  },
+
+  async createExtension(extensionData: any): Promise<any> {
+    return apiRequest('/api/telephony/extensions', 'POST', extensionData);
+  },
+
+  // Analytics
+  async getAnalytics(params?: {
+    start_date?: string;
+    end_date?: string;
+    queue_id?: number;
+    agent_id?: number;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    const endpoint = `/api/telephony/analytics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return apiRequest(endpoint);
   }
 };
 
