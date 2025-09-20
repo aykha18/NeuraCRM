@@ -45,8 +45,25 @@ export async function deleteLead(id: number): Promise<{ message: string }> {
   });
 }
 
-export async function convertLeadToDeal(id: number): Promise<any> {
+export async function convertLeadToDeal(id: number, dealData?: any): Promise<any> {
   return apiRequest<any>(`/api/leads/${id}/convert-to-deal`, {
     method: "POST",
+    body: JSON.stringify(dealData || {
+      title: `Deal from Lead ${id}`,
+      description: "Deal converted from lead",
+      value: 0
+    }),
+  });
+}
+
+export async function convertContactToLead(contactId: number, leadData?: any): Promise<any> {
+  return apiRequest<any>(`/api/contacts/${contactId}/convert-to-lead`, {
+    method: "POST",
+    body: JSON.stringify(leadData || {
+      title: `Lead from Contact ${contactId}`,
+      status: 'new',
+      source: 'contact_conversion',
+      score: 50
+    }),
   });
 } 

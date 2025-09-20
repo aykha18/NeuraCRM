@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, Eye, Plus, Trash2, X, Download, ArrowRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { fetchContacts, getContact, createContact, updateContact, deleteContact } from '../services/contacts';
-import { createLead } from '../services/leads';
+import { convertContactToLead } from '../services/leads';
 import DetailModal from '../components/DetailModal';
 import AnimatedModal from '../components/AnimatedModal';
 
@@ -121,12 +121,11 @@ export default function Contacts() {
         title: `${contact.name} - ${contact.company}`,
         status: 'new',
         source: 'contact_conversion',
-        contact_id: contact.id,
-        owner_id: (contact as any).owner_id || 1
+        score: 75
       };
       
-      await createLead(leadData);
-      setToast(`Lead created from contact: ${contact.name}`);
+      const result = await convertContactToLead(contact.id, leadData);
+      setToast(`Contact converted to lead: ${result.message}`);
       setTimeout(() => setToast(null), 3000);
     } catch (e) {
       alert('Failed to create lead from contact');
