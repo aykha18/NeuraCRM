@@ -4413,6 +4413,103 @@ def get_contacts_total_count(current_user: User = Depends(get_current_user), db:
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
+@app.post("/api/contacts/{contact_id}/convert-to-lead")
+def convert_contact_to_lead(contact_id: int, lead_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Convert a contact to a lead"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the contact
+        contact = db.query(Contact).filter(
+            Contact.id == contact_id,
+            Contact.organization_id == current_user.organization_id
+        ).first()
+        
+        if not contact:
+            return {"error": "Contact not found"}
+        
+        # Create lead from contact
+        lead = Lead(
+            title=lead_data.get("title", f"Lead from {contact.name}"),
+            contact_id=contact_id,
+            owner_id=current_user.id,
+            organization_id=current_user.organization_id,
+            status=lead_data.get("status", "new"),
+            source=lead_data.get("source", "contact_conversion"),
+            score=lead_data.get("score", 50),
+            created_at=datetime.utcnow()
+        )
+        
+        db.add(lead)
+        db.commit()
+        db.refresh(lead)
+        
+        return {
+            "message": "Contact converted to lead successfully",
+            "lead_id": lead.id,
+            "contact_id": contact_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to convert contact to lead: {str(e)}"}
+
+@app.post("/api/leads/{lead_id}/convert-to-deal")
+def convert_lead_to_deal(lead_id: int, deal_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Convert a lead to a deal"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the lead
+        lead = db.query(Lead).filter(
+            Lead.id == lead_id,
+            Lead.organization_id == current_user.organization_id
+        ).first()
+        
+        if not lead:
+            return {"error": "Lead not found"}
+        
+        # Get default stage
+        default_stage = db.query(Stage).filter(
+            Stage.organization_id == current_user.organization_id
+        ).order_by(Stage.order).first()
+        
+        if not default_stage:
+            return {"error": "No stages found. Please create a stage first."}
+        
+        # Create deal from lead
+        deal = Deal(
+            title=deal_data.get("title", f"Deal from {lead.title}"),
+            description=deal_data.get("description", f"Deal converted from lead: {lead.title}"),
+            value=deal_data.get("value", 0),
+            stage_id=default_stage.id,
+            owner_id=current_user.id,
+            contact_id=lead.contact_id,
+            organization_id=current_user.organization_id,
+            reminder_date=deal_data.get("reminder_date"),
+            created_at=datetime.utcnow()
+        )
+        
+        db.add(deal)
+        
+        # Update lead status to converted
+        lead.status = "converted"
+        db.commit()
+        db.refresh(deal)
+        
+        return {
+            "message": "Lead converted to deal successfully",
+            "deal_id": deal.id,
+            "lead_id": lead_id,
+            "stage_id": default_stage.id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to convert lead to deal: {str(e)}"}
+
 @app.post("/api/contacts")
 def create_contact(contact_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new contact for current user's organization"""

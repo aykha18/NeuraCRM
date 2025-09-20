@@ -35,7 +35,9 @@ def test_api_fixes():
     response = requests.get(f'{base_url}/api/stats/leads-count', headers=headers)
     if response.status_code == 200:
         data = response.json()
-        print(f"   ✅ Total leads: {data.get('total_count', 'N/A')}")
+        total_leads = data.get('total_count', 0)
+        print(f"   ✅ Total leads: {total_leads:,}")
+        print(f"   📊 Showing: 50 of {total_leads:,} leads")
     else:
         print(f"   ❌ Error: {response.status_code} - {response.text}")
     
@@ -53,7 +55,9 @@ def test_api_fixes():
     response = requests.get(f'{base_url}/api/stats/contacts-count', headers=headers)
     if response.status_code == 200:
         data = response.json()
-        print(f"   ✅ Total contacts: {data.get('total_count', 'N/A')}")
+        total_contacts = data.get('total_count', 0)
+        print(f"   ✅ Total contacts: {total_contacts:,}")
+        print(f"   📊 Showing: {len(data)} of {total_contacts:,} contacts")
     else:
         print(f"   ❌ Error: {response.status_code} - {response.text}")
     
