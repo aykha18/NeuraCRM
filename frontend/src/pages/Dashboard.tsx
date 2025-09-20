@@ -14,6 +14,7 @@ import {
 import { fetchDashboardData } from "../services/dashboard";
 import type { DashboardData } from "../services/dashboard";
 import { useAuth } from "../contexts/AuthContext";
+import Button from "../components/Button";
 
 // Icon mapping for activity feed
 const iconMap: Record<string, React.ReactNode> = {
@@ -174,10 +175,14 @@ export default function Dashboard() {
           <div className="text-lg text-gray-500 dark:text-gray-300">Intelligent insights for smarter decisions</div>
         </div>
         <div className="flex gap-3 mt-4 md:mt-0">
-          {/* AI Insights button (gradient) */}
-          <button className="px-5 py-2 rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white font-semibold shadow hover:from-fuchsia-700 hover:to-pink-600 transition">AI Insights</button>
-          {/* Quick Action button (solid) */}
-          <button className="px-5 py-2 rounded-full bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition">Quick Action</button>
+          {/* AI Insights button */}
+          <Button variant="pink" size="md" icon={Brain}>
+            AI Insights
+          </Button>
+          {/* Quick Action button */}
+          <Button variant="blue" size="md" icon={Zap}>
+            Quick Action
+          </Button>
         </div>
       </div>
 

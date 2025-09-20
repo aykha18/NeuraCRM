@@ -11,6 +11,7 @@ import { scoreAllLeads, getScoringAnalytics } from "../services/leadScoring";
 import DetailModal from "../components/DetailModal";
 import LeadScore from "../components/LeadScore";
 import AnimatedModal from "../components/AnimatedModal";
+import Button from "../components/Button";
 
 const statusColors: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
@@ -460,65 +461,72 @@ export default function LeadsPage() {
           {/* Primary Actions - Left Group */}
           <div className="flex flex-wrap gap-3">
             {/* Create Lead Button */}
-            <button
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold shadow-lg hover:from-pink-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
-              onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreateModal(true); }}
+            <Button
+              variant="pink"
+              size="md"
+              icon={Plus}
+              onClick={(e) => { if (e) setAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCreateModal(true); }}
             >
-              <Plus className="w-5 h-5" />
               Create Lead
-            </button>
+            </Button>
             
             {/* Score All Leads Button */}
-            <button
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold shadow-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            <Button
+              variant="blue"
+              size="md"
+              icon={Zap}
               onClick={handleScoreAllLeads}
               disabled={scoringLoading}
+              loading={scoringLoading}
             >
-              <Zap className="w-5 h-5" />
-              {scoringLoading ? "Scoring..." : "Score All Leads"}
-            </button>
+              Score All Leads
+            </Button>
             
             {/* Analytics Button */}
-            <button
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            <Button
+              variant="success"
+              size="md"
+              icon={BarChart3}
               onClick={handleViewScoringAnalytics}
               disabled={scoringLoading}
             >
-              <BarChart3 className="w-5 h-5" />
               Analytics
-            </button>
+            </Button>
           </div>
           
           {/* Secondary Actions - Right Group */}
           <div className="flex flex-wrap gap-3">
             {/* Sort by Score Button */}
-            <button
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold shadow hover:from-purple-600 hover:to-indigo-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            <Button
+              variant="purple"
+              size="sm"
+              icon={TrendingUp}
               onClick={() => {
                 setSortBy("score");
                 setSortDir("desc");
                 setPage(1);
               }}
             >
-              <TrendingUp className="w-4 h-4" />
               Sort by Score
-            </button>
+            </Button>
             
             {/* Export Buttons */}
-            <button
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Download}
               onClick={exportCSV}
             >
-              <Download className="w-4 h-4" />
               Export CSV
-            </button>
-            <button
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold shadow hover:from-green-600 hover:to-teal-600 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            </Button>
+            <Button
+              variant="green"
+              size="sm"
+              icon={Download}
               onClick={exportExcel}
             >
-              <Download className="w-4 h-4" />
               Export Excel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -578,8 +586,10 @@ export default function LeadsPage() {
         {/* Clear Filters - Right Side */}
         {(search || statusFilter || scoreFilter) && (
           <div className="flex justify-end">
-            <button
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold shadow hover:from-gray-600 hover:to-gray-700 transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            <Button
+              variant="gray"
+              size="sm"
+              icon={X}
               onClick={() => {
                 setSearch("");
                 setStatusFilter("");
@@ -589,9 +599,8 @@ export default function LeadsPage() {
                 setPage(1);
               }}
             >
-              <X className="w-4 h-4" />
               Clear Filters
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -773,13 +782,15 @@ export default function LeadsPage() {
       {/* Responsive Card View: only on mobile */}
       <div className="sm:hidden space-y-4">
         {/* Mobile Create Button */}
-        <button
-          className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold shadow hover:from-pink-600 hover:to-purple-600 transition flex items-center justify-center gap-2"
-          onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreateModal(true); }}
+        <Button
+          variant="pink"
+          size="lg"
+          icon={Plus}
+          className="w-full"
+          onClick={(e) => { if (e) setAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCreateModal(true); }}
         >
-          <Plus className="w-5 h-5" />
           Create New Lead
-        </button>
+        </Button>
         
         {pagedLeads.map((lead) => (
           <div
@@ -981,13 +992,16 @@ export default function LeadsPage() {
               >
                 Cancel
               </button>
-              <button
-                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold hover:from-pink-600 hover:to-purple-600 transition"
+              <Button
+                variant="pink"
+                size="md"
+                className="flex-1"
                 onClick={handleCreateLead}
                 disabled={actionLoading}
+                loading={actionLoading}
               >
-                {actionLoading ? "Creating..." : "Create Lead"}
-              </button>
+                Create Lead
+              </Button>
             </div>
           </div>
         </div>

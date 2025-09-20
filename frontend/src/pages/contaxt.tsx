@@ -5,6 +5,7 @@ import { fetchContacts, getContact, createContact, updateContact, deleteContact 
 import { convertContactToLead } from '../services/leads';
 import DetailModal from '../components/DetailModal';
 import AnimatedModal from '../components/AnimatedModal';
+import Button from '../components/Button';
 
 interface Contact {
   id: number;
@@ -257,24 +258,30 @@ export default function Contacts() {
             />
             <Search className='absolute left-3 top-2.5 w-5 h-5 text-gray-400' />
           </div>
-          <button
+          <Button
+            variant="success"
+            size="md"
+            icon={Download}
             onClick={exportCSV}
-            className='flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700'
           >
-            <Download className='w-4 h-4' /> Export CSV
-          </button>
-          <button
+            Export CSV
+          </Button>
+          <Button
+            variant="purple"
+            size="md"
+            icon={Download}
             onClick={exportExcel}
-            className='flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700'
           >
-            <Download className='w-4 h-4' /> Export XLS
-          </button>
-          <button
-            onClick={(e) => { setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect()); setShowCreate(true); }}
-            className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+            Export XLS
+          </Button>
+          <Button
+            variant="blue"
+            size="md"
+            icon={Plus}
+            onClick={(e) => { if (e) setAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCreate(true); }}
           >
-            <Plus className='w-4 h-4' /> Add Contact
-          </button>
+            Add Contact
+          </Button>
         </div>
       </div>
 
@@ -452,13 +459,16 @@ export default function Contacts() {
           </div>
           <div className='flex gap-3 mt-6'>
             <button className='flex-1 px-4 py-2 border rounded-lg' onClick={() => setShowCreate(false)}>Cancel</button>
-            <button
-              className='flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50'
+            <Button
+              variant="blue"
+              size="md"
+              className="flex-1"
               onClick={handleCreate}
               disabled={creating || !newContact.name.trim()}
+              loading={creating}
             >
-              {creating ? 'Creating…' : 'Create Contact'}
-            </button>
+              Create Contact
+            </Button>
           </div>
         </div>
       </AnimatedModal>
