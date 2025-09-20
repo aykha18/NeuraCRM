@@ -476,31 +476,48 @@ def get_kanban_board_optimized(
             SELECT COUNT(*) FROM deals WHERE organization_id = :org_id
         """), {"org_id": org_id}).fetchone()[0]
         
-        # Build optimized query with joins to avoid N+1
-        query = db.query(Deal, User.name.label("owner_name"), Contact.name.label("contact_name")).\
-            join(User, Deal.owner_id == User.id, isouter=True).\
-            join(Contact, Deal.contact_id == Contact.id, isouter=True).\
-            filter(Deal.organization_id == org_id)
-        
-        # Apply filters
-        if stage_id:
-            query = query.filter(Deal.stage_id == stage_id)
-        if owner_id:
-            query = query.filter(Deal.owner_id == owner_id)
-        if search:
-            query = query.filter(
-                or_(
-                    Deal.title.ilike(f"%{search}%"),
-                    Deal.description.ilike(f"%{search}%")
+        # For Kanban board, get sample deals from each stage instead of paginated chronological deals
+        if not stage_id and not owner_id and not search:
+            # Get sample deals from each stage for Kanban view
+            deals_with_relations = []
+            for stage in stage_counts:
+                if stage.deal_count > 0:  # Only if stage has deals
+                    # Get up to 10 deals from this stage
+                    stage_deals = db.query(Deal, User.name.label("owner_name"), Contact.name.label("contact_name")).\
+                        join(User, Deal.owner_id == User.id, isouter=True).\
+                        join(Contact, Deal.contact_id == Contact.id, isouter=True).\
+                        filter(Deal.organization_id == org_id, Deal.stage_id == stage.id).\
+                        order_by(Deal.created_at.desc()).\
+                        limit(10).all()
+                    deals_with_relations.extend(stage_deals)
+            
+            filtered_count = total_deals  # Total deals for pagination info
+        else:
+            # Build optimized query with joins to avoid N+1 for filtered/paginated view
+            query = db.query(Deal, User.name.label("owner_name"), Contact.name.label("contact_name")).\
+                join(User, Deal.owner_id == User.id, isouter=True).\
+                join(Contact, Deal.contact_id == Contact.id, isouter=True).\
+                filter(Deal.organization_id == org_id)
+            
+            # Apply filters
+            if stage_id:
+                query = query.filter(Deal.stage_id == stage_id)
+            if owner_id:
+                query = query.filter(Deal.owner_id == owner_id)
+            if search:
+                query = query.filter(
+                    or_(
+                        Deal.title.ilike(f"%{search}%"),
+                        Deal.description.ilike(f"%{search}%")
+                    )
                 )
-            )
-        
-        # Get filtered total count for pagination
-        filtered_count = query.count()
-        
-        # Apply pagination
-        offset = (page - 1) * page_size
-        deals_with_relations = query.offset(offset).limit(page_size).all()
+            
+            # Get filtered total count for pagination
+            filtered_count = query.count()
+            
+            # Apply pagination
+            offset = (page - 1) * page_size
+            deals_with_relations = query.offset(offset).limit(page_size).all()
         
         # Get all deal IDs for batch watcher query (fixes N+1 problem)
         deal_ids = [deal[0].id for deal in deals_with_relations]
