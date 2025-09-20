@@ -444,24 +444,37 @@ def get_kanban_board_optimized(
     owner_id: Optional[int] = None,
     search: Optional[str] = None
 ):
-    """Get optimized kanban board data with pagination and filtering"""
+    """Get optimized kanban board data with smart pagination and stage totals"""
     if not DB_AVAILABLE:
         return {"error": "Database not available"}
     
     try:
         org_id = current_user.organization_id or 8
         
-        # Get stages (cached, rarely changes)
-        stages = db.query(Stage).order_by(Stage.order).all()
+        # Get stages with actual deal counts (not paginated)
+        stage_counts = db.execute(text("""
+            SELECT s.id, s.name, s.order, s.wip_limit, COUNT(d.id) as deal_count
+            FROM stages s
+            LEFT JOIN deals d ON s.id = d.stage_id AND d.organization_id = :org_id
+            GROUP BY s.id, s.name, s.order, s.wip_limit
+            ORDER BY s.order
+        """), {"org_id": org_id}).fetchall()
+        
         stages_data = [
             {
                 "id": stage.id,
                 "name": stage.name,
                 "order": stage.order or 0,
-                "wip_limit": stage.wip_limit
+                "wip_limit": stage.wip_limit,
+                "deal_count": stage.deal_count
             }
-            for stage in stages
+            for stage in stage_counts
         ]
+        
+        # Get total deal count for organization
+        total_deals = db.execute(text("""
+            SELECT COUNT(*) FROM deals WHERE organization_id = :org_id
+        """), {"org_id": org_id}).fetchone()[0]
         
         # Build optimized query with joins to avoid N+1
         query = db.query(Deal, User.name.label("owner_name"), Contact.name.label("contact_name")).\
@@ -482,8 +495,8 @@ def get_kanban_board_optimized(
                 )
             )
         
-        # Get total count for pagination
-        total_count = query.count()
+        # Get filtered total count for pagination
+        filtered_count = query.count()
         
         # Apply pagination
         offset = (page - 1) * page_size
@@ -540,12 +553,13 @@ def get_kanban_board_optimized(
         return {
             "stages": stages_data,
             "deals": deals_data,
+            "total_deals": total_deals,  # Total deals in organization
             "pagination": {
                 "page": page,
                 "page_size": page_size,
-                "total_count": total_count,
-                "total_pages": (total_count + page_size - 1) // page_size,
-                "has_next": page * page_size < total_count,
+                "total_count": filtered_count,  # Filtered count for pagination
+                "total_pages": (filtered_count + page_size - 1) // page_size,
+                "has_next": page * page_size < filtered_count,
                 "has_prev": page > 1
             },
             "filters": {
@@ -720,7 +734,22 @@ def get_kanban_stats(current_user: User = Depends(get_current_user), db: Session
             AND created_at >= NOW() - INTERVAL '30 days'
         """), {"org_id": org_id}).fetchone()[0]
         
+        # Get total deals and total value
+        total_stats = db.execute(text("""
+            SELECT 
+                COUNT(*) as total_deals,
+                COALESCE(SUM(value), 0) as total_value,
+                COUNT(CASE WHEN status = 'open' THEN 1 END) as active_deals
+            FROM deals 
+            WHERE organization_id = :org_id
+        """), {"org_id": org_id}).fetchone()
+        
         return {
+            "total_stats": {
+                "total_deals": total_stats[0],
+                "total_value": float(total_stats[1]),
+                "active_deals": total_stats[2]
+            },
             "stage_counts": [
                 {
                     "stage_id": row[0],
@@ -745,6 +774,98 @@ def get_kanban_stats(current_user: User = Depends(get_current_user), db: Session
         
     except Exception as e:
         return {"error": f"Failed to fetch kanban stats: {str(e)}"}
+
+@app.get("/api/kanban/stage/{stage_id}/deals")
+def get_stage_deals(
+    stage_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50
+):
+    """Get deals for a specific stage with pagination"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 8
+        
+        # Get total count for this stage
+        total_count = db.execute(text("""
+            SELECT COUNT(*) FROM deals 
+            WHERE stage_id = :stage_id AND organization_id = :org_id
+        """), {"stage_id": stage_id, "org_id": org_id}).fetchone()[0]
+        
+        # Get paginated deals for this stage
+        query = db.query(Deal, User.name.label("owner_name"), Contact.name.label("contact_name")).\
+            join(User, Deal.owner_id == User.id, isouter=True).\
+            join(Contact, Deal.contact_id == Contact.id, isouter=True).\
+            filter(Deal.stage_id == stage_id, Deal.organization_id == org_id).\
+            order_by(Deal.created_at.desc())
+        
+        offset = (page - 1) * page_size
+        deals_with_relations = query.offset(offset).limit(page_size).all()
+        
+        # Get watchers for these deals
+        deal_ids = [deal[0].id for deal in deals_with_relations]
+        watchers_query = db.execute(text("""
+            SELECT w.deal_id, u.id, u.name
+            FROM watcher w
+            JOIN users u ON w.user_id = u.id
+            WHERE w.deal_id = ANY(:deal_ids)
+        """), {"deal_ids": deal_ids}).fetchall()
+        
+        watchers_by_deal = {}
+        for deal_id, user_id, user_name in watchers_query:
+            if deal_id not in watchers_by_deal:
+                watchers_by_deal[deal_id] = []
+            watchers_by_deal[deal_id].append({"id": user_id, "name": user_name})
+        
+        # Build deals data
+        deals_data = []
+        for deal, owner_name, contact_name in deals_with_relations:
+            deal_watchers = watchers_by_deal.get(deal.id, [])
+            watcher_names = [w["name"] for w in deal_watchers]
+            watcher_ids = [w["id"] for w in deal_watchers]
+            
+            deal_data = {
+                "id": deal.id,
+                "title": deal.title,
+                "description": deal.description or "",
+                "value": deal.value or 0,
+                "stage_id": deal.stage_id or 1,
+                "owner_id": deal.owner_id,
+                "contact_id": deal.contact_id,
+                "organization_id": deal.organization_id,
+                "reminder_date": deal.reminder_date.isoformat() if deal.reminder_date else None,
+                "created_at": deal.created_at.isoformat() if deal.created_at else None,
+                "owner_name": owner_name,
+                "contact_name": contact_name,
+                "watchers": watcher_names,
+                "watcher_data": deal_watchers,
+                "is_watched": current_user.id in watcher_ids,
+                "status": getattr(deal, 'status', 'open'),
+                "closed_at": deal.closed_at.isoformat() if deal.closed_at else None,
+                "outcome_reason": getattr(deal, 'outcome_reason', None),
+                "customer_account_id": getattr(deal, 'customer_account_id', None)
+            }
+            deals_data.append(deal_data)
+        
+        return {
+            "stage_id": stage_id,
+            "deals": deals_data,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": (total_count + page_size - 1) // page_size,
+                "has_next": page * page_size < total_count,
+                "has_prev": page > 1
+            }
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to fetch stage deals: {str(e)}"}
 
 @app.post("/api/deals")
 def create_deal(deal_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
