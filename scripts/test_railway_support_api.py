@@ -8,6 +8,13 @@ This script tests the Railway support API endpoints directly to identify the iss
 
 import requests
 import json
+
+import sys
+import os
+
+# Add the scripts directory to the path to import db_config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from db_config import get_railway_db_config, validate_config
 from datetime import datetime
 
 # Railway API Configuration
@@ -92,19 +99,13 @@ def test_direct_database_query():
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     
     # Railway Database Configuration
-    RAILWAY_DB_CONFIG = {
-        'host': 'nozomi.proxy.rlwy.net',
-        'database': 'railway',
-        'user': 'postgres',
-        'password': 'irUsikIqAifdrCMNOlGtApioMQJDjDfE',
-        'port': 49967
-    }
+    # Railway DB config now loaded from environment variables
     
     try:
         print("\n🔍 DIRECT DATABASE QUERY:")
         print("=" * 60)
         
-        conn = psycopg2.connect(**RAILWAY_DB_CONFIG)
+        conn = psycopg2.connect(**get_railway_db_config())
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
         

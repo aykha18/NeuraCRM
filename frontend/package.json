@@ -10,7 +10,17 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:regression": "node test-runner.js regression",
+    "test:regression:headed": "node test-runner.js regression --headed",
+    "test:smoke": "node test-runner.js smoke",
+    "test:leads": "node test-runner.js leads",
+    "test:mobile": "node test-runner.js mobile",
+    "test:crossbrowser": "node test-runner.js crossbrowser",
+    "test:visual": "node test-runner.js visual",
+    "test:performance": "node test-runner.js performance",
+    "test:debug": "node test-runner.js leads --debug",
+    "test:report": "npx playwright show-report"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.8",

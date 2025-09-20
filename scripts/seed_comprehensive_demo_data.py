@@ -24,6 +24,13 @@ Target: Railway Database - Organization ID 1
 import os
 import sys
 import psycopg2
+
+import sys
+import os
+
+# Add the scripts directory to the path to import db_config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from db_config import get_railway_db_config, validate_config
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import random
 import json
@@ -31,13 +38,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 # Railway Database Configuration
-RAILWAY_DB_CONFIG = {
-    'host': 'nozomi.proxy.rlwy.net',
-    'database': 'railway',
-    'user': 'postgres',
-    'password': 'irUsikIqAifdrCMNOlGtApioMQJDjDfE',
-    'port': 49967
-}
+# Railway DB config now loaded from environment variables
 
 # Organization ID for The Node IT
 ORG_ID = 1
@@ -52,7 +53,7 @@ class ComprehensiveDataSeeder:
         """Connect to Railway database"""
         try:
             print("🔌 Connecting to Railway database...")
-            self.conn = psycopg2.connect(**RAILWAY_DB_CONFIG)
+            self.conn = psycopg2.connect(**get_railway_db_config())
             self.conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             self.cursor = self.conn.cursor()
             print("✅ Connected to Railway database successfully")

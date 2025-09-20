@@ -3,8 +3,8 @@ import { request, chromium } from '@playwright/test';
 
 const EMAIL = 'nodeit@node.com';
 const PASSWORD = 'NodeIT2024!';
-const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:8002';
-const APP_BASE = process.env.BASE_URL || 'http://localhost:5173';
+const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:8000';
+const APP_BASE = process.env.BASE_URL || 'http://localhost:8000';
 
 export default async function globalSetup(_config: FullConfig) {
   // Create an authenticated storage state for the app domain

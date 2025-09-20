@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import AnimatedModal from '../components/AnimatedModal';
+import Button from '../components/Button';
 
 interface Invoice {
   id: number;
@@ -199,6 +200,12 @@ const FinancialManagement: React.FC = () => {
     due_date: '',
     subtotal: '',
     tax_rate: '',
+    discount_amount: '',
+    discount_type: 'percentage', // 'percentage' or 'fixed'
+    advance_payment: '',
+    recurring_invoice: false,
+    recurring_frequency: 'monthly', // 'weekly', 'monthly', 'quarterly', 'yearly'
+    recurring_end_date: '',
     description: '',
     notes: '',
     terms_conditions: ''
@@ -753,6 +760,36 @@ const FinancialManagement: React.FC = () => {
     setShowDealSelectionModal(false);
   };
 
+  // Calculate grand total with discount and tax
+  const calculateGrandTotal = () => {
+    const subtotal = parseFloat(invoiceForm.subtotal) || 0;
+    const taxRate = parseFloat(invoiceForm.tax_rate) || 0;
+    const advancePayment = parseFloat(invoiceForm.advance_payment) || 0;
+    
+    let discountAmount = 0;
+    if (invoiceForm.discount_amount) {
+      const discount = parseFloat(invoiceForm.discount_amount) || 0;
+      if (invoiceForm.discount_type === 'percentage') {
+        discountAmount = (subtotal * discount) / 100;
+      } else {
+        discountAmount = discount;
+      }
+    }
+    
+    const afterDiscount = subtotal - discountAmount;
+    const taxAmount = (afterDiscount * taxRate) / 100;
+    const grandTotal = afterDiscount + taxAmount - advancePayment;
+    
+    return {
+      subtotal,
+      discountAmount,
+      afterDiscount,
+      taxAmount,
+      advancePayment,
+      grandTotal: Math.max(0, grandTotal) // Ensure non-negative
+    };
+  };
+
   const resetInvoiceForm = () => {
     setInvoiceForm({
       deal_id: '',
@@ -760,6 +797,12 @@ const FinancialManagement: React.FC = () => {
       due_date: '',
       subtotal: '',
       tax_rate: '',
+      discount_amount: '',
+      discount_type: 'percentage',
+      advance_payment: '',
+      recurring_invoice: false,
+      recurring_frequency: 'monthly',
+      recurring_end_date: '',
       description: '',
       notes: '',
       terms_conditions: ''
@@ -1684,9 +1727,10 @@ const FinancialManagement: React.FC = () => {
         }}
         title="Create Invoice"
         animationType="scale"
-        size="lg"
+        size="xl"
       >
-        <form onSubmit={handleCreateInvoice} className="space-y-4">
+        <form onSubmit={handleCreateInvoice} className="space-y-6">
+          {/* Row 1: Customer Account & Won Deal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative dropdown-container">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1793,18 +1837,18 @@ const FinancialManagement: React.FC = () => {
                             <li>Creating a general invoice for this account</li>
                           </ul>
                           <div className="mt-3">
-                            <button
-                              type="button"
+                            <Button
+                              variant="info"
+                              size="sm"
                               onClick={() => {
                                 setShowNoDealsMessage(false);
                                 setShowDealDropdown(true);
                                 setDealSearchTerm('');
                                 setFilteredDeals(wonDeals);
                               }}
-                              className="inline-flex items-center px-3 py-1.5 border border-blue-300 dark:border-blue-600 text-xs font-medium rounded text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors duration-200"
                             >
                               Browse All Won Deals
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1815,10 +1859,11 @@ const FinancialManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Row 2: Due Date & Tax Rate */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Due Date
+                Due Date *
               </label>
               <input
                 type="date"
@@ -1838,24 +1883,151 @@ const FinancialManagement: React.FC = () => {
                 value={invoiceForm.tax_rate}
                 onChange={(e) => setInvoiceForm({ ...invoiceForm, tax_rate: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="0.00"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Subtotal
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={invoiceForm.subtotal}
-              onChange={(e) => setInvoiceForm({ ...invoiceForm, subtotal: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              required
-            />
+          {/* Row 3: Subtotal & Discount */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Subtotal *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={invoiceForm.subtotal}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, subtotal: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Discount
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={invoiceForm.discount_amount}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, discount_amount: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="0.00"
+                />
+                <select
+                  value={invoiceForm.discount_type}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, discount_type: e.target.value })}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="percentage">%</option>
+                  <option value="fixed">$</option>
+                </select>
+              </div>
+            </div>
           </div>
 
+          {/* Row 4: Advance Payment & Recurring Invoice */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Advance Payment
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={invoiceForm.advance_payment}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, advance_payment: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Recurring Invoice
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={invoiceForm.recurring_invoice}
+                    onChange={(e) => setInvoiceForm({ ...invoiceForm, recurring_invoice: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Enable Recurring</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Recurring Settings (conditional) */}
+          {invoiceForm.recurring_invoice && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Frequency
+                </label>
+                <select
+                  value={invoiceForm.recurring_frequency}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, recurring_frequency: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={invoiceForm.recurring_end_date}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, recurring_end_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Grand Total Display */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Invoice Summary</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                <span className="font-medium">${formatCurrency(calculateGrandTotal().subtotal)}</span>
+              </div>
+              {calculateGrandTotal().discountAmount > 0 && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>Discount:</span>
+                  <span>-${formatCurrency(calculateGrandTotal().discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Tax:</span>
+                <span className="font-medium">${formatCurrency(calculateGrandTotal().taxAmount)}</span>
+              </div>
+              {calculateGrandTotal().advancePayment > 0 && (
+                <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                  <span>Advance Payment:</span>
+                  <span>-${formatCurrency(calculateGrandTotal().advancePayment)}</span>
+                </div>
+              )}
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between">
+                <span className="font-semibold text-gray-900 dark:text-white">Grand Total:</span>
+                <span className="font-bold text-lg text-blue-600 dark:text-blue-400">
+                  ${formatCurrency(calculateGrandTotal().grandTotal)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 5: Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
@@ -1865,9 +2037,11 @@ const FinancialManagement: React.FC = () => {
               onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Invoice description..."
             />
           </div>
 
+          {/* Row 6: Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Notes
@@ -1877,24 +2051,28 @@ const FinancialManagement: React.FC = () => {
               onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Additional notes..."
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => setShowCreateInvoice(false)}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              loading={loading}
             >
-              {loading ? 'Creating...' : 'Create Invoice'}
-            </button>
+              Create Invoice
+            </Button>
           </div>
         </form>
       </AnimatedModal>

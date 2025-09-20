@@ -7,24 +7,31 @@ Fixes the call queue members by using valid extension IDs from pbx_extensions.
 """
 
 import psycopg2
+
+import sys
+import os
+
+# Add the scripts directory to the path to import db_config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from db_config import get_railway_db_config, validate_config
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from datetime import datetime, timedelta
 import random
 
 # Railway Database Configuration
-RAILWAY_DB_CONFIG = {
-    'host': 'nozomi.proxy.rlwy.net',
-    'database': 'railway',
-    'user': 'postgres',
-    'password': 'irUsikIqAifdrCMNOlGtApioMQJDjDfE',
-    'port': 49967
-}
+# Railway DB config now loaded from environment variables
 
 def fix_call_queue_members():
     """Fix call queue members with valid extension IDs"""
     try:
         print("🔌 Connecting to Railway database...")
-        conn = psycopg2.connect(**RAILWAY_DB_CONFIG)
+        # Validate environment configuration
+        validate_config()
+        
+        # Get Railway database configuration from environment variables
+        railway_config = get_railway_db_config()
+        
+        conn = psycopg2.connect(**railway_config)(**get_railway_db_config())
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
         

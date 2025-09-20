@@ -1,0 +1,259 @@
+name: UI Regression Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+        
+      - name: Start application
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview &
+          sleep 10
+        env:
+          BASE_URL: http://localhost:4173
+          
+      - name: Run smoke tests
+        working-directory: frontend
+        run: npm run test:smoke
+        env:
+          BASE_URL: http://localhost:4173
+          API_BASE_URL: http://localhost:8000
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results
+          path: frontend/test-results/
+          retention-days: 7
+
+  regression-tests:
+    name: Full Regression Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: smoke-tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+        
+      - name: Start application
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview &
+          sleep 10
+        env:
+          BASE_URL: http://localhost:4173
+          
+      - name: Run regression tests
+        working-directory: frontend
+        run: node test-runner.js regression --project ${{ matrix.browser }}-desktop
+        env:
+          BASE_URL: http://localhost:4173
+          API_BASE_URL: http://localhost:8000
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-test-results-${{ matrix.browser }}
+          path: frontend/test-results/
+          retention-days: 30
+
+  mobile-tests:
+    name: Mobile Responsive Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: smoke-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+        
+      - name: Start application
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview &
+          sleep 10
+        env:
+          BASE_URL: http://localhost:4173
+          
+      - name: Run mobile tests
+        working-directory: frontend
+        run: npm run test:mobile
+        env:
+          BASE_URL: http://localhost:4173
+          API_BASE_URL: http://localhost:8000
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-test-results
+          path: frontend/test-results/
+          retention-days: 30
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: smoke-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+        
+      - name: Start application
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview &
+          sleep 10
+        env:
+          BASE_URL: http://localhost:4173
+          
+      - name: Run performance tests
+        working-directory: frontend
+        run: npm run test:performance
+        env:
+          BASE_URL: http://localhost:4173
+          API_BASE_URL: http://localhost:8000
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: frontend/test-results/
+          retention-days: 30
+
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [regression-tests, mobile-tests, performance-tests]
+    if: always()
+    
+    steps:
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results/
+          
+      - name: Merge test results
+        run: |
+          mkdir -p merged-results
+          find test-results/ -name "*.json" -exec cp {} merged-results/ \;
+          
+      - name: Generate summary report
+        run: |
+          echo "# UI Regression Test Summary" > test-summary.md
+          echo "" >> test-summary.md
+          echo "## Test Results" >> test-summary.md
+          echo "" >> test-summary.md
+          
+          if [ -f "merged-results/results.json" ]; then
+            echo "✅ Tests completed successfully" >> test-summary.md
+          else
+            echo "❌ Some tests failed" >> test-summary.md
+          fi
+          
+          echo "" >> test-summary.md
+          echo "## Artifacts" >> test-summary.md
+          echo "- Test results available in job artifacts" >> test-summary.md
+          echo "- Screenshots and videos for failed tests included" >> test-summary.md
+          
+      - name: Upload merged results
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-test-results
+          path: |
+            merged-results/
+            test-summary.md
+          retention-days: 90

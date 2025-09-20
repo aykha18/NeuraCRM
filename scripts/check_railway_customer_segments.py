@@ -9,21 +9,24 @@ This script checks if customer segmentation data exists in the Railway database.
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import json
+import sys
+import os
 
-# Railway Database Configuration
-RAILWAY_DB_CONFIG = {
-    'host': 'nozomi.proxy.rlwy.net',
-    'database': 'railway',
-    'user': 'postgres',
-    'password': 'irUsikIqAifdrCMNOlGtApioMQJDjDfE',
-    'port': 49967
-}
+# Add the scripts directory to the path to import db_config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from db_config import get_railway_db_config, validate_config
 
 def check_customer_segments():
     """Check customer segmentation data in Railway database"""
     try:
+        # Validate environment configuration
+        validate_config()
+        
+        # Get Railway database configuration from environment variables
+        railway_config = get_railway_db_config()
+        
         print("🔌 Connecting to Railway database...")
-        conn = psycopg2.connect(**RAILWAY_DB_CONFIG)
+        conn = psycopg2.connect(**railway_config)
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
         
