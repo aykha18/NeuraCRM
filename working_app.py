@@ -4381,23 +4381,8 @@ def get_contacts_optimized(
             }
             contacts_data.append(contact_data)
         
-        return {
-            "contacts": contacts_data,
-            "pagination": {
-                "page": page,
-                "page_size": page_size,
-                "total_count": total_count,
-                "total_pages": (total_count + page_size - 1) // page_size,
-                "has_next": page * page_size < total_count,
-                "has_prev": page > 1
-            },
-            "filters": {
-                "owner_id": owner_id,
-                "search": search,
-                "sort_by": sort_by,
-                "sort_order": sort_order
-            }
-        }
+        # Return backward-compatible format for frontend
+        return contacts_data
         
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
@@ -4546,6 +4531,100 @@ def get_leads_optimized(
             }
             leads_data.append(lead_data)
         
+        # Return backward-compatible format for frontend
+        return leads_data
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@app.get("/api/leads/paginated")
+def get_leads_paginated(
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50,
+    status: Optional[str] = None,
+    owner_id: Optional[int] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
+    """Get leads with full pagination metadata for advanced frontend implementations"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Handle users with null organization_id by using a default organization (ID 1)
+        org_id = current_user.organization_id or 1
+        
+        # Build optimized query with joins to avoid N+1
+        query = db.query(Lead, User.name.label("owner_name"), Contact.name.label("contact_name"), 
+                        Contact.email.label("contact_email"), Contact.phone.label("contact_phone"), 
+                        Contact.company.label("contact_company")).\
+            join(User, Lead.owner_id == User.id, isouter=True).\
+            join(Contact, Lead.contact_id == Contact.id, isouter=True).\
+            filter(Lead.organization_id == org_id)
+        
+        # Apply filters
+        if status:
+            query = query.filter(Lead.status == status)
+        if owner_id:
+            query = query.filter(Lead.owner_id == owner_id)
+        if search:
+            query = query.filter(
+                or_(
+                    Lead.title.ilike(f"%{search}%"),
+                    Contact.name.ilike(f"%{search}%"),
+                    Contact.email.ilike(f"%{search}%"),
+                    Contact.company.ilike(f"%{search}%")
+                )
+            )
+        
+        # Apply sorting
+        if sort_by == "created_at":
+            sort_column = Lead.created_at
+        elif sort_by == "title":
+            sort_column = Lead.title
+        elif sort_by == "status":
+            sort_column = Lead.status
+        elif sort_by == "source":
+            sort_column = Lead.source
+        else:
+            sort_column = Lead.created_at
+        
+        if sort_order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * page_size
+        leads_with_relations = query.offset(offset).limit(page_size).all()
+        
+        # Build response data
+        leads_data = []
+        for lead, owner_name, contact_name, contact_email, contact_phone, contact_company in leads_with_relations:
+            lead_data = {
+                "id": lead.id,
+                "title": lead.title,
+                "contact_id": lead.contact_id,
+                "owner_id": lead.owner_id,
+                "organization_id": lead.organization_id,
+                "status": lead.status,
+                "source": lead.source,
+                "score": lead.score,
+                "created_at": lead.created_at.isoformat() if lead.created_at else None,
+                "owner_name": owner_name,
+                "contact_name": contact_name,
+                "contact_email": contact_email,
+                "contact_phone": contact_phone,
+                "contact_company": contact_company
+            }
+            leads_data.append(lead_data)
+        
         return {
             "leads": leads_data,
             "pagination": {
@@ -4558,6 +4637,107 @@ def get_leads_optimized(
             },
             "filters": {
                 "status": status,
+                "owner_id": owner_id,
+                "search": search,
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            }
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@app.get("/api/contacts/paginated")
+def get_contacts_paginated(
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50,
+    owner_id: Optional[int] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
+    """Get contacts with full pagination metadata for advanced frontend implementations"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Handle users with null organization_id by using a default organization (ID 1)
+        org_id = current_user.organization_id or 1
+        
+        # Build optimized query with joins to avoid N+1
+        query = db.query(Contact, User.name.label("owner_name")).\
+            join(User, Contact.owner_id == User.id, isouter=True).\
+            filter(Contact.organization_id == org_id)
+        
+        # Apply filters
+        if owner_id:
+            query = query.filter(Contact.owner_id == owner_id)
+        if search:
+            query = query.filter(
+                or_(
+                    Contact.name.ilike(f"%{search}%"),
+                    Contact.email.ilike(f"%{search}%"),
+                    Contact.company.ilike(f"%{search}%"),
+                    Contact.phone.ilike(f"%{search}%")
+                )
+            )
+        
+        # Apply sorting
+        if sort_by == "created_at":
+            sort_column = Contact.created_at
+        elif sort_by == "name":
+            sort_column = Contact.name
+        elif sort_by == "email":
+            sort_column = Contact.email
+        elif sort_by == "company":
+            sort_column = Contact.company
+        else:
+            sort_column = Contact.created_at
+        
+        if sort_order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * page_size
+        contacts_with_relations = query.offset(offset).limit(page_size).all()
+        
+        # Build response data
+        contacts_data = []
+        for contact, owner_name in contacts_with_relations:
+            contact_data = {
+                "id": contact.id,
+                "name": contact.name,
+                "email": contact.email,
+                "phone": contact.phone,
+                "company": contact.company,
+                "title": contact.title,
+                "industry": contact.industry,
+                "notes": contact.notes,
+                "owner_id": contact.owner_id,
+                "organization_id": contact.organization_id,
+                "created_at": contact.created_at.isoformat() if contact.created_at else None,
+                "owner_name": owner_name
+            }
+            contacts_data.append(contact_data)
+        
+        return {
+            "contacts": contacts_data,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": (total_count + page_size - 1) // page_size,
+                "has_next": page * page_size < total_count,
+                "has_prev": page > 1
+            },
+            "filters": {
                 "owner_id": owner_id,
                 "search": search,
                 "sort_by": sort_by,
