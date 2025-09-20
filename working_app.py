@@ -6034,7 +6034,8 @@ def create_pbx_provider(
             is_primary=provider_data.get('is_primary', False),
             recording_enabled=provider_data.get('recording_enabled', False),
             transcription_enabled=provider_data.get('transcription_enabled', False),
-            organization_id=current_user.organization_id
+            organization_id=current_user.organization_id,
+            created_by=current_user.id
         )
         
         db.add(provider)
