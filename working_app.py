@@ -4652,7 +4652,8 @@ def delete_contact(contact_id: int, current_user: User = Depends(get_current_use
         if not contact:
             return {"error": "Contact not found"}
         
-        db.delete(contact)
+        # Use raw SQL to delete to avoid foreign key relationship issues
+        db.execute(f"DELETE FROM contacts WHERE id = {contact_id} AND organization_id = {current_user.organization_id}")
         db.commit()
         
         return {"message": "Contact deleted successfully", "deleted_id": contact_id}
@@ -5090,7 +5091,8 @@ def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db
         if not lead:
             return {"error": "Lead not found"}
         
-        db.delete(lead)
+        # Use raw SQL to delete to avoid foreign key relationship issues
+        db.execute(f"DELETE FROM leads WHERE id = {lead_id} AND organization_id = {current_user.organization_id}")
         db.commit()
         
         return {"message": "Lead deleted successfully", "deleted_id": lead_id}
