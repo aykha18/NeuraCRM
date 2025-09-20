@@ -4480,10 +4480,8 @@ def convert_lead_to_deal(lead_id: int, deal_data: dict, current_user: User = Dep
         if not lead:
             return {"error": "Lead not found"}
         
-        # Get default stage
-        default_stage = db.query(Stage).filter(
-            Stage.organization_id == current_user.organization_id
-        ).order_by(Stage.order).first()
+        # Get default stage (stages don't have organization_id)
+        default_stage = db.query(Stage).order_by(Stage.order).first()
         
         if not default_stage:
             return {"error": "No stages found. Please create a stage first."}
