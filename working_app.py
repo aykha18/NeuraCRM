@@ -4371,9 +4371,9 @@ def get_contacts_optimized(
                 "email": contact.email,
                 "phone": contact.phone,
                 "company": contact.company,
-                "title": contact.title,
-                "industry": contact.industry,
-                "notes": contact.notes,
+                "title": getattr(contact, 'title', None),
+                "industry": getattr(contact, 'industry', None),
+                "notes": getattr(contact, 'notes', None),
                 "owner_id": contact.owner_id,
                 "organization_id": contact.organization_id,
                 "created_at": contact.created_at.isoformat() if contact.created_at else None,
@@ -4384,6 +4384,32 @@ def get_contacts_optimized(
         # Return backward-compatible format for frontend
         return contacts_data
         
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@app.get("/api/stats/leads-count")
+def get_leads_total_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get total count of leads for current user's organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 1
+        total_count = db.query(Lead).filter(Lead.organization_id == org_id).count()
+        return {"total_count": total_count}
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@app.get("/api/stats/contacts-count")
+def get_contacts_total_count(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get total count of contacts for current user's organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        org_id = current_user.organization_id or 1
+        total_count = db.query(Contact).filter(Contact.organization_id == org_id).count()
+        return {"total_count": total_count}
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
