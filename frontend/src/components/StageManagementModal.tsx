@@ -83,7 +83,8 @@ export default function StageManagementModal({ isOpen, onClose, onStagesUpdated 
   };
 
   const handleDeleteStage = async (stageId: number) => {
-    if (!confirm('Are you sure you want to delete this stage? Deals in this stage will be moved to the first stage.')) {
+    // Use modern confirmation - could be enhanced with a modal in the future
+    if (!window.confirm('Are you sure you want to delete this stage? Deals in this stage will be moved to the first stage.')) {
       return;
     }
     

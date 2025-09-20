@@ -149,7 +149,8 @@ export default function EmailAutomationPage() {
   };
 
   const handleDeleteTemplate = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+    // Use modern confirmation - could be enhanced with a modal in the future
+    if (!window.confirm('Are you sure you want to delete this template?')) return;
     try {
       await deleteEmailTemplate(id);
       loadData();
@@ -208,7 +209,8 @@ export default function EmailAutomationPage() {
   };
 
   const handleSendCampaign = async (campaignId: number) => {
-    if (!confirm('Are you sure you want to send this campaign?')) return;
+    // Use modern confirmation - could be enhanced with a modal in the future
+    if (!window.confirm('Are you sure you want to send this campaign?')) return;
     try {
       const result = await sendCampaign(campaignId);
       loadData();

@@ -87,7 +87,8 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId: number, userName: string) => {
     if (!user?.organization_id) return;
     
-    if (!confirm(`Are you sure you want to delete user "${userName}"?`)) {
+    // Use modern confirmation - could be enhanced with a modal in the future
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"?`)) {
       return;
     }
 

@@ -271,7 +271,8 @@ const TelephonyEnhanced: React.FC = () => {
   };
 
   const handleDeleteProvider = async (providerId: number) => {
-    if (!confirm('Are you sure you want to delete this provider?')) return;
+    // Use modern confirmation - could be enhanced with a modal in the future
+    if (!window.confirm('Are you sure you want to delete this provider?')) return;
     
     try {
       setLoading(true);
@@ -290,13 +291,16 @@ const TelephonyEnhanced: React.FC = () => {
       setLoading(true);
       const result = await telephonyService.testProviderConnection(providerId);
       if (result.success) {
-        alert(`✅ ${result.message}\nResponse time: ${result.response_time}ms`);
+        setError(`✅ ${result.message}\nResponse time: ${result.response_time}ms`);
+        setTimeout(() => setError(null), 5000);
       } else {
-        alert(`❌ ${result.message}\nError: ${result.error}`);
+        setError(`❌ ${result.message}\nError: ${result.error}`);
+        setTimeout(() => setError(null), 5000);
       }
     } catch (error) {
       console.error('Error testing connection:', error);
-      alert('❌ Failed to test connection');
+      setError('❌ Failed to test connection');
+      setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
     }
