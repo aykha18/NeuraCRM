@@ -4661,7 +4661,10 @@ def delete_contact(contact_id: int, current_user: User = Depends(get_current_use
         
     except Exception as e:
         db.rollback()
-        return {"error": f"Failed to delete contact: {str(e)}"}
+        error_msg = str(e)
+        if "ForeignKeyViolation" in error_msg or "foreign key constraint" in error_msg.lower():
+            return {"error": "Cannot delete contact: Contact is referenced by deals or other records. Please remove associated records first.", "type": "foreign_key_violation"}
+        return {"error": f"Failed to delete contact: {error_msg}"}
 
 @app.get("/api/leads")
 def get_leads_optimized(
@@ -5101,7 +5104,10 @@ def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db
         
     except Exception as e:
         db.rollback()
-        return {"error": f"Failed to delete lead: {str(e)}"}
+        error_msg = str(e)
+        if "ForeignKeyViolation" in error_msg or "foreign key constraint" in error_msg.lower():
+            return {"error": "Cannot delete lead: Lead is referenced by deals or other records. Please remove associated records first.", "type": "foreign_key_violation"}
+        return {"error": f"Failed to delete lead: {error_msg}"}
 
 @app.get("/api/kanban/columns")
 def get_kanban_columns(db: Session = Depends(get_db)):
