@@ -117,6 +117,23 @@ const TelephonyEnhanced: React.FC = () => {
     queue: '',
     search: ''
   });
+  
+  // Provider management state
+  const [showProviderModal, setShowProviderModal] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<any>(null);
+  const [providerForm, setProviderForm] = useState({
+    name: '',
+    provider_type: 'asterisk',
+    display_name: '',
+    host: '',
+    port: 5060,
+    username: '',
+    password: '',
+    is_active: true,
+    is_primary: false,
+    recording_enabled: false,
+    transcription_enabled: false
+  });
 
   useEffect(() => {
     fetchAllData();
@@ -162,6 +179,93 @@ const TelephonyEnhanced: React.FC = () => {
         return <PhoneCall className="w-4 h-4 text-yellow-500" />;
       default:
         return <Clock className="w-4 h-4 text-yellow-500" />;
+    }
+  };
+
+  // Provider management functions
+  const handleAddProvider = () => {
+    setEditingProvider(null);
+    setProviderForm({
+      name: '',
+      provider_type: 'asterisk',
+      display_name: '',
+      host: '',
+      port: 5060,
+      username: '',
+      password: '',
+      is_active: true,
+      is_primary: false,
+      recording_enabled: false,
+      transcription_enabled: false
+    });
+    setShowProviderModal(true);
+  };
+
+  const handleEditProvider = (provider: any) => {
+    setEditingProvider(provider);
+    setProviderForm({
+      name: provider.name,
+      provider_type: provider.provider_type,
+      display_name: provider.display_name,
+      host: provider.host,
+      port: provider.port,
+      username: provider.username || '',
+      password: provider.password || '',
+      is_active: provider.is_active,
+      is_primary: provider.is_primary,
+      recording_enabled: provider.recording_enabled,
+      transcription_enabled: provider.transcription_enabled
+    });
+    setShowProviderModal(true);
+  };
+
+  const handleSaveProvider = async () => {
+    try {
+      setLoading(true);
+      if (editingProvider) {
+        await telephonyService.updateProvider(editingProvider.id, providerForm);
+      } else {
+        await telephonyService.createProvider(providerForm);
+      }
+      setShowProviderModal(false);
+      fetchAllData(); // Refresh data
+    } catch (error) {
+      console.error('Error saving provider:', error);
+      setError('Failed to save provider');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProvider = async (providerId: number) => {
+    if (!confirm('Are you sure you want to delete this provider?')) return;
+    
+    try {
+      setLoading(true);
+      await telephonyService.deleteProvider(providerId);
+      fetchAllData(); // Refresh data
+    } catch (error) {
+      console.error('Error deleting provider:', error);
+      setError('Failed to delete provider');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async (providerId: number) => {
+    try {
+      setLoading(true);
+      const result = await telephonyService.testProviderConnection(providerId);
+      if (result.success) {
+        alert(`✅ ${result.message}\nResponse time: ${result.response_time}ms`);
+      } else {
+        alert(`❌ ${result.message}\nError: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      alert('❌ Failed to test connection');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -775,7 +879,10 @@ const TelephonyEnhanced: React.FC = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">Telephony Settings</h2>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+            <button 
+              onClick={handleAddProvider}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
               <Plus className="w-4 h-4" />
               Add Provider
             </button>
@@ -804,8 +911,26 @@ const TelephonyEnhanced: React.FC = () => {
                         }`}>
                           {provider.is_primary ? 'Primary' : 'Secondary'}
                         </span>
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button 
+                          onClick={() => handleTestConnection(provider.id)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Test Connection"
+                        >
+                          <PhoneCall className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEditProvider(provider)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit Provider"
+                        >
                           <Settings className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProvider(provider.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete Provider"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -869,6 +994,214 @@ const TelephonyEnhanced: React.FC = () => {
                     <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-6" />
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Provider Modal */}
+      {showProviderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingProvider ? 'Edit Provider' : 'Add New Provider'}
+                </h3>
+                <button
+                  onClick={() => setShowProviderModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Provider Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.name}
+                      onChange={(e) => setProviderForm({...providerForm, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Main PBX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Provider Type *
+                    </label>
+                    <select
+                      value={providerForm.provider_type}
+                      onChange={(e) => setProviderForm({...providerForm, provider_type: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="asterisk">Asterisk</option>
+                      <option value="freepbx">FreePBX</option>
+                      <option value="3cx">3CX</option>
+                      <option value="avaya">Avaya</option>
+                      <option value="cisco">Cisco</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={providerForm.display_name}
+                    onChange={(e) => setProviderForm({...providerForm, display_name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Main Office PBX"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Host/IP Address *
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.host}
+                      onChange={(e) => setProviderForm({...providerForm, host: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="192.168.1.100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Port *
+                    </label>
+                    <input
+                      type="number"
+                      value={providerForm.port}
+                      onChange={(e) => setProviderForm({...providerForm, port: parseInt(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5060"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      value={providerForm.username}
+                      onChange={(e) => setProviderForm({...providerForm, username: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="admin"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={providerForm.password}
+                      onChange={(e) => setProviderForm({...providerForm, password: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Active</h4>
+                      <p className="text-sm text-gray-500">Enable this provider</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, is_active: !providerForm.is_active})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.is_active ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.is_active ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Primary Provider</h4>
+                      <p className="text-sm text-gray-500">Set as the main provider</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, is_primary: !providerForm.is_primary})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.is_primary ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.is_primary ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Recording Enabled</h4>
+                      <p className="text-sm text-gray-500">Enable call recording</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, recording_enabled: !providerForm.recording_enabled})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.recording_enabled ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.recording_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Transcription Enabled</h4>
+                      <p className="text-sm text-gray-500">Enable call transcription</p>
+                    </div>
+                    <button
+                      onClick={() => setProviderForm({...providerForm, transcription_enabled: !providerForm.transcription_enabled})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                        providerForm.transcription_enabled ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        providerForm.transcription_enabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowProviderModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProvider}
+                  disabled={!providerForm.name || !providerForm.host || !providerForm.port}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {editingProvider ? 'Update Provider' : 'Add Provider'}
+                </button>
               </div>
             </div>
           </div>

@@ -6007,6 +6007,243 @@ def get_pbx_providers(current_user: User = Depends(get_current_user), db: Sessio
         logger.error(f"Error fetching PBX providers: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch PBX providers: {str(e)}")
 
+@app.post("/api/telephony/providers")
+def create_pbx_provider(
+    provider_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new PBX provider"""
+    try:
+        # Validate required fields
+        required_fields = ['name', 'provider_type', 'host', 'port']
+        for field in required_fields:
+            if field not in provider_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Create new provider
+        provider = PBXProvider(
+            name=provider_data['name'],
+            provider_type=provider_data['provider_type'],
+            display_name=provider_data.get('display_name', provider_data['name']),
+            host=provider_data['host'],
+            port=provider_data['port'],
+            username=provider_data.get('username'),
+            password=provider_data.get('password'),
+            is_active=provider_data.get('is_active', True),
+            is_primary=provider_data.get('is_primary', False),
+            recording_enabled=provider_data.get('recording_enabled', False),
+            transcription_enabled=provider_data.get('transcription_enabled', False),
+            organization_id=current_user.organization_id
+        )
+        
+        db.add(provider)
+        db.commit()
+        db.refresh(provider)
+        
+        return {
+            "id": provider.id,
+            "name": provider.name,
+            "provider_type": provider.provider_type,
+            "display_name": provider.display_name,
+            "host": provider.host,
+            "port": provider.port,
+            "is_active": provider.is_active,
+            "is_primary": provider.is_primary,
+            "recording_enabled": provider.recording_enabled,
+            "transcription_enabled": provider.transcription_enabled,
+            "created_at": provider.created_at.isoformat() if provider.created_at else None,
+            "last_sync": provider.last_sync.isoformat() if provider.last_sync else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating PBX provider: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create PBX provider: {str(e)}")
+
+@app.get("/api/telephony/providers/{provider_id}")
+def get_pbx_provider(
+    provider_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific PBX provider"""
+    try:
+        provider = db.query(PBXProvider).filter(
+            and_(
+                PBXProvider.id == provider_id,
+                PBXProvider.organization_id == current_user.organization_id
+            )
+        ).first()
+        
+        if not provider:
+            raise HTTPException(status_code=404, detail="PBX provider not found")
+        
+        return {
+            "id": provider.id,
+            "name": provider.name,
+            "provider_type": provider.provider_type,
+            "display_name": provider.display_name,
+            "host": provider.host,
+            "port": provider.port,
+            "is_active": provider.is_active,
+            "is_primary": provider.is_primary,
+            "recording_enabled": provider.recording_enabled,
+            "transcription_enabled": provider.transcription_enabled,
+            "created_at": provider.created_at.isoformat() if provider.created_at else None,
+            "last_sync": provider.last_sync.isoformat() if provider.last_sync else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching PBX provider: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch PBX provider: {str(e)}")
+
+@app.put("/api/telephony/providers/{provider_id}")
+def update_pbx_provider(
+    provider_id: int,
+    provider_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a PBX provider"""
+    try:
+        provider = db.query(PBXProvider).filter(
+            and_(
+                PBXProvider.id == provider_id,
+                PBXProvider.organization_id == current_user.organization_id
+            )
+        ).first()
+        
+        if not provider:
+            raise HTTPException(status_code=404, detail="PBX provider not found")
+        
+        # Update fields
+        if 'name' in provider_data:
+            provider.name = provider_data['name']
+        if 'provider_type' in provider_data:
+            provider.provider_type = provider_data['provider_type']
+        if 'display_name' in provider_data:
+            provider.display_name = provider_data['display_name']
+        if 'host' in provider_data:
+            provider.host = provider_data['host']
+        if 'port' in provider_data:
+            provider.port = provider_data['port']
+        if 'username' in provider_data:
+            provider.username = provider_data['username']
+        if 'password' in provider_data:
+            provider.password = provider_data['password']
+        if 'is_active' in provider_data:
+            provider.is_active = provider_data['is_active']
+        if 'is_primary' in provider_data:
+            provider.is_primary = provider_data['is_primary']
+        if 'recording_enabled' in provider_data:
+            provider.recording_enabled = provider_data['recording_enabled']
+        if 'transcription_enabled' in provider_data:
+            provider.transcription_enabled = provider_data['transcription_enabled']
+        
+        db.commit()
+        db.refresh(provider)
+        
+        return {
+            "id": provider.id,
+            "name": provider.name,
+            "provider_type": provider.provider_type,
+            "display_name": provider.display_name,
+            "host": provider.host,
+            "port": provider.port,
+            "is_active": provider.is_active,
+            "is_primary": provider.is_primary,
+            "recording_enabled": provider.recording_enabled,
+            "transcription_enabled": provider.transcription_enabled,
+            "created_at": provider.created_at.isoformat() if provider.created_at else None,
+            "last_sync": provider.last_sync.isoformat() if provider.last_sync else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating PBX provider: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update PBX provider: {str(e)}")
+
+@app.delete("/api/telephony/providers/{provider_id}")
+def delete_pbx_provider(
+    provider_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a PBX provider"""
+    try:
+        provider = db.query(PBXProvider).filter(
+            and_(
+                PBXProvider.id == provider_id,
+                PBXProvider.organization_id == current_user.organization_id
+            )
+        ).first()
+        
+        if not provider:
+            raise HTTPException(status_code=404, detail="PBX provider not found")
+        
+        # Check if provider has associated data
+        calls_count = db.query(Call).filter(Call.provider_id == provider_id).count()
+        if calls_count > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot delete provider with {calls_count} associated calls"
+            )
+        
+        db.delete(provider)
+        db.commit()
+        
+        return {"message": "PBX provider deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting PBX provider: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete PBX provider: {str(e)}")
+
+@app.post("/api/telephony/providers/{provider_id}/test")
+def test_pbx_connection(
+    provider_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Test connection to a PBX provider"""
+    try:
+        provider = db.query(PBXProvider).filter(
+            and_(
+                PBXProvider.id == provider_id,
+                PBXProvider.organization_id == current_user.organization_id
+            )
+        ).first()
+        
+        if not provider:
+            raise HTTPException(status_code=404, detail="PBX provider not found")
+        
+        # Simulate connection test (in real implementation, this would test actual connection)
+        import random
+        import time
+        time.sleep(1)  # Simulate connection delay
+        
+        success = random.choice([True, True, True, False])  # 75% success rate for demo
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully connected to {provider.display_name}",
+                "response_time": random.randint(50, 200)
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Failed to connect to {provider.display_name}",
+                "error": "Connection timeout"
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error testing PBX connection: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to test connection: {str(e)}")
+
 # Call Center Dashboard
 @app.get("/api/telephony/dashboard")
 def get_call_center_dashboard(

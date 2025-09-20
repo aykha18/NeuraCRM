@@ -7,6 +7,8 @@ export interface PBXProvider {
   display_name: string;
   host: string;
   port: number;
+  username?: string;
+  password?: string;
   is_active: boolean;
   is_primary: boolean;
   recording_enabled: boolean;
@@ -147,8 +149,16 @@ export const telephonyService = {
     return apiRequest<PBXProvider>(`/api/telephony/providers/${providerId}`);
   },
 
-  async testProviderConnection(providerId: number): Promise<any> {
-    return apiRequest(`/api/telephony/providers/${providerId}/test-connection`, 'POST');
+  async updateProvider(providerId: number, providerData: Partial<PBXProvider>): Promise<PBXProvider> {
+    return apiRequest<PBXProvider>(`/api/telephony/providers/${providerId}`, 'PUT', providerData);
+  },
+
+  async deleteProvider(providerId: number): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>(`/api/telephony/providers/${providerId}`, 'DELETE');
+  },
+
+  async testProviderConnection(providerId: number): Promise<{ success: boolean; message: string; response_time?: number; error?: string }> {
+    return apiRequest<{ success: boolean; message: string; response_time?: number; error?: string }>(`/api/telephony/providers/${providerId}/test`, 'POST');
   },
 
   // Calls
