@@ -4524,6 +4524,61 @@ def convert_lead_to_deal(lead_id: int, deal_data: dict, current_user: User = Dep
         db.rollback()
         return {"error": f"Failed to convert lead to deal: {str(e)}"}
 
+@app.put("/api/contacts/{contact_id}")
+def update_contact(contact_id: int, contact_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update a contact"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the contact
+        contact = db.query(Contact).filter(
+            Contact.id == contact_id,
+            Contact.organization_id == current_user.organization_id
+        ).first()
+        
+        if not contact:
+            return {"error": "Contact not found"}
+        
+        # Update contact fields
+        if "name" in contact_data and contact_data["name"]:
+            contact.name = contact_data["name"]
+        if "email" in contact_data and contact_data["email"]:
+            contact.email = contact_data["email"]
+        if "phone" in contact_data and contact_data["phone"]:
+            contact.phone = contact_data["phone"]
+        if "company" in contact_data and contact_data["company"]:
+            contact.company = contact_data["company"]
+        if "title" in contact_data and contact_data["title"]:
+            contact.title = contact_data["title"]
+        if "industry" in contact_data and contact_data["industry"]:
+            contact.industry = contact_data["industry"]
+        if "notes" in contact_data and contact_data["notes"]:
+            contact.notes = contact_data["notes"]
+        if "owner_id" in contact_data and contact_data["owner_id"]:
+            contact.owner_id = contact_data["owner_id"]
+        
+        db.commit()
+        db.refresh(contact)
+        
+        return {
+            "id": contact.id,
+            "name": contact.name,
+            "email": contact.email,
+            "phone": contact.phone,
+            "company": contact.company,
+            "title": contact.title,
+            "industry": contact.industry,
+            "notes": contact.notes,
+            "owner_id": contact.owner_id,
+            "organization_id": contact.organization_id,
+            "created_at": contact.created_at.isoformat() if contact.created_at else None
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update contact: {str(e)}"}
+
 @app.post("/api/contacts")
 def create_contact(contact_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new contact for current user's organization"""
@@ -4884,6 +4939,53 @@ def get_contacts_paginated(
         
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
+
+@app.put("/api/leads/{lead_id}")
+def update_lead(lead_id: int, lead_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update a lead"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the lead
+        lead = db.query(Lead).filter(
+            Lead.id == lead_id,
+            Lead.organization_id == current_user.organization_id
+        ).first()
+        
+        if not lead:
+            return {"error": "Lead not found"}
+        
+        # Update lead fields
+        if "title" in lead_data and lead_data["title"]:
+            lead.title = lead_data["title"]
+        if "status" in lead_data and lead_data["status"]:
+            lead.status = lead_data["status"]
+        if "source" in lead_data and lead_data["source"]:
+            lead.source = lead_data["source"]
+        if "owner_id" in lead_data and lead_data["owner_id"]:
+            lead.owner_id = lead_data["owner_id"]
+        if "score" in lead_data and lead_data["score"] is not None:
+            lead.score = lead_data["score"]
+        
+        db.commit()
+        db.refresh(lead)
+        
+        return {
+            "id": lead.id,
+            "title": lead.title,
+            "status": lead.status,
+            "source": lead.source,
+            "owner_id": lead.owner_id,
+            "score": lead.score,
+            "organization_id": lead.organization_id,
+            "contact_id": lead.contact_id,
+            "created_at": lead.created_at.isoformat() if lead.created_at else None
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to update lead: {str(e)}"}
 
 @app.post("/api/leads")
 def create_lead(lead_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
