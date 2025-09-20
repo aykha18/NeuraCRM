@@ -4653,7 +4653,8 @@ def delete_contact(contact_id: int, current_user: User = Depends(get_current_use
             return {"error": "Contact not found"}
         
         # Use raw SQL to delete to avoid foreign key relationship issues
-        db.execute(f"DELETE FROM contacts WHERE id = {contact_id} AND organization_id = {current_user.organization_id}")
+        from sqlalchemy import text
+        db.execute(text(f"DELETE FROM contacts WHERE id = {contact_id} AND organization_id = {current_user.organization_id}"))
         db.commit()
         
         return {"message": "Contact deleted successfully", "deleted_id": contact_id}
@@ -5092,7 +5093,8 @@ def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db
             return {"error": "Lead not found"}
         
         # Use raw SQL to delete to avoid foreign key relationship issues
-        db.execute(f"DELETE FROM leads WHERE id = {lead_id} AND organization_id = {current_user.organization_id}")
+        from sqlalchemy import text
+        db.execute(text(f"DELETE FROM leads WHERE id = {lead_id} AND organization_id = {current_user.organization_id}"))
         db.commit()
         
         return {"message": "Lead deleted successfully", "deleted_id": lead_id}
