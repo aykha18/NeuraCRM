@@ -4550,7 +4550,9 @@ def update_contact(contact_id: int, contact_data: dict, current_user: User = Dep
         if "company" in contact_data and contact_data["company"]:
             contact.company = contact_data["company"]
         if "title" in contact_data and contact_data["title"]:
-            contact.title = contact_data["title"]
+            # Contact model may not have title field, skip if not available
+            if hasattr(contact, 'title'):
+                contact.title = contact_data["title"]
         if "industry" in contact_data and contact_data["industry"]:
             contact.industry = contact_data["industry"]
         if "notes" in contact_data and contact_data["notes"]:
@@ -4634,6 +4636,30 @@ def get_contact(contact_id: int):
         "created_at": "2024-01-15T10:30:00Z",
         "owner_name": "Sales Rep"
     }
+
+@app.delete("/api/contacts/{contact_id}")
+def delete_contact(contact_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a contact"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        contact = db.query(Contact).filter(
+            Contact.id == contact_id,
+            Contact.organization_id == current_user.organization_id
+        ).first()
+        
+        if not contact:
+            return {"error": "Contact not found"}
+        
+        db.delete(contact)
+        db.commit()
+        
+        return {"message": "Contact deleted successfully", "deleted_id": contact_id}
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete contact: {str(e)}"}
 
 @app.get("/api/leads")
 def get_leads_optimized(
@@ -5048,6 +5074,30 @@ def get_lead(lead_id: int):
         "created_at": "2024-01-15T10:30:00Z",
         "owner_name": "Sales Rep"
     }
+
+@app.delete("/api/leads/{lead_id}")
+def delete_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a lead"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        lead = db.query(Lead).filter(
+            Lead.id == lead_id,
+            Lead.organization_id == current_user.organization_id
+        ).first()
+        
+        if not lead:
+            return {"error": "Lead not found"}
+        
+        db.delete(lead)
+        db.commit()
+        
+        return {"message": "Lead deleted successfully", "deleted_id": lead_id}
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete lead: {str(e)}"}
 
 @app.get("/api/kanban/columns")
 def get_kanban_columns(db: Session = Depends(get_db)):
