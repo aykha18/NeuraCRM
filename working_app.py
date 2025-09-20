@@ -4430,28 +4430,33 @@ def convert_contact_to_lead(contact_id: int, lead_data: dict, current_user: User
         if not contact:
             return {"error": "Contact not found"}
         
-        # Create lead from contact (let SQLAlchemy auto-generate ID)
-        lead = Lead(
-            title=lead_data.get("title", f"Lead from {contact.name}"),
-            contact_id=contact_id,
-            owner_id=current_user.id,
-            organization_id=current_user.organization_id,
-            status=lead_data.get("status", "new"),
-            source=lead_data.get("source", "contact_conversion"),
-            score=lead_data.get("score", 50),
-            score_updated_at=datetime.utcnow(),
-            score_factors=json.dumps({"source": "contact_conversion", "manual_score": True}),
-            score_confidence=0.8,
-            created_at=datetime.utcnow()
-        )
+        # Create lead using raw SQL to avoid sequence issues
+        result = db.execute(text("""
+            INSERT INTO leads (title, contact_id, owner_id, organization_id, status, source, 
+                             score, score_updated_at, score_factors, score_confidence, created_at)
+            VALUES (:title, :contact_id, :owner_id, :organization_id, :status, :source,
+                    :score, :score_updated_at, :score_factors, :score_confidence, :created_at)
+            RETURNING id
+        """), {
+            "title": lead_data.get("title", f"Lead from {contact.name}"),
+            "contact_id": contact_id,
+            "owner_id": current_user.id,
+            "organization_id": current_user.organization_id,
+            "status": lead_data.get("status", "new"),
+            "source": lead_data.get("source", "contact_conversion"),
+            "score": lead_data.get("score", 50),
+            "score_updated_at": datetime.utcnow(),
+            "score_factors": json.dumps({"source": "contact_conversion", "manual_score": True}),
+            "score_confidence": 0.8,
+            "created_at": datetime.utcnow()
+        })
         
-        db.add(lead)
+        lead_id = result.fetchone()[0]
         db.commit()
-        db.refresh(lead)
         
         return {
             "message": "Contact converted to lead successfully",
-            "lead_id": lead.id,
+            "lead_id": lead_id,
             "contact_id": contact_id
         }
         
@@ -4483,29 +4488,36 @@ def convert_lead_to_deal(lead_id: int, deal_data: dict, current_user: User = Dep
         if not default_stage:
             return {"error": "No stages found. Please create a stage first."}
         
-        # Create deal from lead (let SQLAlchemy auto-generate ID)
-        deal = Deal(
-            title=deal_data.get("title", f"Deal from {lead.title}"),
-            description=deal_data.get("description", f"Deal converted from lead: {lead.title}"),
-            value=deal_data.get("value", 0),
-            stage_id=default_stage.id,
-            owner_id=current_user.id,
-            contact_id=lead.contact_id,
-            organization_id=current_user.organization_id,
-            reminder_date=deal_data.get("reminder_date"),
-            created_at=datetime.utcnow()
-        )
+        # Create deal using raw SQL to avoid sequence issues
+        deal_result = db.execute(text("""
+            INSERT INTO deals (title, description, value, stage_id, owner_id, contact_id, 
+                             organization_id, reminder_date, created_at)
+            VALUES (:title, :description, :value, :stage_id, :owner_id, :contact_id,
+                    :organization_id, :reminder_date, :created_at)
+            RETURNING id
+        """), {
+            "title": deal_data.get("title", f"Deal from {lead.title}"),
+            "description": deal_data.get("description", f"Deal converted from lead: {lead.title}"),
+            "value": deal_data.get("value", 0),
+            "stage_id": default_stage.id,
+            "owner_id": current_user.id,
+            "contact_id": lead.contact_id,
+            "organization_id": current_user.organization_id,
+            "reminder_date": deal_data.get("reminder_date"),
+            "created_at": datetime.utcnow()
+        })
         
-        db.add(deal)
+        deal_id = deal_result.fetchone()[0]
         
         # Update lead status to converted
-        lead.status = "converted"
+        db.execute(text("UPDATE leads SET status = 'converted' WHERE id = :lead_id"), 
+                  {"lead_id": lead_id})
+        
         db.commit()
-        db.refresh(deal)
         
         return {
             "message": "Lead converted to deal successfully",
-            "deal_id": deal.id,
+            "deal_id": deal_id,
             "lead_id": lead_id,
             "stage_id": default_stage.id
         }
