@@ -40,7 +40,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics, Watcher
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics, Watcher, CompanySettings
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
@@ -5768,6 +5768,73 @@ class ForecastResultResponse(BaseModel):
     recommendations: Optional[Union[dict, list]]
     generated_at: datetime
 
+# Company Settings Models
+class CompanySettingsCreate(BaseModel):
+    """Request schema for creating company settings"""
+    company_name: str
+    company_mobile: Optional[str] = None
+    city: Optional[str] = None
+    area: Optional[str] = None
+    complete_address: Optional[str] = None
+    trn: Optional[str] = None
+    currency: str = "AED - UAE Dirham (د.إ)"
+    timezone: str = "Dubai (UAE)"
+    
+    # Billing Configuration
+    trial_date_enabled: bool = True
+    trial_date_days: int = 3
+    delivery_date_enabled: bool = True
+    delivery_date_days: int = 3
+    advance_payment_enabled: bool = True
+
+class CompanySettingsUpdate(BaseModel):
+    """Request schema for updating company settings"""
+    company_name: Optional[str] = None
+    company_mobile: Optional[str] = None
+    city: Optional[str] = None
+    area: Optional[str] = None
+    complete_address: Optional[str] = None
+    trn: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    
+    # Billing Configuration
+    trial_date_enabled: Optional[bool] = None
+    trial_date_days: Optional[int] = None
+    delivery_date_enabled: Optional[bool] = None
+    delivery_date_days: Optional[int] = None
+    advance_payment_enabled: Optional[bool] = None
+
+class CompanySettingsResponse(BaseModel):
+    """Response schema for company settings"""
+    id: int
+    organization_id: int
+    
+    # Company Information
+    company_name: str
+    company_mobile: Optional[str]
+    city: Optional[str]
+    area: Optional[str]
+    complete_address: Optional[str]
+    trn: Optional[str]
+    currency: str
+    timezone: str
+    
+    # Billing Configuration
+    trial_date_enabled: bool
+    trial_date_days: int
+    delivery_date_enabled: bool
+    delivery_date_days: int
+    advance_payment_enabled: bool
+    
+    # Metadata
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+    
+    class Config:
+        from_attributes = True
+
 @app.get("/api/forecasting-models", response_model=list[ForecastingModelResponse])
 def get_forecasting_models(
     current_user: User = Depends(get_current_user),
@@ -6825,6 +6892,120 @@ def get_queue_members(
     except Exception as e:
         logger.error(f"Error fetching queue members: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch queue members: {str(e)}")
+
+# Company Settings Endpoints
+@app.get("/api/company-settings", response_model=CompanySettingsResponse)
+def get_company_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get company settings for the organization"""
+    try:
+        settings = db.query(CompanySettings).filter(
+            CompanySettings.organization_id == current_user.organization_id
+        ).first()
+        
+        if not settings:
+            # Return default settings if none exist
+            return CompanySettingsResponse(
+                id=0,
+                organization_id=current_user.organization_id,
+                company_name="",
+                company_mobile=None,
+                city=None,
+                area=None,
+                complete_address=None,
+                trn=None,
+                currency="AED - UAE Dirham (د.إ)",
+                timezone="Dubai (UAE)",
+                trial_date_enabled=True,
+                trial_date_days=3,
+                delivery_date_enabled=True,
+                delivery_date_days=3,
+                advance_payment_enabled=True,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                created_by=current_user.id
+            )
+        
+        return settings
+    except Exception as e:
+        logger.error(f"Error fetching company settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch company settings: {str(e)}")
+
+@app.put("/api/company-settings", response_model=CompanySettingsResponse)
+def update_company_settings(
+    settings_data: CompanySettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create or update company settings for the organization"""
+    try:
+        # Check if settings already exist
+        existing_settings = db.query(CompanySettings).filter(
+            CompanySettings.organization_id == current_user.organization_id
+        ).first()
+        
+        if existing_settings:
+            # Update existing settings
+            update_data = settings_data.model_dump(exclude_unset=True)
+            for field, value in update_data.items():
+                setattr(existing_settings, field, value)
+            existing_settings.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing_settings)
+            return existing_settings
+        else:
+            # Create new settings
+            create_data = settings_data.model_dump()
+            # Add required fields
+            create_data['organization_id'] = current_user.organization_id
+            create_data['created_by'] = current_user.id
+            
+            new_settings = CompanySettings(**create_data)
+            db.add(new_settings)
+            db.commit()
+            db.refresh(new_settings)
+            return new_settings
+            
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating company settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update company settings: {str(e)}")
+
+@app.post("/api/company-settings", response_model=CompanySettingsResponse)
+def create_company_settings(
+    settings_data: CompanySettingsCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create company settings for the organization"""
+    try:
+        # Check if settings already exist
+        existing_settings = db.query(CompanySettings).filter(
+            CompanySettings.organization_id == current_user.organization_id
+        ).first()
+        
+        if existing_settings:
+            raise HTTPException(status_code=400, detail="Company settings already exist. Use PUT to update.")
+        
+        # Create new settings
+        create_data = settings_data.model_dump()
+        create_data['organization_id'] = current_user.organization_id
+        create_data['created_by'] = current_user.id
+        
+        new_settings = CompanySettings(**create_data)
+        db.add(new_settings)
+        db.commit()
+        db.refresh(new_settings)
+        return new_settings
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating company settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create company settings: {str(e)}")
 
 # Serve frontend (AFTER all API routes)
 frontend_path = "frontend_dist"

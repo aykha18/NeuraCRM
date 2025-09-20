@@ -26,11 +26,13 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownRight,
-  TrendingDown
+  TrendingDown,
+  Settings
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import AnimatedModal from '../components/AnimatedModal';
 import Button from '../components/Button';
+import { companySettingsService, CompanySettings } from '../services/companySettings';
 
 interface Invoice {
   id: number;
@@ -124,7 +126,7 @@ interface CustomerAccount {
 }
 
 const FinancialManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'payments' | 'revenue' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'payments' | 'revenue' | 'reports' | 'settings'>('dashboard');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [revenue, setRevenue] = useState<Revenue[]>([]);
@@ -228,6 +230,30 @@ const FinancialManagement: React.FC = () => {
     notes: ''
   });
 
+  // Company Settings form states
+  const [companyForm, setCompanyForm] = useState({
+    company_name: '',
+    company_mobile: '',
+    city: '',
+    area: '',
+    complete_address: '',
+    trn: '',
+    currency: 'AED - UAE Dirham (د.إ)',
+    timezone: 'Dubai (UAE)'
+  });
+
+  const [billingConfig, setBillingConfig] = useState({
+    trial_date_enabled: true,
+    trial_date_days: '3',
+    delivery_date_enabled: true,
+    delivery_date_days: '3',
+    advance_payment_enabled: true
+  });
+
+  // Company settings state
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
   useEffect(() => {
     fetchDashboardData();
     fetchWonDeals();
@@ -272,6 +298,13 @@ const FinancialManagement: React.FC = () => {
     }
   }, [invoices, payments, revenue]);
 
+  // Load company settings when settings tab is active
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      fetchCompanySettings();
+    }
+  }, [activeTab]);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -285,6 +318,40 @@ const FinancialManagement: React.FC = () => {
       setError('Failed to fetch dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompanySettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const settings = await companySettingsService.getSettings();
+      setCompanySettings(settings);
+      
+      // Update form states with loaded settings
+      setCompanyForm({
+        company_name: settings.company_name || '',
+        company_mobile: settings.company_mobile || '',
+        city: settings.city || '',
+        area: settings.area || '',
+        complete_address: settings.complete_address || '',
+        trn: settings.trn || '',
+        currency: settings.currency || 'AED - UAE Dirham (د.إ)',
+        timezone: settings.timezone || 'Dubai (UAE)'
+      });
+      
+      setBillingConfig({
+        trial_date_enabled: settings.trial_date_enabled,
+        trial_date_days: settings.trial_date_days.toString(),
+        delivery_date_enabled: settings.delivery_date_enabled,
+        delivery_date_days: settings.delivery_date_days.toString(),
+        advance_payment_enabled: settings.advance_payment_enabled
+      });
+      
+    } catch (err) {
+      console.error('Error fetching company settings:', err);
+      setError('Failed to fetch company settings');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -971,7 +1038,8 @@ const FinancialManagement: React.FC = () => {
     { id: 'invoices', name: 'Invoices', icon: <FileText className="w-5 h-5" /> },
     { id: 'payments', name: 'Payments', icon: <CreditCard className="w-5 h-5" /> },
     { id: 'revenue', name: 'Revenue', icon: <TrendingUp className="w-5 h-5" /> },
-    { id: 'reports', name: 'Reports', icon: <PieChart className="w-5 h-5" /> }
+    { id: 'reports', name: 'Reports', icon: <PieChart className="w-5 h-5" /> },
+    { id: 'settings', name: 'Settings', icon: <Settings className="w-5 h-5" /> }
   ];
 
   return (
@@ -1714,6 +1782,275 @@ const FinancialManagement: React.FC = () => {
                 </table>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Company Settings</h2>
+          
+          {settingsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Loading settings...</span>
+            </div>
+          ) : (
+            <>
+          
+          {/* General Information Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">General Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Company Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  value={companyForm.company_name}
+                  onChange={(e) => setCompanyForm({...companyForm, company_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter company name"
+                />
+              </div>
+
+              {/* Company Mobile */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Company Mobile
+                </label>
+                <input
+                  type="tel"
+                  value={companyForm.company_mobile}
+                  onChange={(e) => setCompanyForm({...companyForm, company_mobile: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter mobile number"
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={companyForm.city}
+                  onChange={(e) => setCompanyForm({...companyForm, city: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter city"
+                />
+              </div>
+
+              {/* Area */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Area
+                </label>
+                <input
+                  type="text"
+                  value={companyForm.area}
+                  onChange={(e) => setCompanyForm({...companyForm, area: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter area"
+                />
+              </div>
+
+              {/* Complete Address - Full width */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Complete Address
+                </label>
+                <textarea
+                  value={companyForm.complete_address}
+                  onChange={(e) => setCompanyForm({...companyForm, complete_address: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter complete address"
+                />
+              </div>
+
+              {/* TRN */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  TRN
+                </label>
+                <input
+                  type="text"
+                  value={companyForm.trn}
+                  onChange={(e) => setCompanyForm({...companyForm, trn: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter Tax Registration Number"
+                />
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={companyForm.currency}
+                  onChange={(e) => setCompanyForm({...companyForm, currency: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="AED - UAE Dirham (د.إ)">AED - UAE Dirham (د.إ)</option>
+                  <option value="USD - US Dollar ($)">USD - US Dollar ($)</option>
+                  <option value="EUR - Euro (€)">EUR - Euro (€)</option>
+                  <option value="GBP - British Pound (£)">GBP - British Pound (£)</option>
+                  <option value="SAR - Saudi Riyal (﷼)">SAR - Saudi Riyal (﷼)</option>
+                  <option value="KWD - Kuwaiti Dinar (د.ك)">KWD - Kuwaiti Dinar (د.ك)</option>
+                </select>
+              </div>
+
+              {/* Timezone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Timezone
+                </label>
+                <select
+                  value={companyForm.timezone}
+                  onChange={(e) => setCompanyForm({...companyForm, timezone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="Dubai (UAE)">Dubai (UAE)</option>
+                  <option value="Abu Dhabi (UAE)">Abu Dhabi (UAE)</option>
+                  <option value="New York (USA)">New York (USA)</option>
+                  <option value="London (UK)">London (UK)</option>
+                  <option value="Paris (France)">Paris (France)</option>
+                  <option value="Tokyo (Japan)">Tokyo (Japan)</option>
+                  <option value="Singapore">Singapore</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Billing Configuration Section */}
+          <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl shadow-sm border p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Billing Configuration</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Trial Date */}
+              <div className="bg-blue-800 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={billingConfig.trial_date_enabled}
+                    onChange={(e) => setBillingConfig({...billingConfig, trial_date_enabled: e.target.checked})}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <span className="text-white font-medium">Trial Date</span>
+                </div>
+                {billingConfig.trial_date_enabled && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={billingConfig.trial_date_days}
+                      onChange={(e) => setBillingConfig({...billingConfig, trial_date_days: e.target.value})}
+                      className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      min="1"
+                      max="30"
+                    />
+                    <span className="text-white text-sm">days</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Date */}
+              <div className="bg-blue-800 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={billingConfig.delivery_date_enabled}
+                    onChange={(e) => setBillingConfig({...billingConfig, delivery_date_enabled: e.target.checked})}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <span className="text-white font-medium">Delivery Date</span>
+                </div>
+                {billingConfig.delivery_date_enabled && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={billingConfig.delivery_date_days}
+                      onChange={(e) => setBillingConfig({...billingConfig, delivery_date_days: e.target.value})}
+                      className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      min="1"
+                      max="30"
+                    />
+                    <span className="text-white text-sm">days</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Advance Payment */}
+              <div className="bg-green-800 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={billingConfig.advance_payment_enabled}
+                    onChange={(e) => setBillingConfig({...billingConfig, advance_payment_enabled: e.target.checked})}
+                    className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <span className="text-white font-medium">Advance Payment</span>
+                </div>
+                <span className="text-gray-300 text-sm">Allow partial payments</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              onClick={async () => {
+                try {
+                  // Prepare settings data
+                  const settingsData = {
+                    company_name: companyForm.company_name,
+                    company_mobile: companyForm.company_mobile,
+                    city: companyForm.city,
+                    area: companyForm.area,
+                    complete_address: companyForm.complete_address,
+                    trn: companyForm.trn,
+                    currency: companyForm.currency,
+                    timezone: companyForm.timezone,
+                    trial_date_enabled: billingConfig.trial_date_enabled,
+                    trial_date_days: parseInt(billingConfig.trial_date_days),
+                    delivery_date_enabled: billingConfig.delivery_date_enabled,
+                    delivery_date_days: parseInt(billingConfig.delivery_date_days),
+                    advance_payment_enabled: billingConfig.advance_payment_enabled
+                  };
+
+                  // Save settings
+                  await companySettingsService.updateSettings(settingsData);
+                  
+                  setSuccessMessage('Settings saved successfully!');
+                  setShowSuccessModal(true);
+                  
+                  // Reload settings to get updated data
+                  fetchCompanySettings();
+                  
+                } catch (error) {
+                  console.error('Error saving settings:', error);
+                  setError('Failed to save settings. Please try again.');
+                }
+              }}
+              className="px-6 py-2"
+              disabled={settingsLoading}
+            >
+              {settingsLoading ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
+            </>
           )}
         </div>
       )}

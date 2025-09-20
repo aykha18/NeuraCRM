@@ -25,7 +25,7 @@ def get_local_db_config():
         'host': os.getenv('LOCAL_DB_HOST', 'localhost'),
         'database': os.getenv('LOCAL_DB_DATABASE', 'smart_crm'),
         'user': os.getenv('LOCAL_DB_USER', 'postgres'),
-        'password': os.getenv('LOCAL_DB_PASSWORD', 'password'),
+        'password': os.getenv('LOCAL_DB_PASSWORD', 'aykha123'),
         'port': int(os.getenv('LOCAL_DB_PORT', 5432))
     }
 

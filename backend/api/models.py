@@ -1442,4 +1442,37 @@ class CallAnalytics(Base):
     generated_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    organization = relationship('Organization') 
+    organization = relationship('Organization')
+
+# Company Settings Model
+class CompanySettings(Base):
+    __tablename__ = 'company_settings'
+    
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, unique=True)
+    
+    # Company Information
+    company_name = Column(String, nullable=False)
+    company_mobile = Column(String)
+    city = Column(String)
+    area = Column(String)
+    complete_address = Column(Text)
+    trn = Column(String)  # Tax Registration Number
+    currency = Column(String, default='AED - UAE Dirham (د.إ)')
+    timezone = Column(String, default='Dubai (UAE)')
+    
+    # Billing Configuration
+    trial_date_enabled = Column(Boolean, default=True)
+    trial_date_days = Column(Integer, default=3)
+    delivery_date_enabled = Column(Boolean, default=True)
+    delivery_date_days = Column(Integer, default=3)
+    advance_payment_enabled = Column(Boolean, default=True)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    
+    # Relationships
+    organization = relationship('Organization')
+    creator = relationship('User') 
