@@ -6366,24 +6366,20 @@ def get_queue_members(
                 "id": m.id,
                 "queue_id": m.queue_id,
                 "user_id": m.user_id,
-                "extension_number": m.extension_number,
-                "member_name": m.member_name,
+                "extension_id": m.extension_id,
                 "penalty": m.penalty,
                 "paused": m.paused,
-                "paused_reason": m.paused_reason,
-                "skills": m.skills,
                 "status": m.status,
-                "last_status_change": m.last_status_change.isoformat() if m.last_status_change else None,
+                "last_call_time": m.last_call_time.isoformat() if m.last_call_time else None,
                 "total_calls": m.total_calls,
                 "answered_calls": m.answered_calls,
-                "missed_calls": m.missed_calls,
-                "avg_talk_time": m.avg_talk_time,
+                "talk_time": m.talk_time,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
                 "updated_at": m.updated_at.isoformat() if m.updated_at else None,
                 "queue": {
                     "id": m.queue.id,
                     "name": m.queue.name,
-                    "queue_number": m.queue.queue_number
+                    "queue_number": getattr(m.queue, 'queue_number', None)
                 } if m.queue else None,
                 "user": {
                     "id": m.user.id,
