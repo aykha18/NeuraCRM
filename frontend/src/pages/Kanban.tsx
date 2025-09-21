@@ -4,7 +4,7 @@
  * - Responsive: horizontal scroll on mobile
  * - Beautiful Tailwind styling with backend integration
  */
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -143,6 +143,21 @@ export default function Kanban() {
   
   // State for filtering
   const [ownerFilter, setOwnerFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Global keyboard shortcut for search (Ctrl+F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // State for modals
   const [editingDeal, setEditingDeal] = useState<FrontendDeal | null>(null);
@@ -517,10 +532,23 @@ export default function Kanban() {
         deals = deals.filter(d => d.owner === ownerFilter);
       }
       
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        deals = deals.filter(d => 
+          d.title.toLowerCase().includes(query) ||
+          d.value.toLowerCase().includes(query) ||
+          d.owner.toLowerCase().includes(query) ||
+          d.stage.toLowerCase().includes(query) ||
+          (d.description && d.description.toLowerCase().includes(query)) ||
+          (d.tags && d.tags.some(tag => tag.label.toLowerCase().includes(query)))
+        );
+      }
+      
       acc[stage.id] = deals;
       return acc;
     }, {} as DealsByStage);
-  }, [dealsByStage, ownerFilter, stages]);
+  }, [dealsByStage, ownerFilter, searchQuery, stages]);
 
   // Compute analytics data
   const allDeals = Object.values(dealsByStage).flat();
@@ -600,6 +628,33 @@ export default function Kanban() {
       
       {/* Filtering dropdown */}
       <div className="mb-4 flex flex-col md:flex-row md:items-center md:gap-4 gap-2">
+        {/* Search input */}
+        <div className="flex items-center gap-2 flex-1">
+          <label className="font-medium text-gray-700 dark:text-gray-200">Search:</label>
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search deals by title, value, owner, stage, tags... (Ctrl+F)"
+            className="flex-1 rounded px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                setSearchQuery("");
+              }
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        
         {/* Owner filter */}
         <div className="flex items-center gap-2">
           <label className="font-medium text-gray-700 dark:text-gray-200">Owner:</label>
@@ -614,7 +669,25 @@ export default function Kanban() {
             ))}
           </select>
         </div>
+      </div>
+      
+      {/* Search Results Indicator */}
+      {searchQuery && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <span className="font-medium">Search Results:</span>
+            <span>
+              {Object.values(filteredDealsByStage).flat().length} deal(s) found for "{searchQuery}"
+            </span>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="ml-2 px-2 py-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm border border-blue-300 dark:border-blue-600 rounded"
+            >
+              Clear search
+            </button>
+          </div>
         </div>
+      )}
       
       {/* Metrics Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -699,11 +772,13 @@ export default function Kanban() {
         
         {activeTab === 'board' && (
           // Kanban Board with Drag-and-Drop
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex gap-4 pb-4" style={{ overflowX: 'auto', scrollbarWidth: 'thin' }}>
+          <div className="relative">
+            <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-white to-transparent dark:from-gray-900 w-8 h-full pointer-events-none"></div>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="flex gap-3 pb-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800" style={{ scrollbarWidth: 'thin' }}>
               {stages.map((stage) => (
-                <div key={stage.id} className="flex-shrink-0 w-72">
-                  <div className={`flex-shrink-0 w-72 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col transition`}>
+                <div key={stage.id} className="flex-shrink-0 w-64">
+                  <div className={`flex-shrink-0 w-64 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow border border-gray-200 dark:border-gray-800 p-3 flex flex-col transition`}>
                     <div className="font-bold text-lg mb-3 text-gray-700 dark:text-gray-200 flex items-center gap-2">
                       {/* Stage color tag */}
                       <span className={`inline-block w-3 h-3 rounded-full mr-2 ${stageColors[stage.name] || 'bg-gray-500'}`}></span>
@@ -729,20 +804,20 @@ export default function Kanban() {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   {...dragProvided.dragHandleProps}
-                                  className={`rounded-xl bg-white dark:bg-gray-800 shadow p-4 border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer transform ${dragSnapshot.isDragging ? "ring-2 ring-blue-400 scale-105" : ""}`}
+                                  className={`rounded-xl bg-white dark:bg-gray-800 shadow p-3 border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer transform ${dragSnapshot.isDragging ? "ring-2 ring-blue-400 scale-105" : ""}`}
                                   onClick={() => setSelectedDeal(deal)}
                                 >
                                   {/* Compact Deal Card Content */}
                                   <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
+                                  <div className="flex items-center gap-1 mb-1">
                                         <span className={`inline-block w-2 h-2 rounded-full ${stageColors[deal.stage] || 'bg-gray-500'}`}></span>
-                                        <div className="font-semibold text-gray-900 dark:text-white text-sm truncate">{deal.title}</div>
-                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-400 to-blue-400 text-white" title="AI Score">
+                                        <div className="font-semibold text-gray-900 dark:text-white text-xs truncate">{deal.title}</div>
+                                        <span className="px-1 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-400 to-blue-400 text-white" title="AI Score">
                                       {getDealScore(deal, activityLog[deal.id])}%
                                     </span>
                                   </div>
-                                      <div className="text-blue-600 dark:text-blue-400 font-bold text-base">{deal.value}</div>
+                                      <div className="text-blue-600 dark:text-blue-400 font-bold text-sm">{deal.value}</div>
                                       <div className="text-xs text-gray-500 dark:text-gray-400">Owner: {deal.owner}</div>
                                     </div>
                                     {/* Watch button */}
@@ -802,23 +877,23 @@ export default function Kanban() {
                                   
                                   {/* Actions and Watchers - Compact */}
                                   <div className="flex items-center justify-between">
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1">
                                       <button 
-                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
+                                        className="px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
                                         onClick={e => {e.stopPropagation(); setSelectedDeal(deal); setIsDealModalOpen(true);}}
                                         title="View Details"
                                       >
                                         View
                                       </button>
                                       <button 
-                                        className="px-3 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-pink-500 text-white text-xs font-semibold shadow hover:from-yellow-500 hover:to-pink-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
+                                        className="px-2 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-pink-500 text-white text-xs font-semibold shadow hover:from-yellow-500 hover:to-pink-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform" 
                                         onClick={e => {e.stopPropagation(); setEditingDeal(deal);}}
                                         title="Edit Deal"
                                       >
                                         Edit
                                       </button>
                                       <button 
-                                        className="px-2 py-1 rounded-full bg-gradient-to-r from-green-500 to-blue-500 text-white text-xs font-semibold shadow hover:from-green-600 hover:to-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform flex items-center gap-1" 
+                                        className="px-1.5 py-1 rounded-full bg-gradient-to-r from-green-500 to-blue-500 text-white text-xs font-semibold shadow hover:from-green-600 hover:to-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform flex items-center gap-1" 
                                         onClick={e => {e.stopPropagation(); handleStageSelection(deal);}}
                                         title="Move to Stage"
                                       >
@@ -858,8 +933,9 @@ export default function Kanban() {
                   </div>
                 </div>
               ))}
-            </div>
-          </DragDropContext>
+              </div>
+            </DragDropContext>
+          </div>
         )}
         
         {activeTab === 'analytics' && (

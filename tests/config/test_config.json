@@ -1,0 +1,146 @@
+{
+  "test_environment": {
+    "base_url": "http://127.0.0.1:8000",
+    "api_url": "http://127.0.0.1:8000",
+    "browser": "chromium",
+    "headless": false,
+    "timeout": 30000,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "test_data": {
+    "test_user": {
+      "email": "nodeit@node.com",
+      "password": "NodeIT2024!",
+      "name": "Test User",
+      "role": "admin"
+    },
+    "test_organization": {
+      "id": "test-org-001",
+      "name": "Test Organization"
+    }
+  },
+  "reporting": {
+    "output_dir": "test-results",
+    "generate_html": true,
+    "generate_json": true,
+    "generate_junit": true,
+    "include_screenshots": true,
+    "include_videos": false
+  },
+  "execution": {
+    "parallel_workers": 2,
+    "retry_failed": true,
+    "max_retries": 2,
+    "stop_on_failure": false,
+    "timeout_per_test": 300
+  },
+  "modules": {
+    "authentication": {
+      "enabled": true,
+      "priority": "high",
+      "test_cases": "all"
+    },
+    "leads-management": {
+      "enabled": true,
+      "priority": "high",
+      "test_cases": "all"
+    },
+    "contacts-management": {
+      "enabled": true,
+      "priority": "high",
+      "test_cases": "all"
+    },
+    "deals-pipeline": {
+      "enabled": true,
+      "priority": "high",
+      "test_cases": "all"
+    },
+    "dashboard": {
+      "enabled": true,
+      "priority": "medium",
+      "test_cases": "all"
+    },
+    "ai-features": {
+      "enabled": true,
+      "priority": "medium",
+      "test_cases": "all"
+    },
+    "telephony": {
+      "enabled": true,
+      "priority": "medium",
+      "test_cases": "all"
+    },
+    "financial-management": {
+      "enabled": true,
+      "priority": "medium",
+      "test_cases": "all"
+    },
+    "customer-support": {
+      "enabled": true,
+      "priority": "medium",
+      "test_cases": "all"
+    },
+    "user-management": {
+      "enabled": true,
+      "priority": "low",
+      "test_cases": "all"
+    }
+  },
+  "performance": {
+    "page_load_threshold": 5.0,
+    "api_response_threshold": 2.0,
+    "database_query_threshold": 1.0,
+    "memory_usage_threshold": 100
+  },
+  "security": {
+    "test_sql_injection": true,
+    "test_xss": true,
+    "test_csrf": true,
+    "test_authentication": true,
+    "test_authorization": true
+  },
+  "accessibility": {
+    "test_wcag_compliance": true,
+    "test_keyboard_navigation": true,
+    "test_screen_reader": false,
+    "test_color_contrast": true
+  },
+  "browsers": {
+    "chromium": {
+      "enabled": true,
+      "headless": false
+    },
+    "firefox": {
+      "enabled": true,
+      "headless": false
+    },
+    "webkit": {
+      "enabled": true,
+      "headless": false
+    }
+  },
+  "mobile": {
+    "enabled": true,
+    "devices": [
+      "iPhone 12",
+      "Pixel 5",
+      "iPad Pro"
+    ]
+  },
+  "notifications": {
+    "email": {
+      "enabled": false,
+      "recipients": [],
+      "on_failure": true,
+      "on_completion": true
+    },
+    "slack": {
+      "enabled": false,
+      "webhook_url": "",
+      "channel": "#testing"
+    }
+  }
+}

@@ -892,15 +892,19 @@ def create_deal(deal_data: dict, current_user: User = Depends(get_current_user),
         return {"error": "Database not available"}
     
     try:
+        # Validate required fields
+        if not deal_data.get("title"):
+            return {"error": "Title is required"}
+        
+        if not deal_data.get("stage_id"):
+            return {"error": "Stage ID is required"}
+        
         new_deal = Deal(
             title=deal_data.get("title"),
-            value=deal_data.get("value", 0),
-            stage=deal_data.get("stage", "Prospecting"),
-            probability=deal_data.get("probability", 0),
-            close_date=datetime.fromisoformat(deal_data.get("close_date", datetime.now().isoformat())) if deal_data.get("close_date") else datetime.now(),
-            contact_name=deal_data.get("contact_name"),
-            contact_email=deal_data.get("contact_email"),
-            notes=deal_data.get("notes"),
+            value=deal_data.get("value", 0.0),
+            stage_id=deal_data.get("stage_id"),
+            contact_id=deal_data.get("contact_id"),
+            description=deal_data.get("description"),
             organization_id=current_user.organization_id or 1,
             owner_id=current_user.id,
             created_at=datetime.now()
@@ -909,16 +913,25 @@ def create_deal(deal_data: dict, current_user: User = Depends(get_current_user),
         db.commit()
         db.refresh(new_deal)
         
+        # Get stage name for response
+        stage = db.query(Stage).filter(Stage.id == new_deal.stage_id).first()
+        stage_name = stage.name if stage else "Unknown"
+        
+        # Get contact name for response
+        contact_name = None
+        if new_deal.contact_id:
+            contact = db.query(Contact).filter(Contact.id == new_deal.contact_id).first()
+            contact_name = contact.name if contact else None
+        
         return {
             "id": new_deal.id,
             "title": new_deal.title,
             "value": new_deal.value,
-            "stage": new_deal.stage,
-            "probability": new_deal.probability,
-            "close_date": new_deal.close_date.isoformat() if new_deal.close_date else None,
-            "contact_name": new_deal.contact_name,
-            "contact_email": new_deal.contact_email,
-            "notes": new_deal.notes,
+            "stage_id": new_deal.stage_id,
+            "stage_name": stage_name,
+            "contact_id": new_deal.contact_id,
+            "contact_name": contact_name,
+            "description": new_deal.description,
             "owner_id": new_deal.owner_id,
             "organization_id": new_deal.organization_id,
             "created_at": new_deal.created_at.isoformat() if new_deal.created_at else None
@@ -1942,6 +1955,36 @@ def update_deal(deal_id: int, deal_data: dict, current_user: User = Depends(get_
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to update deal: {str(e)}"}
+
+# Delete Deal Endpoint
+@app.delete("/api/deals/{deal_id}")
+def delete_deal(deal_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a deal"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id,
+            Deal.organization_id == current_user.organization_id
+        ).first()
+        
+        if not deal:
+            return {"error": "Deal not found"}
+        
+        # Delete the deal
+        db.delete(deal)
+        db.commit()
+        
+        return {
+            "message": "Deal deleted successfully",
+            "deleted_id": deal_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to delete deal: {str(e)}"}
 
 # Kanban Move Deal Endpoint
 @app.post("/api/kanban/deals/{deal_id}/move")
@@ -4554,9 +4597,13 @@ def update_contact(contact_id: int, contact_data: dict, current_user: User = Dep
             if hasattr(contact, 'title'):
                 contact.title = contact_data["title"]
         if "industry" in contact_data and contact_data["industry"]:
-            contact.industry = contact_data["industry"]
+            # Contact model may not have industry field, skip if not available
+            if hasattr(contact, 'industry'):
+                contact.industry = contact_data["industry"]
         if "notes" in contact_data and contact_data["notes"]:
-            contact.notes = contact_data["notes"]
+            # Contact model may not have notes field, skip if not available
+            if hasattr(contact, 'notes'):
+                contact.notes = contact_data["notes"]
         if "owner_id" in contact_data and contact_data["owner_id"]:
             contact.owner_id = contact_data["owner_id"]
         
@@ -4569,12 +4616,13 @@ def update_contact(contact_id: int, contact_data: dict, current_user: User = Dep
             "email": contact.email,
             "phone": contact.phone,
             "company": contact.company,
-            "title": contact.title,
-            "industry": contact.industry,
-            "notes": contact.notes,
             "owner_id": contact.owner_id,
             "organization_id": contact.organization_id,
-            "created_at": contact.created_at.isoformat() if contact.created_at else None
+            "created_at": contact.created_at.isoformat() if contact.created_at else None,
+            # Include fields for backward compatibility (not in model)
+            "title": getattr(contact, 'title', None),
+            "industry": getattr(contact, 'industry', None),
+            "notes": getattr(contact, 'notes', None)
         }
         
     except Exception as e:
@@ -4588,16 +4636,14 @@ def create_contact(contact_data: dict, current_user: User = Depends(get_current_
         return {"error": "Database not available"}
     
     try:
+        # Use only the fields that exist in the Contact model
         new_contact = Contact(
-            name=contact_data.get("name"),
-            email=contact_data.get("email"),
-            phone=contact_data.get("phone"),
-            company=contact_data.get("company"),
-            title=contact_data.get("title"),
-            industry=contact_data.get("industry"),
-            notes=contact_data.get("notes"),
-            organization_id=current_user.organization_id or 1,
-            owner_id=current_user.id,
+            name=contact_data.get("name"),  # Required field
+            email=contact_data.get("email"),  # Optional
+            phone=contact_data.get("phone"),  # Optional
+            company=contact_data.get("company"),  # Optional
+            owner_id=current_user.id,  # Set to current user
+            organization_id=current_user.organization_id or 1,  # Required field
             created_at=datetime.now()
         )
         db.add(new_contact)
@@ -4610,17 +4656,18 @@ def create_contact(contact_data: dict, current_user: User = Depends(get_current_
             "email": new_contact.email,
             "phone": new_contact.phone,
             "company": new_contact.company,
-            "title": new_contact.title,
-            "industry": new_contact.industry,
-            "notes": new_contact.notes,
             "owner_id": new_contact.owner_id,
             "organization_id": new_contact.organization_id,
-            "created_at": new_contact.created_at.isoformat() if new_contact.created_at else None
+            "created_at": new_contact.created_at.isoformat() if new_contact.created_at else None,
+            # Include fields for backward compatibility (not in model)
+            "title": contact_data.get("title"),  # Pass through from request
+            "industry": contact_data.get("industry"),  # Pass through from request
+            "notes": contact_data.get("notes")  # Pass through from request
         }
     except Exception as e:
         print(f"Error creating contact: {e}")
         db.rollback()
-        return {"error": "Failed to create contact"}
+        return {"error": f"Failed to create contact: {str(e)}"}
 
 @app.get("/api/contacts/{contact_id}")
 def get_contact(contact_id: int):
@@ -5025,43 +5072,47 @@ def create_lead(lead_data: dict, current_user: User = Depends(get_current_user),
         return {"error": "Database not available"}
     
     try:
+        # Use the correct Lead model fields
         new_lead = Lead(
-            name=lead_data.get("name"),
-            company=lead_data.get("company"),
-            email=lead_data.get("email"),
-            phone=lead_data.get("phone"),
-            source=lead_data.get("source"),
-            status=lead_data.get("status", "New"),
-            priority=lead_data.get("priority", "Medium"),
-            estimated_value=lead_data.get("estimated_value", 0),
-            notes=lead_data.get("notes"),
-            organization_id=current_user.organization_id or 1,
-            owner_id=current_user.id,
-            created_at=datetime.now()
+            title=lead_data.get("title") or lead_data.get("name", "New Lead"),  # Use title field, fallback to name
+            contact_id=lead_data.get("contact_id"),  # Optional contact reference
+            owner_id=current_user.id,  # Set to current user
+            organization_id=current_user.organization_id or 1,  # Required field
+            status=lead_data.get("status", "new"),  # Default to "new"
+            source=lead_data.get("source", "manual"),  # Default to "manual"
+            created_at=datetime.now(),
+            score=lead_data.get("score", 50),  # Default score
+            score_confidence=lead_data.get("score_confidence", 0.8)  # Default confidence
         )
         db.add(new_lead)
         db.commit()
         db.refresh(new_lead)
         
+        # Return the created lead with proper field mapping
         return {
             "id": new_lead.id,
-            "name": new_lead.name,
-            "company": new_lead.company,
-            "email": new_lead.email,
-            "phone": new_lead.phone,
-            "source": new_lead.source,
+            "title": new_lead.title,
             "status": new_lead.status,
-            "priority": new_lead.priority,
-            "estimated_value": new_lead.estimated_value,
-            "notes": new_lead.notes,
+            "source": new_lead.source,
+            "contact_id": new_lead.contact_id,
             "owner_id": new_lead.owner_id,
             "organization_id": new_lead.organization_id,
-            "created_at": new_lead.created_at.isoformat() if new_lead.created_at else None
+            "created_at": new_lead.created_at.isoformat() if new_lead.created_at else None,
+            "score": new_lead.score,
+            "score_confidence": new_lead.score_confidence,
+            # Include original fields for backward compatibility
+            "name": new_lead.title,  # Map title to name for frontend compatibility
+            "company": None,  # Not available in Lead model
+            "email": None,  # Not available in Lead model
+            "phone": None,  # Not available in Lead model
+            "priority": "Medium",  # Default value
+            "estimated_value": 0,  # Default value
+            "notes": None  # Not available in Lead model
         }
     except Exception as e:
         print(f"Error creating lead: {e}")
         db.rollback()
-        return {"error": "Failed to create lead"}
+        return {"error": f"Failed to create lead: {str(e)}"}
 
 @app.get("/api/leads/{lead_id}")
 def get_lead(lead_id: int):

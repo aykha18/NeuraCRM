@@ -1,0 +1,443 @@
+{
+  "users": [
+    {
+      "id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729",
+      "name": "Kimberly Lopez",
+      "email": "kimberly.lopez@test.com",
+      "password": "TestPassword123!",
+      "role": "manager",
+      "organization_id": "test-org-001",
+      "created_at": "2025-09-21T03:57:56.196994"
+    },
+    {
+      "id": "d59c7d7e-161c-4937-b06d-436b6a949fab",
+      "name": "Kimberly Brown",
+      "email": "kimberly.brown@test.com",
+      "password": "TestPassword123!",
+      "role": "agent",
+      "organization_id": "test-org-001",
+      "created_at": "2025-09-21T03:57:56.197148"
+    },
+    {
+      "id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef",
+      "name": "James Williams",
+      "email": "james.williams@test.com",
+      "password": "TestPassword123!",
+      "role": "agent",
+      "organization_id": "test-org-001",
+      "created_at": "2025-09-21T03:57:56.197253"
+    }
+  ],
+  "leads": [
+    {
+      "id": "9b1c9037-bc06-46a9-9549-d716be68868c",
+      "name": "James Gonzalez",
+      "email": "james.gonzalez@test.com",
+      "company": "Creative Technologies",
+      "phone": "+1-661-199-8137",
+      "status": "contacted",
+      "source": "Trade Show",
+      "score": 9,
+      "created_at": "2025-09-21T03:57:56.197027",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "6f67b63b-8eee-459b-ba43-17c53932ab1c",
+      "name": "Richard Moore",
+      "email": "richard.moore@test.com",
+      "company": "Future Systems",
+      "phone": "+1-747-329-2036",
+      "status": "contacted",
+      "source": "Trade Show",
+      "score": 55,
+      "created_at": "2025-09-21T03:57:56.197045",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "058293f1-7329-40eb-bfdc-2e3053e3fd58",
+      "name": "Amanda Martinez",
+      "email": "amanda.martinez@test.com",
+      "company": "NextGen Corp",
+      "phone": "+1-912-119-9651",
+      "status": "new",
+      "source": "Trade Show",
+      "score": 8,
+      "created_at": "2025-09-21T03:57:56.197056",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "f30edeaf-bed3-493d-b421-b0b3beefd314",
+      "name": "Jennifer Brown",
+      "email": "jennifer.brown@test.com",
+      "company": "Tech Solutions Inc",
+      "phone": "+1-571-949-4367",
+      "status": "closed-won",
+      "source": "Advertisement",
+      "score": 26,
+      "created_at": "2025-09-21T03:57:56.197064",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "1a838929-a9b7-4c46-a9c6-c1580e045fea",
+      "name": "Kimberly Hernandez",
+      "email": "kimberly.hernandez@test.com",
+      "company": "Global Industries",
+      "phone": "+1-472-640-1626",
+      "status": "closed-lost",
+      "source": "Advertisement",
+      "score": 71,
+      "created_at": "2025-09-21T03:57:56.197071",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "29b2c80d-f6d5-46a8-a8f5-04a52a9a33ee",
+      "name": "Sarah Gonzalez",
+      "email": "sarah.gonzalez@test.com",
+      "company": "Acme Corp",
+      "phone": "+1-979-344-3482",
+      "status": "proposal",
+      "source": "Social Media",
+      "score": 59,
+      "created_at": "2025-09-21T03:57:56.197156",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "d1c0f57e-7e82-40fc-9ef3-f2588f4ab689",
+      "name": "Jessica Miller",
+      "email": "jessica.miller@test.com",
+      "company": "Strategic Partners",
+      "phone": "+1-297-399-9451",
+      "status": "negotiation",
+      "source": "Social Media",
+      "score": 67,
+      "created_at": "2025-09-21T03:57:56.197163",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "d7aa4ca3-7510-4d24-8d98-7da1f5712305",
+      "name": "Jane Jones",
+      "email": "jane.jones@test.com",
+      "company": "Smart Technologies",
+      "phone": "+1-202-801-3620",
+      "status": "qualified",
+      "source": "Social Media",
+      "score": 96,
+      "created_at": "2025-09-21T03:57:56.197170",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "6e79fec3-7a6b-449e-9a02-561ce5595b7a",
+      "name": "Amanda Jackson",
+      "email": "amanda.jackson@test.com",
+      "company": "Future Systems",
+      "phone": "+1-375-543-3540",
+      "status": "negotiation",
+      "source": "Social Media",
+      "score": 4,
+      "created_at": "2025-09-21T03:57:56.197177",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "b96d107e-7b8e-4f3e-beca-d8ae27be7df5",
+      "name": "Sarah Rodriguez",
+      "email": "sarah.rodriguez@test.com",
+      "company": "Acme Corp",
+      "phone": "+1-733-788-4209",
+      "status": "negotiation",
+      "source": "Partner",
+      "score": 39,
+      "created_at": "2025-09-21T03:57:56.197184",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "e24dc2d2-4cdc-4580-8022-b8c589e92f61",
+      "name": "Richard Martinez",
+      "email": "richard.martinez@test.com",
+      "company": "Strategic Partners",
+      "phone": "+1-437-452-3493",
+      "status": "negotiation",
+      "source": "Partner",
+      "score": 77,
+      "created_at": "2025-09-21T03:57:56.197262",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "8b3b39ac-10d2-4651-be14-cf5d49cb181f",
+      "name": "Emily Miller",
+      "email": "emily.miller@test.com",
+      "company": "Innovation Labs",
+      "phone": "+1-338-920-9577",
+      "status": "qualified",
+      "source": "Content Marketing",
+      "score": 96,
+      "created_at": "2025-09-21T03:57:56.197286",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "9d9e1fa7-3ebb-4a9d-97cd-e7eb0d48122a",
+      "name": "John Jackson",
+      "email": "john.jackson@test.com",
+      "company": "Proactive Inc",
+      "phone": "+1-206-862-2679",
+      "status": "new",
+      "source": "Webinar",
+      "score": 75,
+      "created_at": "2025-09-21T03:57:56.197294",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "d24fb7e2-fdf1-42c6-9fad-bc59eddf979c",
+      "name": "Ashley Martin",
+      "email": "ashley.martin@test.com",
+      "company": "Tech Solutions Inc",
+      "phone": "+1-535-697-8248",
+      "status": "qualified",
+      "source": "Cold Call",
+      "score": 65,
+      "created_at": "2025-09-21T03:57:56.197303",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "f527a52b-2dfa-4dbd-a30f-4f5dadd762b8",
+      "name": "Robert Martin",
+      "email": "robert.martin@test.com",
+      "company": "Innovation Labs",
+      "phone": "+1-443-427-1913",
+      "status": "proposal",
+      "source": "Cold Call",
+      "score": 75,
+      "created_at": "2025-09-21T03:57:56.197312",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "8cadd046-381a-4a6a-99d6-9c561ca67948",
+      "name": "Thomas Martinez",
+      "email": "thomas.martinez@test.com",
+      "phone": "+1-221-980-5996",
+      "company": "Proactive Inc",
+      "position": "Marketing Director",
+      "created_at": "2025-09-21T03:57:56.197080",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "e25673f4-9609-4509-b658-c3b587a2d61d",
+      "name": "Emily Brown",
+      "email": "emily.brown@test.com",
+      "phone": "+1-860-872-6849",
+      "company": "Acme Corp",
+      "position": "Account Executive",
+      "created_at": "2025-09-21T03:57:56.197090",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "b9dfa1d8-52e6-4097-9330-84cafd5f1710",
+      "name": "Jennifer Moore",
+      "email": "jennifer.moore@test.com",
+      "phone": "+1-245-598-9570",
+      "company": "Strategic Partners",
+      "position": "Product Manager",
+      "created_at": "2025-09-21T03:57:56.197097",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "fabe0486-30a0-4759-8f61-2b229e305ef8",
+      "name": "John Miller",
+      "email": "john.miller@test.com",
+      "phone": "+1-492-308-1242",
+      "company": "Smart Technologies",
+      "position": "Product Manager",
+      "created_at": "2025-09-21T03:57:56.197107",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729"
+    },
+    {
+      "id": "eeeeac21-f4e5-460b-85f6-161ba86bc2a0",
+      "name": "James Garcia",
+      "email": "james.garcia@test.com",
+      "phone": "+1-716-369-3693",
+      "company": "Dynamic Solutions",
+      "position": "VP Sales",
+      "created_at": "2025-09-21T03:57:56.197193",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "0344ab30-1bce-4d1b-8b89-6b6d043a3479",
+      "name": "James Jones",
+      "email": "james.jones@test.com",
+      "phone": "+1-932-925-3005",
+      "company": "Tech Solutions Inc",
+      "position": "Marketing Director",
+      "created_at": "2025-09-21T03:57:56.197201",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "4b8f6b22-9068-41a0-a843-975b38cd322a",
+      "name": "David Brown",
+      "email": "david.brown@test.com",
+      "phone": "+1-346-572-5978",
+      "company": "Smart Technologies",
+      "position": "CEO",
+      "created_at": "2025-09-21T03:57:56.197209",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "4a02f996-2065-411f-8f36-996e4ca0c206",
+      "name": "Ashley Martin",
+      "email": "ashley.martin@test.com",
+      "phone": "+1-872-472-9942",
+      "company": "Smart Technologies",
+      "position": "Account Executive",
+      "created_at": "2025-09-21T03:57:56.197217",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab"
+    },
+    {
+      "id": "cf7ba3c7-1629-4ddf-86fb-c6da3dc6821a",
+      "name": "Amanda Williams",
+      "email": "amanda.williams@test.com",
+      "phone": "+1-755-737-3516",
+      "company": "Advanced Solutions",
+      "position": "Business Analyst",
+      "created_at": "2025-09-21T03:57:56.197319",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "e8eb31fb-c90f-454f-b29d-a452b86f8bb9",
+      "name": "Michelle Smith",
+      "email": "michelle.smith@test.com",
+      "phone": "+1-332-264-1670",
+      "company": "Future Systems",
+      "position": "Account Executive",
+      "created_at": "2025-09-21T03:57:56.197325",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "a3a311fa-539a-4d73-8c86-f1c3f3d4888f",
+      "name": "Jane Gonzalez",
+      "email": "jane.gonzalez@test.com",
+      "phone": "+1-633-554-2458",
+      "company": "Tech Solutions Inc",
+      "position": "Product Manager",
+      "created_at": "2025-09-21T03:57:56.197330",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    },
+    {
+      "id": "93868f54-4360-46b8-9515-5be4d8cec0ae",
+      "name": "Emily Jackson",
+      "email": "emily.jackson@test.com",
+      "phone": "+1-732-981-1278",
+      "company": "Elite Enterprises",
+      "position": "CTO",
+      "created_at": "2025-09-21T03:57:56.197336",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef"
+    }
+  ],
+  "deals": [
+    {
+      "id": "0792bbc7-0a44-409c-8ea0-e125f85ccdf1",
+      "title": "Consulting Services",
+      "value": 414891.429143413,
+      "stage": "qualification",
+      "probability": 62,
+      "close_date": "2026-03-06T03:57:56.197112",
+      "lead_id": "9b1c9037-bc06-46a9-9549-d716be68868c",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729",
+      "created_at": "2025-09-21T03:57:56.197123"
+    },
+    {
+      "id": "2d034d84-9971-454f-879b-70023e0996fa",
+      "title": "Training Services",
+      "value": 174346.52505238773,
+      "stage": "negotiation",
+      "probability": 73,
+      "close_date": "2026-01-12T03:57:56.197129",
+      "lead_id": "6f67b63b-8eee-459b-ba43-17c53932ab1c",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729",
+      "created_at": "2025-09-21T03:57:56.197134"
+    },
+    {
+      "id": "9dd13fd5-7929-40cb-b809-73a8830f460e",
+      "title": "Support Contract",
+      "value": 11514.528313724382,
+      "stage": "negotiation",
+      "probability": 44,
+      "close_date": "2026-03-18T03:57:56.197138",
+      "lead_id": "058293f1-7329-40eb-bfdc-2e3053e3fd58",
+      "owner_id": "22ad9ead-c781-47a0-9e49-bfb2ba3a2729",
+      "created_at": "2025-09-21T03:57:56.197142"
+    },
+    {
+      "id": "8d0d4b2e-aa32-4817-a2ba-083a4968528a",
+      "title": "Software License Agreement",
+      "value": 201804.53063398076,
+      "stage": "proposal",
+      "probability": 62,
+      "close_date": "2025-11-05T03:57:56.197222",
+      "lead_id": "29b2c80d-f6d5-46a8-a8f5-04a52a9a33ee",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab",
+      "created_at": "2025-09-21T03:57:56.197227"
+    },
+    {
+      "id": "d30735f3-41ea-44bc-8998-fc12703af81f",
+      "title": "Training Services",
+      "value": 497485.1446144371,
+      "stage": "prospecting",
+      "probability": 86,
+      "close_date": "2026-02-25T03:57:56.197231",
+      "lead_id": "d1c0f57e-7e82-40fc-9ef3-f2588f4ab689",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab",
+      "created_at": "2025-09-21T03:57:56.197237"
+    },
+    {
+      "id": "9c3e3498-94a6-4bfe-948d-3ae8174e64c5",
+      "title": "Product Implementation",
+      "value": 104944.36753288719,
+      "stage": "proposal",
+      "probability": 31,
+      "close_date": "2025-12-21T03:57:56.197240",
+      "lead_id": "d7aa4ca3-7510-4d24-8d98-7da1f5712305",
+      "owner_id": "d59c7d7e-161c-4937-b06d-436b6a949fab",
+      "created_at": "2025-09-21T03:57:56.197245"
+    },
+    {
+      "id": "bf1d76ef-5916-437f-bec0-25d8fecb95cd",
+      "title": "Consulting Services",
+      "value": 180871.25974214028,
+      "stage": "qualification",
+      "probability": 30,
+      "close_date": "2026-03-19T03:57:56.197339",
+      "lead_id": "e24dc2d2-4cdc-4580-8022-b8c589e92f61",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef",
+      "created_at": "2025-09-21T03:57:56.197342"
+    },
+    {
+      "id": "6de027d9-3b4d-457e-8f5d-0564d323d9d2",
+      "title": "Integration Project",
+      "value": 26350.039773132314,
+      "stage": "negotiation",
+      "probability": 28,
+      "close_date": "2026-01-14T03:57:56.197345",
+      "lead_id": "8b3b39ac-10d2-4651-be14-cf5d49cb181f",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef",
+      "created_at": "2025-09-21T03:57:56.197348"
+    },
+    {
+      "id": "50b545b8-b5a9-4f78-96ff-27a21cbabfe1",
+      "title": "Software License Agreement",
+      "value": 450953.66615851485,
+      "stage": "closed-lost",
+      "probability": 64,
+      "close_date": "2026-03-18T03:57:56.197351",
+      "lead_id": "9d9e1fa7-3ebb-4a9d-97cd-e7eb0d48122a",
+      "owner_id": "d3478a9a-8fce-4cd6-9b77-e210a371d0ef",
+      "created_at": "2025-09-21T03:57:56.197354"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-09-21T03:57:56.196953",
+    "num_users": 3,
+    "num_leads_per_user": 5,
+    "num_contacts_per_user": 4,
+    "num_deals_per_user": 3
+  }
+}

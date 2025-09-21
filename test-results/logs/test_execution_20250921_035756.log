@@ -1,0 +1,9 @@
+2025-09-21 03:57:56,199 - test_execution - INFO - Executing test suite: authentication_test_suite
+2025-09-21 03:57:56,200 - test_execution - INFO - Executing test case: TC_AUTH_001 - Valid User Login
+2025-09-21 03:57:56,205 - test_execution - ERROR - Error: Automation script not found: tests/automation/scripts/test_auth_login.py
+2025-09-21 03:57:56,206 - test_execution - INFO - Executing test case: TC_AUTH_002 - Invalid Email Login
+2025-09-21 03:57:56,209 - test_execution - ERROR - Error: Automation script not found: tests/automation/scripts/test_auth_invalid_email.py
+2025-09-21 03:57:56,212 - test_execution - INFO - Executing test case: TC_AUTH_003 - Invalid Password Login
+2025-09-21 03:57:56,216 - test_execution - ERROR - Error: Automation script not found: tests/automation/scripts/test_auth_invalid_password.py
+2025-09-21 03:57:56,216 - test_execution - INFO - Executing test case: TC_AUTH_005 - User Logout
+2025-09-21 03:57:56,219 - test_execution - ERROR - Error: Automation script not found: tests/automation/scripts/test_auth_logout.py

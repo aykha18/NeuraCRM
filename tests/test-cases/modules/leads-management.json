@@ -1,0 +1,678 @@
+{
+  "module": "Lead Management",
+  "version": "1.0",
+  "lastUpdated": "2025-01-15",
+  "description": "Lead management test cases for NeuraCRM",
+  "testCases": [
+    {
+      "testCaseId": "TC_LEAD_001",
+      "title": "Create New Lead",
+      "category": "Lead Creation",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that a new lead can be created successfully",
+      "prerequisites": [
+        "User is logged in",
+        "User has permission to create leads",
+        "Leads page is accessible"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with lead list and create button"
+        },
+        {
+          "step": 2,
+          "action": "Click 'Create Lead' button",
+          "expectedResult": "Lead creation modal/form opens"
+        },
+        {
+          "step": 3,
+          "action": "Fill in required lead information (name, email, company)",
+          "expectedResult": "Form fields accept input and show validation"
+        },
+        {
+          "step": 4,
+          "action": "Click 'Save' button",
+          "expectedResult": "Lead is created and appears in lead list"
+        }
+      ],
+      "testData": {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "company": "Acme Corp",
+        "phone": "+1-555-0123",
+        "status": "new",
+        "source": "website"
+      },
+      "expectedResults": [
+        "Lead creation modal opens",
+        "Form validation works correctly",
+        "Lead is saved successfully",
+        "Success message is displayed",
+        "New lead appears in lead list",
+        "Lead ID is generated"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_create.py",
+        "selector": "playwright"
+      },
+      "tags": ["smoke", "critical", "leads", "crud"],
+      "estimatedTime": "3 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_002",
+      "title": "Create Lead with Missing Required Fields",
+      "category": "Lead Creation",
+      "priority": "High",
+      "type": "Negative",
+      "description": "Verify that lead creation fails when required fields are missing",
+      "prerequisites": [
+        "User is logged in",
+        "Leads page is accessible"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads successfully"
+        },
+        {
+          "step": 2,
+          "action": "Click 'Create Lead' button",
+          "expectedResult": "Lead creation modal opens"
+        },
+        {
+          "step": 3,
+          "action": "Leave required fields empty (name, email)",
+          "expectedResult": "Required fields are empty"
+        },
+        {
+          "step": 4,
+          "action": "Click 'Save' button",
+          "expectedResult": "Validation errors are displayed"
+        }
+      ],
+      "testData": {
+        "name": "",
+        "email": "",
+        "company": "Test Company"
+      },
+      "expectedResults": [
+        "Name field shows 'Required' error",
+        "Email field shows 'Required' error",
+        "Save button is disabled or shows error",
+        "Lead is not created",
+        "User remains on creation form"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_create_validation.py",
+        "selector": "playwright"
+      },
+      "tags": ["validation", "negative", "leads"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_003",
+      "title": "Edit Existing Lead",
+      "category": "Lead Management",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that an existing lead can be edited successfully",
+      "prerequisites": [
+        "User is logged in",
+        "At least one lead exists in the system"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with existing leads"
+        },
+        {
+          "step": 2,
+          "action": "Click on a lead to open details",
+          "expectedResult": "Lead details page/modal opens"
+        },
+        {
+          "step": 3,
+          "action": "Click 'Edit' button",
+          "expectedResult": "Lead edit form opens with current data"
+        },
+        {
+          "step": 4,
+          "action": "Modify lead information",
+          "expectedResult": "Form fields accept changes"
+        },
+        {
+          "step": 5,
+          "action": "Click 'Save' button",
+          "expectedResult": "Changes are saved successfully"
+        }
+      ],
+      "testData": {
+        "originalName": "John Doe",
+        "newName": "John Smith",
+        "originalEmail": "john.doe@example.com",
+        "newEmail": "john.smith@example.com"
+      },
+      "expectedResults": [
+        "Lead details page opens",
+        "Edit form loads with current data",
+        "Changes are accepted and validated",
+        "Lead is updated successfully",
+        "Updated information is displayed",
+        "Success message is shown"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_edit.py",
+        "selector": "playwright"
+      },
+      "tags": ["smoke", "critical", "leads", "crud"],
+      "estimatedTime": "3 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_004",
+      "title": "Delete Lead",
+      "category": "Lead Management",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that a lead can be deleted successfully",
+      "prerequisites": [
+        "User is logged in",
+        "At least one lead exists in the system",
+        "User has delete permissions"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with existing leads"
+        },
+        {
+          "step": 2,
+          "action": "Click on a lead to select it",
+          "expectedResult": "Lead is selected"
+        },
+        {
+          "step": 3,
+          "action": "Click 'Delete' button or action menu",
+          "expectedResult": "Delete confirmation dialog appears"
+        },
+        {
+          "step": 4,
+          "action": "Confirm deletion",
+          "expectedResult": "Lead is deleted and removed from list"
+        }
+      ],
+      "testData": {
+        "leadName": "Test Lead for Deletion"
+      },
+      "expectedResults": [
+        "Lead is selected successfully",
+        "Delete confirmation dialog appears",
+        "Lead is deleted from system",
+        "Lead disappears from lead list",
+        "Success message is displayed",
+        "Lead count is updated"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_delete.py",
+        "selector": "playwright"
+      },
+      "tags": ["leads", "crud", "delete"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_005",
+      "title": "Search Leads",
+      "category": "Lead Search",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that leads can be searched by various criteria",
+      "prerequisites": [
+        "User is logged in",
+        "Multiple leads exist in the system with different data"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with search functionality"
+        },
+        {
+          "step": 2,
+          "action": "Enter search term in search box",
+          "expectedResult": "Search input accepts the term"
+        },
+        {
+          "step": 3,
+          "action": "Press Enter or click search button",
+          "expectedResult": "Search results are displayed"
+        },
+        {
+          "step": 4,
+          "action": "Verify search results match criteria",
+          "expectedResult": "Only matching leads are shown"
+        }
+      ],
+      "testData": {
+        "searchTerm": "John",
+        "expectedResults": "Leads containing 'John' in name or email"
+      },
+      "expectedResults": [
+        "Search input is functional",
+        "Search results are returned quickly",
+        "Only matching leads are displayed",
+        "Search results are accurate",
+        "Search term is highlighted in results",
+        "Clear search option is available"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_search.py",
+        "selector": "playwright"
+      },
+      "tags": ["search", "leads", "functionality"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_006",
+      "title": "Filter Leads by Status",
+      "category": "Lead Filtering",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that leads can be filtered by status",
+      "prerequisites": [
+        "User is logged in",
+        "Leads with different statuses exist in the system"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with filter options"
+        },
+        {
+          "step": 2,
+          "action": "Click on status filter dropdown",
+          "expectedResult": "Status filter options are displayed"
+        },
+        {
+          "step": 3,
+          "action": "Select a specific status (e.g., 'Qualified')",
+          "expectedResult": "Status filter is applied"
+        },
+        {
+          "step": 4,
+          "action": "Verify filtered results",
+          "expectedResult": "Only leads with selected status are shown"
+        }
+      ],
+      "testData": {
+        "filterStatus": "qualified",
+        "expectedCount": "Number of qualified leads"
+      },
+      "expectedResults": [
+        "Status filter dropdown is functional",
+        "Filter is applied successfully",
+        "Only leads with selected status are displayed",
+        "Filter count is accurate",
+        "Clear filter option is available",
+        "URL reflects applied filter"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_filter_status.py",
+        "selector": "playwright"
+      },
+      "tags": ["filter", "leads", "status"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_007",
+      "title": "Sort Leads by Name",
+      "category": "Lead Sorting",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that leads can be sorted by name in ascending and descending order",
+      "prerequisites": [
+        "User is logged in",
+        "Multiple leads exist with different names"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with sortable columns"
+        },
+        {
+          "step": 2,
+          "action": "Click on 'Name' column header",
+          "expectedResult": "Leads are sorted by name in ascending order"
+        },
+        {
+          "step": 3,
+          "action": "Click on 'Name' column header again",
+          "expectedResult": "Leads are sorted by name in descending order"
+        },
+        {
+          "step": 4,
+          "action": "Verify sort order is correct",
+          "expectedResult": "Leads are displayed in correct alphabetical order"
+        }
+      ],
+      "testData": {
+        "sortColumn": "name",
+        "ascendingOrder": "A to Z",
+        "descendingOrder": "Z to A"
+      },
+      "expectedResults": [
+        "Name column is clickable for sorting",
+        "Ascending sort works correctly (A-Z)",
+        "Descending sort works correctly (Z-A)",
+        "Sort indicator is displayed",
+        "All leads are included in sort",
+        "Sort persists during page operations"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_sort_name.py",
+        "selector": "playwright"
+      },
+      "tags": ["sort", "leads", "name"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_008",
+      "title": "Convert Lead to Deal",
+      "category": "Lead Conversion",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that a lead can be converted to a deal",
+      "prerequisites": [
+        "User is logged in",
+        "At least one qualified lead exists",
+        "User has permission to create deals"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with existing leads"
+        },
+        {
+          "step": 2,
+          "action": "Click on a qualified lead",
+          "expectedResult": "Lead details page opens"
+        },
+        {
+          "step": 3,
+          "action": "Click 'Convert to Deal' button",
+          "expectedResult": "Lead conversion form/modal opens"
+        },
+        {
+          "step": 4,
+          "action": "Fill in deal information (value, close date)",
+          "expectedResult": "Deal form accepts input"
+        },
+        {
+          "step": 5,
+          "action": "Click 'Convert' button",
+          "expectedResult": "Lead is converted to deal"
+        }
+      ],
+      "testData": {
+        "leadName": "Qualified Lead",
+        "dealValue": 50000,
+        "closeDate": "2025-03-15",
+        "dealStage": "proposal"
+      },
+      "expectedResults": [
+        "Convert to Deal option is available",
+        "Conversion form opens with lead data",
+        "Deal information is accepted",
+        "Lead is successfully converted",
+        "Deal appears in deals pipeline",
+        "Lead status is updated to 'converted'",
+        "Success message is displayed"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_convert_to_deal.py",
+        "selector": "playwright"
+      },
+      "tags": ["conversion", "leads", "deals", "critical"],
+      "estimatedTime": "4 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_009",
+      "title": "Bulk Delete Leads",
+      "category": "Bulk Operations",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that multiple leads can be deleted in bulk",
+      "prerequisites": [
+        "User is logged in",
+        "Multiple leads exist in the system",
+        "User has bulk delete permissions"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with bulk selection options"
+        },
+        {
+          "step": 2,
+          "action": "Select multiple leads using checkboxes",
+          "expectedResult": "Selected leads are highlighted"
+        },
+        {
+          "step": 3,
+          "action": "Click 'Bulk Delete' button",
+          "expectedResult": "Bulk delete confirmation dialog appears"
+        },
+        {
+          "step": 4,
+          "action": "Confirm bulk deletion",
+          "expectedResult": "Selected leads are deleted"
+        }
+      ],
+      "testData": {
+        "selectedLeads": ["Lead 1", "Lead 2", "Lead 3"],
+        "totalLeads": "Number of leads before deletion"
+      },
+      "expectedResults": [
+        "Bulk selection checkboxes are functional",
+        "Selected leads are clearly indicated",
+        "Bulk delete confirmation shows correct count",
+        "All selected leads are deleted",
+        "Lead count is updated correctly",
+        "Success message shows number of deleted leads"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_bulk_delete.py",
+        "selector": "playwright"
+      },
+      "tags": ["bulk", "delete", "leads"],
+      "estimatedTime": "3 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_010",
+      "title": "Export Leads to CSV",
+      "category": "Data Export",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that leads can be exported to CSV format",
+      "prerequisites": [
+        "User is logged in",
+        "Leads exist in the system",
+        "User has export permissions"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with export options"
+        },
+        {
+          "step": 2,
+          "action": "Click 'Export' button or menu",
+          "expectedResult": "Export options are displayed"
+        },
+        {
+          "step": 3,
+          "action": "Select 'Export to CSV' option",
+          "expectedResult": "CSV export process begins"
+        },
+        {
+          "step": 4,
+          "action": "Wait for export to complete",
+          "expectedResult": "CSV file is downloaded"
+        }
+      ],
+      "testData": {
+        "exportFormat": "CSV",
+        "expectedFields": ["Name", "Email", "Company", "Status", "Created Date"]
+      },
+      "expectedResults": [
+        "Export option is available",
+        "CSV export process starts",
+        "Export progress is indicated",
+        "CSV file is downloaded successfully",
+        "File contains all lead data",
+        "File format is correct and readable"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_export_csv.py",
+        "selector": "playwright"
+      },
+      "tags": ["export", "csv", "leads"],
+      "estimatedTime": "3 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_011",
+      "title": "Lead Scoring Display",
+      "category": "AI Features",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that AI-powered lead scores are displayed correctly",
+      "prerequisites": [
+        "User is logged in",
+        "AI lead scoring is enabled",
+        "Leads with scores exist in the system"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with score column"
+        },
+        {
+          "step": 2,
+          "action": "View lead scores in the list",
+          "expectedResult": "Lead scores are displayed as numbers or indicators"
+        },
+        {
+          "step": 3,
+          "action": "Click on a lead with score",
+          "expectedResult": "Lead details show score breakdown"
+        },
+        {
+          "step": 4,
+          "action": "Check score calculation details",
+          "expectedResult": "Score factors are explained"
+        }
+      ],
+      "testData": {
+        "expectedScoreRange": "0-100",
+        "scoreFactors": ["Company size", "Industry", "Engagement", "Budget"]
+      },
+      "expectedResults": [
+        "Lead scores are visible in lead list",
+        "Scores are displayed in correct format",
+        "Score breakdown is available in details",
+        "Score factors are explained clearly",
+        "Scores are updated when lead data changes",
+        "Score colors/indicators are meaningful"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_scoring.py",
+        "selector": "playwright"
+      },
+      "tags": ["ai", "scoring", "leads", "analytics"],
+      "estimatedTime": "3 minutes"
+    },
+    {
+      "testCaseId": "TC_LEAD_012",
+      "title": "Lead Import from CSV",
+      "category": "Data Import",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that leads can be imported from CSV file",
+      "prerequisites": [
+        "User is logged in",
+        "User has import permissions",
+        "Valid CSV file with lead data exists"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to Leads page",
+          "expectedResult": "Leads page loads with import options"
+        },
+        {
+          "step": 2,
+          "action": "Click 'Import' button",
+          "expectedResult": "Import dialog/modal opens"
+        },
+        {
+          "step": 3,
+          "action": "Upload CSV file with lead data",
+          "expectedResult": "File is uploaded and validated"
+        },
+        {
+          "step": 4,
+          "action": "Map CSV columns to lead fields",
+          "expectedResult": "Column mapping interface is functional"
+        },
+        {
+          "step": 5,
+          "action": "Click 'Import' button",
+          "expectedResult": "Leads are imported successfully"
+        }
+      ],
+      "testData": {
+        "csvFile": "test_leads.csv",
+        "csvColumns": ["Name", "Email", "Company", "Phone", "Status"],
+        "expectedImports": "Number of valid leads in CSV"
+      },
+      "expectedResults": [
+        "Import option is available",
+        "File upload works correctly",
+        "CSV validation is performed",
+        "Column mapping is intuitive",
+        "Import process completes successfully",
+        "Imported leads appear in lead list",
+        "Import summary is displayed"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_leads_import_csv.py",
+        "selector": "playwright"
+      },
+      "tags": ["import", "csv", "leads", "bulk"],
+      "estimatedTime": "5 minutes"
+    }
+  ]
+}
+

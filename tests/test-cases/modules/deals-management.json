@@ -1,0 +1,558 @@
+{
+  "module": "deals-management",
+  "description": "Comprehensive test cases for deals management including Kanban board, CRUD operations, and analytics",
+  "test_cases": [
+    {
+      "id": "DEALS-001",
+      "title": "Create New Deal - Valid Data",
+      "description": "Test creating a new deal with valid data including title, value, stage, and contact",
+      "type": "positive",
+      "priority": "high",
+      "category": "create",
+      "preconditions": [
+        "User is logged in",
+        "At least one contact exists",
+        "At least one stage exists in the pipeline"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click 'Create Deal' button",
+        "Fill in deal title (required)",
+        "Set deal value",
+        "Select contact from dropdown",
+        "Select stage from dropdown",
+        "Add description (optional)",
+        "Click 'Create Deal' button"
+      ],
+      "expected_result": "Deal is created successfully and appears in the Kanban board",
+      "test_data": {
+        "title": "Test Deal Creation",
+        "value": 50000,
+        "contact_id": "existing_contact_id",
+        "stage_id": "existing_stage_id",
+        "description": "Test deal for automation"
+      }
+    },
+    {
+      "id": "DEALS-002",
+      "title": "Create New Deal - Missing Required Fields",
+      "description": "Test creating a deal without required fields (title)",
+      "type": "negative",
+      "priority": "high",
+      "category": "create",
+      "preconditions": [
+        "User is logged in",
+        "Deal creation form is open"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click 'Create Deal' button",
+        "Leave title field empty",
+        "Fill other optional fields",
+        "Click 'Create Deal' button"
+      ],
+      "expected_result": "Validation error is displayed for missing title field",
+      "test_data": {
+        "title": "",
+        "value": 50000,
+        "description": "Test deal without title"
+      }
+    },
+    {
+      "id": "DEALS-003",
+      "title": "Create New Deal - Invalid Value",
+      "description": "Test creating a deal with invalid value (negative or non-numeric)",
+      "type": "negative",
+      "priority": "medium",
+      "category": "create",
+      "preconditions": [
+        "User is logged in",
+        "Deal creation form is open"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click 'Create Deal' button",
+        "Fill in valid title",
+        "Enter negative value (-1000)",
+        "Click 'Create Deal' button"
+      ],
+      "expected_result": "Validation error is displayed for invalid value",
+      "test_data": {
+        "title": "Test Deal with Invalid Value",
+        "value": -1000,
+        "description": "Test deal with negative value"
+      }
+    },
+    {
+      "id": "DEALS-004",
+      "title": "Read Deal Details",
+      "description": "Test viewing deal details including all fields and relationships",
+      "type": "positive",
+      "priority": "high",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists in the system"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click on a deal card",
+        "Verify deal details are displayed",
+        "Check contact information",
+        "Check stage information",
+        "Check owner information",
+        "Check creation date"
+      ],
+      "expected_result": "All deal details are displayed correctly",
+      "test_data": {
+        "deal_id": "existing_deal_id"
+      }
+    },
+    {
+      "id": "DEALS-005",
+      "title": "Update Deal Information",
+      "description": "Test updating deal title, value, description, and other fields",
+      "type": "positive",
+      "priority": "high",
+      "category": "update",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists",
+        "User has permission to edit the deal"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click on a deal card",
+        "Click 'Edit' button",
+        "Update deal title",
+        "Update deal value",
+        "Update description",
+        "Click 'Save' button"
+      ],
+      "expected_result": "Deal information is updated successfully",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "updated_title": "Updated Deal Title",
+        "updated_value": 75000,
+        "updated_description": "Updated deal description"
+      }
+    },
+    {
+      "id": "DEALS-006",
+      "title": "Move Deal Between Stages",
+      "description": "Test moving a deal from one stage to another in the Kanban board",
+      "type": "positive",
+      "priority": "high",
+      "category": "update",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists",
+        "Multiple stages exist in the pipeline",
+        "User has permission to move the deal"
+      ],
+      "test_steps": [
+        "Navigate to deals Kanban board",
+        "Drag a deal from one stage to another",
+        "Verify deal appears in new stage",
+        "Check that deal is removed from old stage",
+        "Verify stage update is reflected in deal details"
+      ],
+      "expected_result": "Deal is successfully moved to the new stage",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "from_stage": "qualification",
+        "to_stage": "proposal"
+      }
+    },
+    {
+      "id": "DEALS-007",
+      "title": "Move Deal to Won Stage",
+      "description": "Test moving a deal to 'Won' stage and triggering post-sale workflow",
+      "type": "positive",
+      "priority": "high",
+      "category": "update",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists",
+        "Won stage exists in the pipeline"
+      ],
+      "test_steps": [
+        "Navigate to deals Kanban board",
+        "Drag a deal to 'Won' stage",
+        "Verify deal status changes to 'won'",
+        "Check if customer account is created",
+        "Verify post-sale workflow is triggered"
+      ],
+      "expected_result": "Deal is marked as won and post-sale workflow is initiated",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "outcome_reason": "Client approved proposal"
+      }
+    },
+    {
+      "id": "DEALS-008",
+      "title": "Move Deal to Lost Stage",
+      "description": "Test moving a deal to 'Lost' stage with reason",
+      "type": "positive",
+      "priority": "medium",
+      "category": "update",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists",
+        "Lost stage exists in the pipeline"
+      ],
+      "test_steps": [
+        "Navigate to deals Kanban board",
+        "Drag a deal to 'Lost' stage",
+        "Enter reason for loss",
+        "Click 'Confirm' button",
+        "Verify deal status changes to 'lost'"
+      ],
+      "expected_result": "Deal is marked as lost with reason recorded",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "outcome_reason": "Budget constraints"
+      }
+    },
+    {
+      "id": "DEALS-009",
+      "title": "Watch/Unwatch Deal",
+      "description": "Test adding and removing deal watchers",
+      "type": "positive",
+      "priority": "medium",
+      "category": "update",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click on a deal card",
+        "Click 'Watch' button",
+        "Verify user is added as watcher",
+        "Click 'Unwatch' button",
+        "Verify user is removed from watchers"
+      ],
+      "expected_result": "User can successfully watch and unwatch deals",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "user_id": "current_user_id"
+      }
+    },
+    {
+      "id": "DEALS-010",
+      "title": "Delete Deal",
+      "description": "Test deleting a deal from the system",
+      "type": "positive",
+      "priority": "high",
+      "category": "delete",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists",
+        "User has permission to delete the deal"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click on a deal card",
+        "Click 'Delete' button",
+        "Confirm deletion in dialog",
+        "Verify deal is removed from Kanban board"
+      ],
+      "expected_result": "Deal is successfully deleted from the system",
+      "test_data": {
+        "deal_id": "existing_deal_id"
+      }
+    },
+    {
+      "id": "DEALS-011",
+      "title": "Kanban Board View",
+      "description": "Test Kanban board displays all stages and deals correctly",
+      "type": "positive",
+      "priority": "high",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "Stages are configured in the system",
+        "Deals exist in various stages"
+      ],
+      "test_steps": [
+        "Navigate to deals Kanban board",
+        "Verify all stages are displayed",
+        "Check deal counts for each stage",
+        "Verify deals are in correct stages",
+        "Check deal cards display correct information"
+      ],
+      "expected_result": "Kanban board displays all stages and deals correctly",
+      "test_data": {
+        "expected_stages": ["Qualification", "New", "Contacted", "Proposal Sent", "Won", "Lost"]
+      }
+    },
+    {
+      "id": "DEALS-012",
+      "title": "Deals Analytics View",
+      "description": "Test deals analytics and reporting features",
+      "type": "positive",
+      "priority": "medium",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "Deals exist in the system",
+        "Analytics tab is available"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click 'Analytics' tab",
+        "Verify total deals count",
+        "Check total value calculation",
+        "Verify stage distribution",
+        "Check conversion rates"
+      ],
+      "expected_result": "Analytics display accurate deal statistics",
+      "test_data": {
+        "expected_metrics": ["total_deals", "total_value", "conversion_rate", "stage_distribution"]
+      }
+    },
+    {
+      "id": "DEALS-013",
+      "title": "Deal Search and Filter",
+      "description": "Test searching and filtering deals by various criteria",
+      "type": "positive",
+      "priority": "medium",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "Multiple deals exist with different properties"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Use search box to find deals by title",
+        "Filter deals by stage",
+        "Filter deals by owner",
+        "Filter deals by value range",
+        "Verify filtered results are accurate"
+      ],
+      "expected_result": "Search and filter functions work correctly",
+      "test_data": {
+        "search_term": "Test Deal",
+        "filter_stage": "New",
+        "filter_owner": "current_user",
+        "value_range": {"min": 10000, "max": 100000}
+      }
+    },
+    {
+      "id": "DEALS-014",
+      "title": "Deal Pagination",
+      "description": "Test pagination when there are many deals",
+      "type": "positive",
+      "priority": "low",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "More than 50 deals exist in the system"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Verify first page of deals is displayed",
+        "Click 'Next' button",
+        "Verify second page is loaded",
+        "Click 'Previous' button",
+        "Verify first page is displayed again"
+      ],
+      "expected_result": "Pagination works correctly for large datasets",
+      "test_data": {
+        "page_size": 50,
+        "total_deals": 150
+      }
+    },
+    {
+      "id": "DEALS-015",
+      "title": "Convert Lead to Deal",
+      "description": "Test converting a lead to a deal",
+      "type": "positive",
+      "priority": "high",
+      "category": "create",
+      "preconditions": [
+        "User is logged in",
+        "At least one lead exists",
+        "Stages are configured"
+      ],
+      "test_steps": [
+        "Navigate to leads page",
+        "Click on a lead",
+        "Click 'Convert to Deal' button",
+        "Verify deal is created",
+        "Check deal appears in Kanban board",
+        "Verify lead status is updated to 'converted'"
+      ],
+      "expected_result": "Lead is successfully converted to deal",
+      "test_data": {
+        "lead_id": "existing_lead_id",
+        "expected_stage": "New"
+      }
+    },
+    {
+      "id": "DEALS-016",
+      "title": "Deal Value Calculation",
+      "description": "Test deal value calculations and aggregations",
+      "type": "positive",
+      "priority": "medium",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "Multiple deals exist with different values"
+      ],
+      "test_steps": [
+        "Navigate to deals analytics",
+        "Check total pipeline value",
+        "Verify stage-wise value calculations",
+        "Check average deal size",
+        "Verify value distribution charts"
+      ],
+      "expected_result": "Deal value calculations are accurate",
+      "test_data": {
+        "deals": [
+          {"value": 50000, "stage": "New"},
+          {"value": 75000, "stage": "Proposal"},
+          {"value": 100000, "stage": "Won"}
+        ]
+      }
+    },
+    {
+      "id": "DEALS-017",
+      "title": "Deal Activity Tracking",
+      "description": "Test tracking deal activities and timeline",
+      "type": "positive",
+      "priority": "medium",
+      "category": "read",
+      "preconditions": [
+        "User is logged in",
+        "At least one deal exists with activities"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Click on a deal",
+        "Check activity timeline",
+        "Verify stage changes are recorded",
+        "Check value updates are tracked",
+        "Verify owner changes are logged"
+      ],
+      "expected_result": "Deal activities are properly tracked and displayed",
+      "test_data": {
+        "deal_id": "existing_deal_id",
+        "expected_activities": ["created", "stage_changed", "value_updated"]
+      }
+    },
+    {
+      "id": "DEALS-018",
+      "title": "Deal Permissions",
+      "description": "Test deal access permissions for different user roles",
+      "type": "positive",
+      "priority": "medium",
+      "category": "security",
+      "preconditions": [
+        "Multiple users exist with different roles",
+        "Deals exist owned by different users"
+      ],
+      "test_steps": [
+        "Login as user with limited permissions",
+        "Navigate to deals page",
+        "Verify only authorized deals are visible",
+        "Try to edit unauthorized deal",
+        "Try to delete unauthorized deal",
+        "Verify appropriate error messages"
+      ],
+      "expected_result": "Deal permissions are properly enforced",
+      "test_data": {
+        "user_role": "sales_rep",
+        "expected_access": "own_deals_only"
+      }
+    },
+    {
+      "id": "DEALS-019",
+      "title": "Deal Export Functionality",
+      "description": "Test exporting deals data to CSV/Excel",
+      "type": "positive",
+      "priority": "low",
+      "category": "export",
+      "preconditions": [
+        "User is logged in",
+        "Deals exist in the system",
+        "Export functionality is available"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Apply any desired filters",
+        "Click 'Export' button",
+        "Select export format (CSV/Excel)",
+        "Download the file",
+        "Verify exported data is complete and accurate"
+      ],
+      "expected_result": "Deals data is exported successfully",
+      "test_data": {
+        "export_format": "CSV",
+        "expected_fields": ["title", "value", "stage", "owner", "contact", "created_at"]
+      }
+    },
+    {
+      "id": "DEALS-020",
+      "title": "Deal Bulk Operations",
+      "description": "Test bulk operations on multiple deals",
+      "type": "positive",
+      "priority": "low",
+      "category": "bulk",
+      "preconditions": [
+        "User is logged in",
+        "Multiple deals exist",
+        "Bulk operations are enabled"
+      ],
+      "test_steps": [
+        "Navigate to deals page",
+        "Select multiple deals using checkboxes",
+        "Choose bulk action (move to stage, assign owner, etc.)",
+        "Confirm bulk operation",
+        "Verify all selected deals are updated"
+      ],
+      "expected_result": "Bulk operations work correctly on selected deals",
+      "test_data": {
+        "bulk_action": "move_to_stage",
+        "target_stage": "Proposal",
+        "selected_deals": ["deal_1", "deal_2", "deal_3"]
+      }
+    }
+  ],
+  "test_data": {
+    "valid_deal": {
+      "title": "Enterprise Software License",
+      "value": 125000,
+      "description": "Annual enterprise software license for 500 users",
+      "contact_id": "contact_123",
+      "stage_id": "stage_new"
+    },
+    "invalid_deal": {
+      "title": "",
+      "value": -5000,
+      "description": "Invalid deal data"
+    },
+    "stages": [
+      {"id": 1, "name": "Qualification", "order": 1},
+      {"id": 2, "name": "New", "order": 2},
+      {"id": 3, "name": "Contacted", "order": 3},
+      {"id": 4, "name": "Proposal Sent", "order": 4},
+      {"id": 5, "name": "Won", "order": 5},
+      {"id": 6, "name": "Lost", "order": 6}
+    ]
+  },
+  "automation_scripts": [
+    "test_deals_create.py",
+    "test_deals_read.py",
+    "test_deals_update.py",
+    "test_deals_delete.py",
+    "test_deals_kanban.py",
+    "test_deals_analytics.py",
+    "test_deals_move_stage.py",
+    "test_deals_watch.py",
+    "test_deals_convert_lead.py",
+    "test_deals_search_filter.py"
+  ]
+}
+

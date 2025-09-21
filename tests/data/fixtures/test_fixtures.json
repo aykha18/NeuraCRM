@@ -1,0 +1,60 @@
+{
+  "valid_login_user": {
+    "email": "nodeit@node.com",
+    "password": "NodeIT2024!",
+    "name": "Test User",
+    "role": "admin"
+  },
+  "invalid_login_credentials": [
+    {
+      "email": "invalid@example.com",
+      "password": "wrongpassword"
+    },
+    {
+      "email": "nodeit@node.com",
+      "password": "wrongpassword"
+    },
+    {
+      "email": "",
+      "password": "NodeIT2024!"
+    },
+    {
+      "email": "nodeit@node.com",
+      "password": ""
+    }
+  ],
+  "lead_creation_data": {
+    "valid_lead": {
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "company": "Acme Corp",
+      "phone": "+1-555-0123",
+      "status": "new",
+      "source": "website"
+    },
+    "invalid_lead": {
+      "name": "",
+      "email": "invalid-email",
+      "company": "",
+      "phone": "invalid-phone"
+    }
+  },
+  "contact_creation_data": {
+    "valid_contact": {
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "phone": "+1-555-0456",
+      "company": "Tech Solutions Inc",
+      "position": "CEO"
+    }
+  },
+  "deal_creation_data": {
+    "valid_deal": {
+      "title": "Software License Agreement",
+      "value": 50000,
+      "stage": "proposal",
+      "probability": 75,
+      "close_date": "2025-06-15"
+    }
+  }
+}

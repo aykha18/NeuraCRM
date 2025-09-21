@@ -1,0 +1,398 @@
+{
+  "module": "Authentication",
+  "version": "1.0",
+  "lastUpdated": "2025-01-15",
+  "description": "Authentication and authorization test cases for NeuraCRM",
+  "testCases": [
+    {
+      "testCaseId": "TC_AUTH_001",
+      "title": "Valid User Login",
+      "category": "Login",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that a valid user can successfully log in to the system",
+      "prerequisites": [
+        "User account exists in the system",
+        "User credentials are valid",
+        "System is accessible"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to login page",
+          "expectedResult": "Login page loads successfully with email and password fields"
+        },
+        {
+          "step": 2,
+          "action": "Enter valid email address",
+          "expectedResult": "Email field accepts the input"
+        },
+        {
+          "step": 3,
+          "action": "Enter valid password",
+          "expectedResult": "Password field accepts the input"
+        },
+        {
+          "step": 4,
+          "action": "Click login button",
+          "expectedResult": "User is authenticated and redirected to dashboard"
+        }
+      ],
+      "testData": {
+        "email": "nodeit@node.com",
+        "password": "NodeIT2024!"
+      },
+      "expectedResults": [
+        "Login successful",
+        "Dashboard loads with user-specific data",
+        "User session established",
+        "Navigation menu displays user information"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_login.py",
+        "selector": "playwright"
+      },
+      "tags": ["smoke", "critical", "authentication"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_AUTH_002",
+      "title": "Invalid Email Login",
+      "category": "Login",
+      "priority": "High",
+      "type": "Negative",
+      "description": "Verify that login fails with invalid email format",
+      "prerequisites": [
+        "System is accessible",
+        "Login page is loaded"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to login page",
+          "expectedResult": "Login page loads successfully"
+        },
+        {
+          "step": 2,
+          "action": "Enter invalid email format (e.g., 'invalid-email')",
+          "expectedResult": "Email field shows validation error"
+        },
+        {
+          "step": 3,
+          "action": "Enter any password",
+          "expectedResult": "Password field accepts input"
+        },
+        {
+          "step": 4,
+          "action": "Click login button",
+          "expectedResult": "Login fails with appropriate error message"
+        }
+      ],
+      "testData": {
+        "email": "invalid-email",
+        "password": "anypassword"
+      },
+      "expectedResults": [
+        "Email validation error displayed",
+        "Login button remains disabled or shows error",
+        "User remains on login page",
+        "No session established"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_invalid_email.py",
+        "selector": "playwright"
+      },
+      "tags": ["validation", "negative", "authentication"],
+      "estimatedTime": "1 minute"
+    },
+    {
+      "testCaseId": "TC_AUTH_003",
+      "title": "Invalid Password Login",
+      "category": "Login",
+      "priority": "High",
+      "type": "Negative",
+      "description": "Verify that login fails with incorrect password",
+      "prerequisites": [
+        "Valid user account exists",
+        "System is accessible"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to login page",
+          "expectedResult": "Login page loads successfully"
+        },
+        {
+          "step": 2,
+          "action": "Enter valid email address",
+          "expectedResult": "Email field accepts the input"
+        },
+        {
+          "step": 3,
+          "action": "Enter incorrect password",
+          "expectedResult": "Password field accepts the input"
+        },
+        {
+          "step": 4,
+          "action": "Click login button",
+          "expectedResult": "Login fails with error message"
+        }
+      ],
+      "testData": {
+        "email": "nodeit@node.com",
+        "password": "wrongpassword"
+      },
+      "expectedResults": [
+        "Login fails with 'Invalid credentials' message",
+        "User remains on login page",
+        "Password field is cleared or highlighted",
+        "No session established"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_invalid_password.py",
+        "selector": "playwright"
+      },
+      "tags": ["security", "negative", "authentication"],
+      "estimatedTime": "1 minute"
+    },
+    {
+      "testCaseId": "TC_AUTH_004",
+      "title": "Empty Fields Login",
+      "category": "Login",
+      "priority": "Medium",
+      "type": "Negative",
+      "description": "Verify that login fails when required fields are empty",
+      "prerequisites": [
+        "System is accessible",
+        "Login page is loaded"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to login page",
+          "expectedResult": "Login page loads successfully"
+        },
+        {
+          "step": 2,
+          "action": "Leave email field empty",
+          "expectedResult": "Email field remains empty"
+        },
+        {
+          "step": 3,
+          "action": "Leave password field empty",
+          "expectedResult": "Password field remains empty"
+        },
+        {
+          "step": 4,
+          "action": "Click login button",
+          "expectedResult": "Validation errors are displayed"
+        }
+      ],
+      "testData": {
+        "email": "",
+        "password": ""
+      },
+      "expectedResults": [
+        "Email field shows 'Required' error",
+        "Password field shows 'Required' error",
+        "Login button is disabled or shows error",
+        "User remains on login page"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_empty_fields.py",
+        "selector": "playwright"
+      },
+      "tags": ["validation", "negative", "authentication"],
+      "estimatedTime": "1 minute"
+    },
+    {
+      "testCaseId": "TC_AUTH_005",
+      "title": "User Logout",
+      "category": "Logout",
+      "priority": "High",
+      "type": "Positive",
+      "description": "Verify that user can successfully log out of the system",
+      "prerequisites": [
+        "User is logged in to the system",
+        "Dashboard is loaded"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Click on user profile menu",
+          "expectedResult": "User profile dropdown menu opens"
+        },
+        {
+          "step": 2,
+          "action": "Click logout option",
+          "expectedResult": "Logout confirmation or immediate logout"
+        },
+        {
+          "step": 3,
+          "action": "Confirm logout if prompted",
+          "expectedResult": "User is logged out and redirected to login page"
+        }
+      ],
+      "testData": {},
+      "expectedResults": [
+        "User session is terminated",
+        "Redirected to login page",
+        "All user data is cleared from browser",
+        "Cannot access protected pages without re-login"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_logout.py",
+        "selector": "playwright"
+      },
+      "tags": ["smoke", "critical", "authentication"],
+      "estimatedTime": "1 minute"
+    },
+    {
+      "testCaseId": "TC_AUTH_006",
+      "title": "Session Timeout",
+      "category": "Session Management",
+      "priority": "Medium",
+      "type": "Security",
+      "description": "Verify that user session expires after timeout period",
+      "prerequisites": [
+        "User is logged in",
+        "System has session timeout configured"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Login to the system",
+          "expectedResult": "User is successfully logged in"
+        },
+        {
+          "step": 2,
+          "action": "Wait for session timeout period (or simulate)",
+          "expectedResult": "Session timeout period elapses"
+        },
+        {
+          "step": 3,
+          "action": "Try to access protected page",
+          "expectedResult": "User is redirected to login page"
+        }
+      ],
+      "testData": {
+        "timeoutPeriod": "30 minutes"
+      },
+      "expectedResults": [
+        "Session expires after timeout",
+        "User is redirected to login page",
+        "Session data is cleared",
+        "Appropriate timeout message is displayed"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_session_timeout.py",
+        "selector": "playwright"
+      },
+      "tags": ["security", "session", "authentication"],
+      "estimatedTime": "5 minutes"
+    },
+    {
+      "testCaseId": "TC_AUTH_007",
+      "title": "Password Reset Request",
+      "category": "Password Management",
+      "priority": "Medium",
+      "type": "Positive",
+      "description": "Verify that user can request password reset",
+      "prerequisites": [
+        "User account exists in the system",
+        "System is accessible"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Navigate to login page",
+          "expectedResult": "Login page loads successfully"
+        },
+        {
+          "step": 2,
+          "action": "Click 'Forgot Password' link",
+          "expectedResult": "Password reset page opens"
+        },
+        {
+          "step": 3,
+          "action": "Enter valid email address",
+          "expectedResult": "Email field accepts the input"
+        },
+        {
+          "step": 4,
+          "action": "Click 'Send Reset Link' button",
+          "expectedResult": "Reset link is sent to email"
+        }
+      ],
+      "testData": {
+        "email": "nodeit@node.com"
+      },
+      "expectedResults": [
+        "Password reset page loads",
+        "Email validation works correctly",
+        "Reset link sent confirmation message",
+        "Email is sent to user's inbox"
+      ],
+      "automation": {
+        "automated": true,
+        "script": "test_auth_password_reset.py",
+        "selector": "playwright"
+      },
+      "tags": ["password", "positive", "authentication"],
+      "estimatedTime": "2 minutes"
+    },
+    {
+      "testCaseId": "TC_AUTH_008",
+      "title": "Concurrent Login Sessions",
+      "category": "Session Management",
+      "priority": "Low",
+      "type": "Security",
+      "description": "Verify behavior when user logs in from multiple devices",
+      "prerequisites": [
+        "User account exists",
+        "Multiple devices/browsers available"
+      ],
+      "testSteps": [
+        {
+          "step": 1,
+          "action": "Login from first device/browser",
+          "expectedResult": "First session established successfully"
+        },
+        {
+          "step": 2,
+          "action": "Login from second device/browser",
+          "expectedResult": "Second session behavior (allow/deny based on policy)"
+        },
+        {
+          "step": 3,
+          "action": "Check session status on both devices",
+          "expectedResult": "Sessions behave according to system policy"
+        }
+      ],
+      "testData": {
+        "email": "nodeit@node.com",
+        "password": "NodeIT2024!"
+      },
+      "expectedResults": [
+        "First session remains active",
+        "Second session behavior follows system policy",
+        "No session conflicts or data corruption",
+        "Proper session management"
+      ],
+      "automation": {
+        "automated": false,
+        "script": null,
+        "selector": "manual"
+      },
+      "tags": ["security", "session", "concurrent"],
+      "estimatedTime": "3 minutes"
+    }
+  ]
+}
+
