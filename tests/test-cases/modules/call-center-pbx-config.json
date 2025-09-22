@@ -1,0 +1,426 @@
+{
+  "module": "Call Center - PBX Configuration",
+  "description": "Comprehensive test cases for PBX provider configuration in Call Center module",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "id": "CC-PBX-001",
+      "name": "PBX Provider Creation - Basic",
+      "description": "Test creating a basic PBX provider configuration",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Click 'Add PBX Provider' button",
+        "Fill in basic information:",
+        "  - Name: 'Main Asterisk Server'",
+        "  - Provider Type: 'Asterisk'",
+        "  - Display Name: 'Main PBX'",
+        "  - Host: '192.168.1.100'",
+        "  - Port: '8088'",
+        "  - Username: 'admin'",
+        "  - Password: 'admin123'",
+        "Click 'Save' button",
+        "Verify provider appears in the list",
+        "Verify provider is saved in database"
+      ],
+      "expected_result": "PBX provider is created successfully and saved to database",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-002",
+      "name": "PBX Provider Creation - Complete Configuration",
+      "description": "Test creating a PBX provider with all configuration options",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Click 'Add PBX Provider' button",
+        "Fill in complete configuration:",
+        "  - Name: 'Enterprise PBX'",
+        "  - Provider Type: 'FreePBX'",
+        "  - Display Name: 'Enterprise Server'",
+        "  - Description: 'Main enterprise PBX server'",
+        "  - Host: 'pbx.company.com'",
+        "  - Port: '8088'",
+        "  - Username: 'pbxadmin'",
+        "  - Password: 'securepass123'",
+        "  - Context: 'from-internal'",
+        "  - Caller ID Field: 'CallerIDNum'",
+        "  - Dialplan Context: 'from-internal'",
+        "  - Recording Enabled: true",
+        "  - Recording Path: '/var/spool/asterisk/monitor'",
+        "  - Transcription Enabled: true",
+        "  - CDR Enabled: true",
+        "  - CDR Path: '/var/log/asterisk/cdr-csv'",
+        "  - Webhook URL: 'https://crm.company.com/webhook'",
+        "  - Webhook Secret: 'webhook_secret_key'",
+        "  - Auto Assign Calls: true",
+        "  - Is Primary: true",
+        "  - Is Active: true",
+        "Click 'Save' button",
+        "Verify provider appears in the list with all settings",
+        "Verify provider is saved in database with all fields"
+      ],
+      "expected_result": "Complete PBX provider configuration is saved successfully",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-003",
+      "name": "PBX Provider Validation - Required Fields",
+      "description": "Test validation of required fields when creating PBX provider",
+      "priority": "High",
+      "category": "Validation",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Click 'Add PBX Provider' button",
+        "Try to save without filling required fields",
+        "Verify validation errors are displayed",
+        "Fill in only Name field, try to save",
+        "Verify validation error for missing Provider Type",
+        "Fill in Name and Provider Type, try to save",
+        "Verify validation error for missing Host",
+        "Fill in Name, Provider Type, and Host, try to save",
+        "Verify validation error for missing Port",
+        "Fill in all required fields and save",
+        "Verify provider is created successfully"
+      ],
+      "expected_result": "Proper validation errors are shown for missing required fields",
+      "test_type": "UI"
+    },
+    {
+      "id": "CC-PBX-004",
+      "name": "PBX Provider Edit",
+      "description": "Test editing an existing PBX provider configuration",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Find an existing PBX provider in the list",
+        "Click 'Edit' button for the provider",
+        "Modify the following fields:",
+        "  - Display Name: 'Updated PBX Server'",
+        "  - Description: 'Updated description'",
+        "  - Port: '8089'",
+        "  - Recording Enabled: false",
+        "  - Is Primary: false",
+        "Click 'Save' button",
+        "Verify changes are reflected in the provider list",
+        "Verify changes are saved in database"
+      ],
+      "expected_result": "PBX provider is updated successfully with new values",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-005",
+      "name": "PBX Provider Delete",
+      "description": "Test deleting a PBX provider configuration",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Find an existing PBX provider in the list",
+        "Click 'Delete' button for the provider",
+        "Confirm deletion in the confirmation dialog",
+        "Verify provider is removed from the list",
+        "Verify provider is deleted from database",
+        "Verify associated extensions are also deleted (cascade)"
+      ],
+      "expected_result": "PBX provider is deleted successfully from UI and database",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-006",
+      "name": "PBX Connection Test",
+      "description": "Test PBX connection testing functionality",
+      "priority": "High",
+      "category": "Connection Testing",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Find an existing PBX provider in the list",
+        "Click 'Test Connection' button",
+        "Verify connection test is initiated",
+        "Verify test results are displayed",
+        "Test with valid connection details",
+        "Verify 'Connection Successful' message",
+        "Test with invalid connection details",
+        "Verify 'Connection Failed' message with error details"
+      ],
+      "expected_result": "Connection testing works correctly for both valid and invalid configurations",
+      "test_type": "UI"
+    },
+    {
+      "id": "CC-PBX-007",
+      "name": "PBX Provider List Display",
+      "description": "Test PBX provider list display and information",
+      "priority": "Medium",
+      "category": "UI Display",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Verify PBX providers list is displayed",
+        "Verify each provider shows:",
+        "  - Name and Display Name",
+        "  - Provider Type",
+        "  - Host and Port",
+        "  - Status (Active/Inactive)",
+        "  - Primary indicator",
+        "  - Connection status",
+        "  - Last sync time",
+        "Verify list is sortable by different columns",
+        "Verify list supports search/filtering"
+      ],
+      "expected_result": "PBX provider list displays all relevant information correctly",
+      "test_type": "UI"
+    },
+    {
+      "id": "CC-PBX-008",
+      "name": "PBX Provider Status Management",
+      "description": "Test activating/deactivating PBX providers",
+      "priority": "Medium",
+      "category": "Status Management",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Find an active PBX provider",
+        "Click toggle to deactivate the provider",
+        "Verify provider status changes to inactive",
+        "Verify provider is not used for new calls",
+        "Click toggle to reactivate the provider",
+        "Verify provider status changes to active",
+        "Verify provider can be used for calls again"
+      ],
+      "expected_result": "PBX provider status can be toggled successfully",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-009",
+      "name": "Primary PBX Management",
+      "description": "Test setting and managing primary PBX provider",
+      "priority": "High",
+      "category": "Primary Management",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Find a PBX provider that is not primary",
+        "Set it as primary PBX",
+        "Verify only one provider can be primary at a time",
+        "Verify previous primary provider is automatically unset",
+        "Verify primary provider is used for default call routing",
+        "Test setting a different provider as primary",
+        "Verify primary status is transferred correctly"
+      ],
+      "expected_result": "Primary PBX management works correctly with only one primary at a time",
+      "test_type": "UI + Database"
+    },
+    {
+      "id": "CC-PBX-010",
+      "name": "PBX Provider Search and Filter",
+      "description": "Test searching and filtering PBX providers",
+      "priority": "Low",
+      "category": "Search & Filter",
+      "steps": [
+        "Navigate to Call Center > Settings tab",
+        "Use search box to find providers by name",
+        "Filter providers by provider type",
+        "Filter providers by status (active/inactive)",
+        "Filter providers by primary status",
+        "Verify search and filter results are accurate",
+        "Test clearing filters and search",
+        "Verify all providers are displayed again"
+      ],
+      "expected_result": "Search and filter functionality works correctly",
+      "test_type": "UI"
+    },
+    {
+      "id": "CC-PBX-011",
+      "name": "Database Schema Verification",
+      "description": "Test that PBX provider data is correctly stored in database",
+      "priority": "High",
+      "category": "Database Verification",
+      "steps": [
+        "Create a PBX provider via UI",
+        "Connect to database directly",
+        "Query pbx_providers table",
+        "Verify all fields are correctly stored:",
+        "  - id, organization_id, created_by",
+        "  - name, provider_type, display_name, description",
+        "  - host, port, username, password, api_key",
+        "  - context, caller_id_field, dialplan_context",
+        "  - recording_enabled, recording_path",
+        "  - transcription_enabled, cdr_enabled, cdr_path",
+        "  - webhook_url, webhook_secret",
+        "  - is_active, is_primary, auto_assign_calls",
+        "  - created_at, updated_at, last_sync",
+        "Verify foreign key constraints are maintained",
+        "Verify data types are correct"
+      ],
+      "expected_result": "All PBX provider data is correctly stored in database with proper constraints",
+      "test_type": "Database"
+    },
+    {
+      "id": "CC-PBX-012",
+      "name": "PBX Extensions Table Verification",
+      "description": "Test that pbx_extensions table has all required columns",
+      "priority": "High",
+      "category": "Database Schema",
+      "steps": [
+        "Connect to database directly",
+        "Check pbx_extensions table structure",
+        "Verify all required columns exist:",
+        "  - id, provider_id, organization_id, user_id",
+        "  - extension_number, extension_name, extension_type",
+        "  - device_type, device_config",
+        "  - voicemail_enabled, voicemail_password",
+        "  - ring_timeout, max_ring_timeout",
+        "  - call_forward_enabled, call_forward_number, call_forward_conditions",
+        "  - presence_status, dnd_enabled, auto_answer",
+        "  - queue_strategy, queue_timeout, queue_retry, queue_wrapup_time",
+        "  - is_active, is_registered, last_registered",
+        "  - created_at, updated_at",
+        "Verify foreign key constraints to pbx_providers table",
+        "Verify cascade delete works correctly"
+      ],
+      "expected_result": "pbx_extensions table has all required columns and proper constraints",
+      "test_type": "Database"
+    },
+    {
+      "id": "CC-PBX-013",
+      "name": "PBX Provider API Endpoints",
+      "description": "Test all PBX provider API endpoints",
+      "priority": "High",
+      "category": "API Testing",
+      "steps": [
+        "Test GET /api/telephony/providers",
+        "Verify returns list of providers for organization",
+        "Test POST /api/telephony/providers",
+        "Verify creates new provider with proper validation",
+        "Test GET /api/telephony/providers/{id}",
+        "Verify returns specific provider details",
+        "Test PUT /api/telephony/providers/{id}",
+        "Verify updates provider successfully",
+        "Test DELETE /api/telephony/providers/{id}",
+        "Verify deletes provider and cascades to extensions",
+        "Test POST /api/telephony/providers/{id}/test",
+        "Verify connection testing works",
+        "Test all endpoints with invalid data",
+        "Verify proper error responses"
+      ],
+      "expected_result": "All PBX provider API endpoints work correctly with proper validation",
+      "test_type": "API"
+    },
+    {
+      "id": "CC-PBX-014",
+      "name": "PBX Provider Error Handling",
+      "description": "Test error handling for PBX provider operations",
+      "priority": "Medium",
+      "category": "Error Handling",
+      "steps": [
+        "Try to create provider with invalid host format",
+        "Verify appropriate error message is shown",
+        "Try to create provider with invalid port number",
+        "Verify appropriate error message is shown",
+        "Try to edit non-existent provider",
+        "Verify 404 error is returned",
+        "Try to delete provider that doesn't exist",
+        "Verify 404 error is returned",
+        "Try to test connection with invalid credentials",
+        "Verify connection test failure is handled gracefully",
+        "Test with database connection issues",
+        "Verify system handles database errors gracefully"
+      ],
+      "expected_result": "All error scenarios are handled gracefully with appropriate messages",
+      "test_type": "Error Handling"
+    },
+    {
+      "id": "CC-PBX-015",
+      "name": "PBX Provider Performance",
+      "description": "Test performance of PBX provider operations",
+      "priority": "Low",
+      "category": "Performance",
+      "steps": [
+        "Create multiple PBX providers (10+)",
+        "Measure time to load provider list",
+        "Verify list loads within acceptable time (< 2 seconds)",
+        "Test search performance with large number of providers",
+        "Verify search results appear quickly",
+        "Test connection testing performance",
+        "Verify connection tests complete within reasonable time",
+        "Test database query performance",
+        "Verify database operations are optimized"
+      ],
+      "expected_result": "PBX provider operations perform within acceptable time limits",
+      "test_type": "Performance"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "endpoint": "GET /api/telephony/providers",
+      "description": "Get all PBX providers for organization",
+      "test_cases": ["CC-PBX-007", "CC-PBX-013"]
+    },
+    {
+      "endpoint": "POST /api/telephony/providers",
+      "description": "Create new PBX provider",
+      "test_cases": ["CC-PBX-001", "CC-PBX-002", "CC-PBX-003", "CC-PBX-013"]
+    },
+    {
+      "endpoint": "GET /api/telephony/providers/{id}",
+      "description": "Get specific PBX provider",
+      "test_cases": ["CC-PBX-013"]
+    },
+    {
+      "endpoint": "PUT /api/telephony/providers/{id}",
+      "description": "Update PBX provider",
+      "test_cases": ["CC-PBX-004", "CC-PBX-008", "CC-PBX-009", "CC-PBX-013"]
+    },
+    {
+      "endpoint": "DELETE /api/telephony/providers/{id}",
+      "description": "Delete PBX provider",
+      "test_cases": ["CC-PBX-005", "CC-PBX-013"]
+    },
+    {
+      "endpoint": "POST /api/telephony/providers/{id}/test",
+      "description": "Test PBX connection",
+      "test_cases": ["CC-PBX-006", "CC-PBX-013"]
+    }
+  ],
+  "database_tables": [
+    {
+      "table": "pbx_providers",
+      "description": "Stores PBX provider configurations",
+      "test_cases": ["CC-PBX-011"]
+    },
+    {
+      "table": "pbx_extensions",
+      "description": "Stores PBX extension configurations",
+      "test_cases": ["CC-PBX-012"]
+    }
+  ],
+  "test_data": {
+    "sample_providers": [
+      {
+        "name": "Main Asterisk Server",
+        "provider_type": "asterisk",
+        "display_name": "Main PBX",
+        "host": "192.168.1.100",
+        "port": 8088,
+        "username": "admin",
+        "password": "admin123",
+        "is_primary": true,
+        "is_active": true
+      },
+      {
+        "name": "Backup FreePBX",
+        "provider_type": "freepbx",
+        "display_name": "Backup Server",
+        "host": "192.168.1.101",
+        "port": 8088,
+        "username": "freepbx",
+        "password": "freepbx123",
+        "is_primary": false,
+        "is_active": true
+      }
+    ]
+  }
+}
+
+
+

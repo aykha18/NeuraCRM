@@ -1,0 +1,411 @@
+{
+  "module": "Predictive Analytics",
+  "description": "AI-powered insights and forecasting features",
+  "test_cases": [
+    {
+      "id": "PA_001",
+      "name": "Predictive Analytics Page Load",
+      "description": "Verify the predictive analytics page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /predictive-analytics",
+        "Verify page title contains 'Predictive Analytics'",
+        "Verify AI-Powered badge is displayed",
+        "Verify demo mode warning is shown",
+        "Verify all 5 key metrics cards are displayed",
+        "Verify navigation tabs are present (Overview, Sales Forecast, Churn Prediction, Revenue Optimization, Market Opportunities)"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/predictive-analytics",
+        "expected_elements": [
+          "h1:contains('Predictive Analytics')",
+          ".bg-blue-100:contains('AI-Powered')",
+          ".bg-yellow-50:contains('Demo Mode')",
+          ".grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-5"
+        ]
+      }
+    },
+    {
+      "id": "PA_002",
+      "name": "Key Metrics Display",
+      "description": "Verify all key metrics are displayed with correct values and formatting",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Verify 6M Forecasted Revenue metric is displayed",
+        "Verify At-Risk Customers metric is displayed",
+        "Verify High Risk metric is displayed",
+        "Verify Avg Deal Size metric is displayed",
+        "Verify Opportunities metric is displayed",
+        "Verify all metrics show numeric values",
+        "Verify currency formatting for revenue metrics"
+      ],
+      "expected_result": "All 5 key metrics display with proper formatting and values",
+      "test_data": {
+        "expected_metrics": [
+          "6M Forecasted Revenue",
+          "At-Risk Customers", 
+          "High Risk",
+          "Avg Deal Size",
+          "Opportunities"
+        ]
+      }
+    },
+    {
+      "id": "PA_003",
+      "name": "Navigation Tabs Functionality",
+      "description": "Test navigation between different analytics tabs",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Verify Overview tab is active by default",
+        "Click on Sales Forecast tab",
+        "Verify Sales Forecast content is displayed",
+        "Click on Churn Prediction tab",
+        "Verify Churn Prediction content is displayed",
+        "Click on Revenue Optimization tab",
+        "Verify Revenue Optimization content is displayed",
+        "Click on Market Opportunities tab",
+        "Verify Market Opportunities content is displayed",
+        "Click back to Overview tab",
+        "Verify Overview content is displayed"
+      ],
+      "expected_result": "All tabs switch correctly and display appropriate content",
+      "test_data": {
+        "tabs": [
+          "overview",
+          "forecast", 
+          "churn",
+          "revenue",
+          "market"
+        ]
+      }
+    },
+    {
+      "id": "PA_004",
+      "name": "Overview Tab Content",
+      "description": "Verify Overview tab displays all summary information correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Ensure Overview tab is active",
+        "Verify Sales Trend section is displayed",
+        "Verify Churn Risk Summary section is displayed",
+        "Verify Revenue Insights section is displayed",
+        "Verify Market Opportunities section is displayed",
+        "Verify all sections contain relevant data",
+        "Verify trend indicators show correct colors"
+      ],
+      "expected_result": "Overview tab shows all summary sections with data",
+      "test_data": {
+        "expected_sections": [
+          "Sales Trend",
+          "Churn Risk Summary",
+          "Revenue Insights", 
+          "Market Opportunities"
+        ]
+      }
+    },
+    {
+      "id": "PA_005",
+      "name": "Sales Forecast Tab",
+      "description": "Verify Sales Forecast tab displays forecast data correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Click on Sales Forecast tab",
+        "Verify 'Sales Forecast (Next 6 Months)' heading is displayed",
+        "Verify forecast table is displayed",
+        "Verify table contains columns: Month, Predicted Revenue, Predicted Deals, Confidence (80%)",
+        "Verify table contains 6 months of forecast data",
+        "Verify revenue values are properly formatted as currency",
+        "Verify confidence intervals are displayed"
+      ],
+      "expected_result": "Sales Forecast tab displays complete forecast table with proper formatting",
+      "test_data": {
+        "expected_columns": [
+          "Month",
+          "Predicted Revenue",
+          "Predicted Deals", 
+          "Confidence (80%)"
+        ],
+        "expected_months": 6
+      }
+    },
+    {
+      "id": "PA_006",
+      "name": "Churn Prediction Tab",
+      "description": "Verify Churn Prediction tab displays risk analysis correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Click on Churn Prediction tab",
+        "Verify 'Customer Churn Risk Analysis' heading is displayed",
+        "Verify risk summary cards are displayed (High Risk, Medium Risk, Low Risk)",
+        "Verify risk cards show numeric values",
+        "Verify risk cards have appropriate color coding",
+        "Verify churn risks list is displayed",
+        "Verify each risk entry shows contact name, company, risk level, and score",
+        "Verify risk levels are color-coded correctly"
+      ],
+      "expected_result": "Churn Prediction tab displays complete risk analysis with proper color coding",
+      "test_data": {
+        "expected_risk_levels": [
+          "High Risk",
+          "Medium Risk",
+          "Low Risk"
+        ],
+        "expected_risk_info": [
+          "contact_name",
+          "company",
+          "risk_level",
+          "risk_score"
+        ]
+      }
+    },
+    {
+      "id": "PA_007",
+      "name": "Revenue Optimization Tab",
+      "description": "Verify Revenue Optimization tab displays optimization opportunities",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Click on Revenue Optimization tab",
+        "Verify 'Revenue Optimization Opportunities' heading is displayed",
+        "Verify optimization opportunities are listed",
+        "Verify each opportunity shows type, description, impact, and effort",
+        "Verify impact and effort are color-coded",
+        "Verify 'Recommendations' section is displayed",
+        "Verify recommendations are listed with checkmark icons"
+      ],
+      "expected_result": "Revenue Optimization tab displays opportunities and recommendations",
+      "test_data": {
+        "expected_sections": [
+          "Revenue Optimization Opportunities",
+          "Recommendations"
+        ],
+        "expected_opportunity_fields": [
+          "type",
+          "description",
+          "impact",
+          "effort"
+        ]
+      }
+    },
+    {
+      "id": "PA_008",
+      "name": "Market Opportunities Tab",
+      "description": "Verify Market Opportunities tab displays market analysis",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Click on Market Opportunities tab",
+        "Verify 'Source Effectiveness' heading is displayed",
+        "Verify source effectiveness table is displayed",
+        "Verify table contains columns: Source, Total Leads, Qualification Rate, Conversion Rate, Effectiveness Score",
+        "Verify effectiveness scores are color-coded",
+        "Verify 'Market Opportunities' section is displayed",
+        "Verify market opportunities are listed with impact and effort indicators"
+      ],
+      "expected_result": "Market Opportunities tab displays source analysis and opportunities",
+      "test_data": {
+        "expected_table_columns": [
+          "Source",
+          "Total Leads",
+          "Qualification Rate",
+          "Conversion Rate",
+          "Effectiveness Score"
+        ],
+        "expected_sections": [
+          "Source Effectiveness",
+          "Market Opportunities"
+        ]
+      }
+    },
+    {
+      "id": "PA_009",
+      "name": "API Data Loading",
+      "description": "Verify predictive analytics data loads from API or fallback",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Wait for page to load completely",
+        "Verify loading spinner is shown initially",
+        "Verify data is displayed (either from API or fallback)",
+        "Check browser network tab for API calls to /api/predictive-analytics/dashboard-insights",
+        "Verify demo mode warning is displayed if using fallback data",
+        "Verify all metrics show values (not empty or zero)"
+      ],
+      "expected_result": "Data loads successfully from API or fallback with proper indicators",
+      "test_data": {
+        "api_endpoint": "/api/predictive-analytics/dashboard-insights",
+        "fallback_indicator": "Demo Mode"
+      }
+    },
+    {
+      "id": "PA_010",
+      "name": "Responsive Design",
+      "description": "Verify predictive analytics page is responsive on different screen sizes",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Test on desktop view (1920x1080)",
+        "Verify all content is visible and properly laid out",
+        "Resize browser to tablet view (768x1024)",
+        "Verify layout adapts correctly",
+        "Resize browser to mobile view (375x667)",
+        "Verify content is accessible and readable",
+        "Verify navigation tabs work on mobile",
+        "Verify tables are horizontally scrollable on mobile"
+      ],
+      "expected_result": "Page is responsive and functional on all screen sizes",
+      "test_data": {
+        "screen_sizes": [
+          "1920x1080",
+          "768x1024", 
+          "375x667"
+        ]
+      }
+    },
+    {
+      "id": "PA_011",
+      "name": "Error Handling - API Failure",
+      "description": "Verify graceful handling when API fails",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify fallback data is displayed",
+        "Verify demo mode warning is shown",
+        "Verify error message is displayed if API error occurs",
+        "Verify page remains functional with fallback data",
+        "Verify all tabs and navigation still work"
+      ],
+      "expected_result": "Page handles API failures gracefully with fallback data",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error"
+        ]
+      }
+    },
+    {
+      "id": "PA_012",
+      "name": "Data Formatting",
+      "description": "Verify all data is properly formatted (currency, percentages, numbers)",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Verify revenue values are formatted as currency ($X,XXX)",
+        "Verify percentages are formatted with % symbol",
+        "Verify large numbers use comma separators",
+        "Verify risk scores are displayed as whole numbers",
+        "Verify dates are formatted consistently",
+        "Verify all numeric values are readable and properly aligned"
+      ],
+      "expected_result": "All data is properly formatted and readable",
+      "test_data": {
+        "formatting_types": [
+          "currency",
+          "percentage",
+          "number",
+          "date"
+        ]
+      }
+    },
+    {
+      "id": "PA_013",
+      "name": "Color Coding and Visual Indicators",
+      "description": "Verify color coding is consistent and meaningful",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Verify high risk items are red/orange colored",
+        "Verify medium risk items are yellow colored",
+        "Verify low risk items are green colored",
+        "Verify positive trends are green colored",
+        "Verify negative trends are red colored",
+        "Verify neutral items are gray colored",
+        "Verify color coding is consistent across all tabs"
+      ],
+      "expected_result": "Color coding is consistent and meaningful throughout the interface",
+      "test_data": {
+        "color_mappings": {
+          "high_risk": "red/orange",
+          "medium_risk": "yellow",
+          "low_risk": "green",
+          "positive": "green",
+          "negative": "red",
+          "neutral": "gray"
+        }
+      }
+    },
+    {
+      "id": "PA_014",
+      "name": "Performance and Loading",
+      "description": "Verify page loads within acceptable time limits",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Measure initial page load time",
+        "Verify page loads within 3 seconds",
+        "Verify loading spinner is shown during data fetch",
+        "Verify no JavaScript errors in console",
+        "Verify all images and icons load correctly",
+        "Verify smooth transitions between tabs"
+      ],
+      "expected_result": "Page loads quickly and smoothly without errors",
+      "test_data": {
+        "max_load_time": "3 seconds",
+        "performance_metrics": [
+          "initial_load",
+          "tab_switching",
+          "data_rendering"
+        ]
+      }
+    },
+    {
+      "id": "PA_015",
+      "name": "Accessibility",
+      "description": "Verify predictive analytics page is accessible",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to predictive analytics page",
+        "Verify all interactive elements are keyboard accessible",
+        "Verify proper heading hierarchy (h1, h2, h3)",
+        "Verify alt text for images and icons",
+        "Verify sufficient color contrast for text",
+        "Verify focus indicators are visible",
+        "Test with screen reader if available"
+      ],
+      "expected_result": "Page meets basic accessibility standards",
+      "test_data": {
+        "accessibility_checks": [
+          "keyboard_navigation",
+          "heading_hierarchy",
+          "alt_text",
+          "color_contrast",
+          "focus_indicators"
+        ]
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+Comprehensive CRM Modules Test Suite
+Runs all customer accounts, financial management, customer support, and call center tests
+"""
+
+import subprocess
+import sys
+import time
+from datetime import datetime
+
+def run_test_script(script_name, description):
+    """Run a test script and return the result"""
+    print(f"\n{'='*60}")
+    print(f"🎯 {description}")
+    print(f"{'='*60}")
+    
+    try:
+        result = subprocess.run([
+            sys.executable, 
+            f"tests/automation/scripts/{script_name}"
+        ], capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            print(f"✅ {description} - PASSED")
+            return True
+        else:
+            print(f"❌ {description} - FAILED")
+            print(f"Error: {result.stderr}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print(f"⏰ {description} - TIMEOUT")
+        return False
+    except Exception as e:
+        print(f"❌ {description} - ERROR: {e}")
+        return False
+
+def test_comprehensive_crm_modules():
+    """Run comprehensive CRM modules test suite"""
+    
+    print("🎯 COMPREHENSIVE CRM MODULES TEST SUITE")
+    print("=" * 60)
+    print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Define test scripts to run
+    test_scripts = [
+        {
+            "script": "test_customer_accounts_page_load.py",
+            "description": "Customer Accounts Page Load Test"
+        },
+        {
+            "script": "test_financial_management_page_load.py",
+            "description": "Financial Management Page Load Test"
+        },
+        {
+            "script": "test_customer_support_page_load.py",
+            "description": "Customer Support Page Load Test"
+        },
+        {
+            "script": "test_call_center_page_load.py",
+            "description": "Call Center Page Load Test"
+        }
+    ]
+    
+    # Run all tests
+    results = []
+    passed = 0
+    failed = 0
+    
+    for test in test_scripts:
+        success = run_test_script(test["script"], test["description"])
+        results.append({
+            "test": test["description"],
+            "script": test["script"],
+            "passed": success
+        })
+        
+        if success:
+            passed += 1
+        else:
+            failed += 1
+        
+        # Small delay between tests
+        time.sleep(2)
+    
+    # Print summary
+    print(f"\n{'='*60}")
+    print("📊 COMPREHENSIVE CRM MODULES TEST SUMMARY")
+    print(f"{'='*60}")
+    print(f"Total Tests: {len(test_scripts)}")
+    print(f"Passed: {passed}")
+    print(f"Failed: {failed}")
+    print(f"Success Rate: {(passed/len(test_scripts)*100):.1f}%")
+    
+    print(f"\n📋 Detailed Results:")
+    for result in results:
+        status = "✅ PASSED" if result["passed"] else "❌ FAILED"
+        print(f"  {status} - {result['test']}")
+    
+    # Generate test report
+    report_data = {
+        "test_suite": "Comprehensive CRM Modules",
+        "timestamp": datetime.now().isoformat(),
+        "total_tests": len(test_scripts),
+        "passed": passed,
+        "failed": failed,
+        "success_rate": passed/len(test_scripts)*100,
+        "results": results
+    }
+    
+    # Save report
+    import json
+    report_filename = f"test-results/comprehensive_crm_modules_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    with open(report_filename, 'w') as f:
+        json.dump(report_data, f, indent=2)
+    
+    print(f"\n📄 Test report saved: {report_filename}")
+    
+    if failed == 0:
+        print(f"\n🎉 ALL CRM MODULES TESTS PASSED!")
+        return True
+    else:
+        print(f"\n⚠️ {failed} CRM MODULES TESTS FAILED")
+        return False
+
+if __name__ == "__main__":
+    success = test_comprehensive_crm_modules()
+    sys.exit(0 if success else 1)
+

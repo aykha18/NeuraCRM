@@ -1,0 +1,406 @@
+{
+  "module": "Chat",
+  "description": "Real-time team communication with rooms, reactions, and file sharing",
+  "test_cases": [
+    {
+      "id": "CH_001",
+      "name": "Chat Page Load",
+      "description": "Verify the chat page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /chat",
+        "Verify page title contains 'Chat'",
+        "Verify sidebar is displayed with room list",
+        "Verify chat window is displayed",
+        "Verify 'Create Room' button is present",
+        "Verify search functionality is available"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/chat",
+        "expected_elements": [
+          "h1:contains('Chat')",
+          ".w-80.bg-white.border-r",
+          "button:contains('Create Room')",
+          "input[placeholder*='Search conversations']"
+        ]
+      }
+    },
+    {
+      "id": "CH_002",
+      "name": "Chat Rooms Display",
+      "description": "Verify chat rooms are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to chat page",
+        "Verify rooms list is displayed in sidebar",
+        "Verify each room shows name and description",
+        "Verify room type is indicated (direct, group, channel)",
+        "Verify room icons are displayed correctly",
+        "Verify room timestamps are shown",
+        "Verify online status indicators are displayed"
+      ],
+      "expected_result": "All chat rooms display with complete information",
+      "test_data": {
+        "expected_room_info": [
+          "name",
+          "description",
+          "room_type",
+          "updated_at",
+          "created_at"
+        ],
+        "room_types": [
+          "direct",
+          "group",
+          "channel"
+        ],
+        "room_icons": {
+          "direct": "👤",
+          "group": "👥",
+          "channel": "📢"
+        }
+      }
+    },
+    {
+      "id": "CH_003",
+      "name": "Room Selection",
+      "description": "Test selecting a chat room and viewing messages",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to chat page",
+        "Click on a chat room",
+        "Verify room is highlighted/selected",
+        "Verify chat window displays room messages",
+        "Verify room name is shown in chat header",
+        "Verify message input field is available",
+        "Verify send button is present"
+      ],
+      "expected_result": "Room selection works correctly and displays messages",
+      "test_data": {
+        "expected_behavior": [
+          "room_highlighting",
+          "message_display",
+          "input_field",
+          "send_button"
+        ]
+      }
+    },
+    {
+      "id": "CH_004",
+      "name": "Message Sending",
+      "description": "Test sending a message in a chat room",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Type a message in the input field",
+        "Click send button or press Enter",
+        "Verify message appears in the chat",
+        "Verify message shows sender name and timestamp",
+        "Verify input field is cleared after sending"
+      ],
+      "expected_result": "Message sending works correctly and displays in chat",
+      "test_data": {
+        "expected_message_info": [
+          "content",
+          "sender_name",
+          "timestamp",
+          "avatar"
+        ]
+      }
+    },
+    {
+      "id": "CH_005",
+      "name": "Room Creation",
+      "description": "Test creating a new chat room",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Click 'Create Room' button",
+        "Verify room creation modal is displayed",
+        "Fill in room name",
+        "Fill in room description",
+        "Select room type",
+        "Add participants",
+        "Submit the form",
+        "Verify new room is created and appears in the list",
+        "Verify new room is automatically selected"
+      ],
+      "expected_result": "Room creation works correctly and creates new rooms",
+      "test_data": {
+        "form_fields": [
+          "name",
+          "description",
+          "room_type",
+          "participants"
+        ],
+        "room_types": [
+          "direct",
+          "group",
+          "channel"
+        ]
+      }
+    },
+    {
+      "id": "CH_006",
+      "name": "Real-time Messaging",
+      "description": "Test real-time message updates via WebSocket",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Open another browser tab/window with same room",
+        "Send a message from one tab",
+        "Verify message appears in real-time in other tab",
+        "Verify typing indicators work correctly",
+        "Verify message timestamps are accurate"
+      ],
+      "expected_result": "Real-time messaging works correctly via WebSocket",
+      "test_data": {
+        "expected_realtime_features": [
+          "message_sync",
+          "typing_indicators",
+          "presence_updates",
+          "timestamp_accuracy"
+        ]
+      }
+    },
+    {
+      "id": "CH_007",
+      "name": "Message Search",
+      "description": "Test searching for messages in chat rooms",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Use search input in sidebar",
+        "Type a search query",
+        "Verify search results are filtered",
+        "Verify search highlights matching text",
+        "Verify search works across all rooms",
+        "Clear search to show all rooms"
+      ],
+      "expected_result": "Message search works correctly and filters results",
+      "test_data": {
+        "expected_search_behavior": [
+          "real_time_filtering",
+          "text_highlighting",
+          "cross_room_search",
+          "clear_functionality"
+        ]
+      }
+    },
+    {
+      "id": "CH_008",
+      "name": "Message Reactions",
+      "description": "Test adding reactions to messages",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Hover over a message",
+        "Click on reaction button",
+        "Select an emoji reaction",
+        "Verify reaction is added to message",
+        "Verify reaction count is displayed",
+        "Test removing a reaction"
+      ],
+      "expected_result": "Message reactions work correctly",
+      "test_data": {
+        "expected_reaction_features": [
+          "emoji_selection",
+          "reaction_display",
+          "reaction_count",
+          "reaction_removal"
+        ]
+      }
+    },
+    {
+      "id": "CH_009",
+      "name": "Message Replies",
+      "description": "Test replying to messages",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Click reply button on a message",
+        "Verify reply input is focused",
+        "Type a reply message",
+        "Send the reply",
+        "Verify reply is displayed with thread context",
+        "Verify original message is referenced"
+      ],
+      "expected_result": "Message replies work correctly and show thread context",
+      "test_data": {
+        "expected_reply_features": [
+          "reply_input_focus",
+          "thread_context",
+          "message_reference",
+          "reply_display"
+        ]
+      }
+    },
+    {
+      "id": "CH_010",
+      "name": "Message Editing",
+      "description": "Test editing sent messages",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Send a message",
+        "Click edit button on the message",
+        "Modify the message content",
+        "Save the changes",
+        "Verify edited message is displayed",
+        "Verify edit indicator is shown"
+      ],
+      "expected_result": "Message editing works correctly and shows edit indicators",
+      "test_data": {
+        "expected_edit_features": [
+          "edit_mode",
+          "content_modification",
+          "edit_indicator",
+          "timestamp_update"
+        ]
+      }
+    },
+    {
+      "id": "CH_011",
+      "name": "Message Deletion",
+      "description": "Test deleting messages",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Send a message",
+        "Click delete button on the message",
+        "Verify confirmation dialog is displayed",
+        "Confirm deletion",
+        "Verify message is removed from chat",
+        "Verify deletion indicator is shown"
+      ],
+      "expected_result": "Message deletion works correctly with confirmation",
+      "test_data": {
+        "expected_delete_features": [
+          "confirmation_dialog",
+          "message_removal",
+          "deletion_indicator",
+          "permission_check"
+        ]
+      }
+    },
+    {
+      "id": "CH_012",
+      "name": "File Sharing",
+      "description": "Test sharing files in chat",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Click file attachment button",
+        "Select a file to upload",
+        "Verify file upload progress is shown",
+        "Verify file is attached to message",
+        "Verify file preview is displayed",
+        "Send the message with file",
+        "Verify file is displayed in chat"
+      ],
+      "expected_result": "File sharing works correctly and displays file previews",
+      "test_data": {
+        "expected_file_features": [
+          "file_upload",
+          "upload_progress",
+          "file_preview",
+          "file_display"
+        ]
+      }
+    },
+    {
+      "id": "CH_013",
+      "name": "Typing Indicators",
+      "description": "Test typing indicators in real-time",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to chat page",
+        "Select a chat room",
+        "Open another browser tab with same room",
+        "Start typing in one tab",
+        "Verify typing indicator appears in other tab",
+        "Stop typing",
+        "Verify typing indicator disappears",
+        "Verify multiple users typing is handled"
+      ],
+      "expected_result": "Typing indicators work correctly in real-time",
+      "test_data": {
+        "expected_typing_features": [
+          "real_time_indicator",
+          "multiple_users",
+          "indicator_timeout",
+          "user_identification"
+        ]
+      }
+    },
+    {
+      "id": "CH_014",
+      "name": "User Presence",
+      "description": "Test user presence indicators",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to chat page",
+        "Verify online status indicators are displayed",
+        "Check different user statuses (online, offline, away)",
+        "Verify status updates in real-time",
+        "Verify status colors are appropriate"
+      ],
+      "expected_result": "User presence indicators work correctly",
+      "test_data": {
+        "expected_presence_features": [
+          "online_status",
+          "status_colors",
+          "real_time_updates",
+          "user_identification"
+        ]
+      }
+    },
+    {
+      "id": "CH_015",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when WebSocket fails or API errors occur",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to chat page",
+        "Simulate WebSocket connection failure",
+        "Verify error message is displayed",
+        "Verify reconnection attempt is made",
+        "Verify chat remains functional after reconnection",
+        "Simulate API failure for room loading",
+        "Verify error handling for failed operations"
+      ],
+      "expected_result": "Chat handles connection failures gracefully with reconnection",
+      "test_data": {
+        "error_scenarios": [
+          "websocket_disconnect",
+          "api_timeout",
+          "network_error",
+          "server_error"
+        ]
+      }
+    }
+  ]
+}
+

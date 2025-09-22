@@ -1,0 +1,430 @@
+{
+  "module": "Email Automation",
+  "description": "AI-powered email campaigns with personalization, timing optimization, and behavioral triggers",
+  "test_cases": [
+    {
+      "id": "EA_001",
+      "name": "Email Automation Page Load",
+      "description": "Verify the email automation page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /email-automation",
+        "Verify page title contains 'Email Automation'",
+        "Verify page description is displayed",
+        "Verify tabs are displayed (Templates, Campaigns, Analytics)",
+        "Verify 'Create Sample Templates' button is present",
+        "Verify default tab is 'Templates'"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/email-automation",
+        "expected_elements": [
+          "h1:contains('Email Automation')",
+          ".text-gray-600:contains('Manage templates, campaigns, and automation')",
+          "button:contains('Create Sample Templates')"
+        ]
+      }
+    },
+    {
+      "id": "EA_002",
+      "name": "Email Templates Display",
+      "description": "Verify email templates are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to email automation page",
+        "Verify Templates tab is active",
+        "Verify templates list is displayed",
+        "Verify each template shows name and subject",
+        "Verify template category is displayed",
+        "Verify template validation status is shown",
+        "Verify template actions (Preview, Edit, Delete) are available",
+        "Verify 'Create Template' button is present"
+      ],
+      "expected_result": "All email templates display with complete information",
+      "test_data": {
+        "expected_template_info": [
+          "name",
+          "subject",
+          "category",
+          "validation_status",
+          "total_variables"
+        ],
+        "expected_actions": [
+          "preview",
+          "edit",
+          "delete"
+        ]
+      }
+    },
+    {
+      "id": "EA_003",
+      "name": "Template Creation Form",
+      "description": "Test creating a new email template",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to email automation page",
+        "Click 'Create Template' button",
+        "Verify template creation modal is displayed",
+        "Fill in template name",
+        "Select template category",
+        "Enter template subject with variables",
+        "Enter template body with HTML and variables",
+        "Verify available variables are displayed",
+        "Submit the form",
+        "Verify new template is created and appears in the list"
+      ],
+      "expected_result": "Template creation form works correctly and creates new templates",
+      "test_data": {
+        "form_fields": [
+          "name",
+          "category",
+          "subject",
+          "body"
+        ],
+        "available_variables": [
+          "{{contact.name}}",
+          "{{contact.email}}",
+          "{{contact.company}}",
+          "{{lead.title}}",
+          "{{deal.value}}",
+          "{{user.name}}"
+        ]
+      }
+    },
+    {
+      "id": "EA_004",
+      "name": "Template Editing",
+      "description": "Test editing an existing email template",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click Edit button on a template",
+        "Verify edit modal opens with pre-filled data",
+        "Modify template name",
+        "Modify template subject",
+        "Modify template body",
+        "Submit the form",
+        "Verify template is updated in the list"
+      ],
+      "expected_result": "Template editing works correctly and updates existing templates",
+      "test_data": {
+        "expected_behavior": [
+          "modal_opens",
+          "data_prefilled",
+          "updates_saved",
+          "list_refreshed"
+        ]
+      }
+    },
+    {
+      "id": "EA_005",
+      "name": "Template Preview",
+      "description": "Test previewing an email template",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click Preview button on a template",
+        "Verify preview modal is displayed",
+        "Select recipient type (lead, contact, deal)",
+        "Select specific recipient",
+        "Verify preview shows personalized subject and body",
+        "Verify variables are replaced with actual data",
+        "Close preview modal"
+      ],
+      "expected_result": "Template preview works correctly and shows personalized content",
+      "test_data": {
+        "recipient_types": [
+          "lead",
+          "contact",
+          "deal"
+        ],
+        "expected_preview": [
+          "personalized_subject",
+          "personalized_body",
+          "variable_replacement"
+        ]
+      }
+    },
+    {
+      "id": "EA_006",
+      "name": "Template Validation",
+      "description": "Verify template validation works correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Create a template with valid variables",
+        "Verify template shows 'Valid' status",
+        "Create a template with invalid variables",
+        "Verify template shows 'Invalid' status",
+        "Verify total variables count is displayed",
+        "Verify validation status is color-coded"
+      ],
+      "expected_result": "Template validation works correctly and shows appropriate status",
+      "test_data": {
+        "validation_states": [
+          "valid",
+          "invalid"
+        ],
+        "color_coding": {
+          "valid": "text-green-500",
+          "invalid": "text-red-500"
+        }
+      }
+    },
+    {
+      "id": "EA_007",
+      "name": "Email Campaigns Display",
+      "description": "Verify email campaigns are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to email automation page",
+        "Click on Campaigns tab",
+        "Verify campaigns list is displayed",
+        "Verify each campaign shows name, template, target, status, and created date",
+        "Verify campaign status is color-coded",
+        "Verify campaign actions are available",
+        "Verify 'Create Campaign' button is present"
+      ],
+      "expected_result": "All email campaigns display with complete information",
+      "test_data": {
+        "expected_campaign_info": [
+          "name",
+          "template",
+          "target_type",
+          "target_count",
+          "status",
+          "created_date"
+        ],
+        "expected_statuses": [
+          "draft",
+          "scheduled",
+          "sending",
+          "completed",
+          "paused"
+        ]
+      }
+    },
+    {
+      "id": "EA_008",
+      "name": "Campaign Creation Form",
+      "description": "Test creating a new email campaign",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to email automation page",
+        "Click on Campaigns tab",
+        "Click 'Create Campaign' button",
+        "Verify campaign creation modal is displayed",
+        "Fill in campaign name",
+        "Select email template",
+        "Select target type (leads, contacts, deals)",
+        "Select target recipients",
+        "Submit the form",
+        "Verify new campaign is created and appears in the list"
+      ],
+      "expected_result": "Campaign creation form works correctly and creates new campaigns",
+      "test_data": {
+        "form_fields": [
+          "name",
+          "template_id",
+          "target_type",
+          "target_ids"
+        ],
+        "target_types": [
+          "leads",
+          "contacts",
+          "deals"
+        ]
+      }
+    },
+    {
+      "id": "EA_009",
+      "name": "Campaign Sending",
+      "description": "Test sending an email campaign",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click on Campaigns tab",
+        "Find a campaign with 'draft' status",
+        "Click Send button",
+        "Verify confirmation dialog is displayed",
+        "Confirm sending",
+        "Verify campaign status updates",
+        "Verify success message is displayed"
+      ],
+      "expected_result": "Campaign sending works correctly and updates status",
+      "test_data": {
+        "expected_behavior": [
+          "confirmation_dialog",
+          "status_update",
+          "success_message",
+          "sent_count_display"
+        ]
+      }
+    },
+    {
+      "id": "EA_010",
+      "name": "Email Analytics Display",
+      "description": "Verify email analytics are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click on Analytics tab",
+        "Verify analytics metrics are displayed",
+        "Verify total sent count is shown",
+        "Verify opened count is shown",
+        "Verify clicked count is shown",
+        "Verify open rate percentage is shown",
+        "Verify recent email logs table is displayed"
+      ],
+      "expected_result": "Email analytics display correctly with all metrics",
+      "test_data": {
+        "expected_metrics": [
+          "total_sent",
+          "total_opened",
+          "total_clicked",
+          "open_rate"
+        ],
+        "expected_log_info": [
+          "recipient_name",
+          "recipient_email",
+          "subject",
+          "status",
+          "sent_date"
+        ]
+      }
+    },
+    {
+      "id": "EA_011",
+      "name": "Tab Navigation",
+      "description": "Test navigation between tabs",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to email automation page",
+        "Click on Templates tab",
+        "Verify Templates content is displayed",
+        "Click on Campaigns tab",
+        "Verify Campaigns content is displayed",
+        "Click on Analytics tab",
+        "Verify Analytics content is displayed",
+        "Verify active tab is highlighted"
+      ],
+      "expected_result": "Tab navigation works correctly and shows appropriate content",
+      "test_data": {
+        "tabs": [
+          "templates",
+          "campaigns",
+          "analytics"
+        ]
+      }
+    },
+    {
+      "id": "EA_012",
+      "name": "Sample Templates Creation",
+      "description": "Test creating sample templates",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click 'Create Sample Templates' button",
+        "Verify success message is displayed",
+        "Verify new sample templates appear in the list",
+        "Verify templates have proper categories",
+        "Verify templates have valid variables"
+      ],
+      "expected_result": "Sample templates are created successfully",
+      "test_data": {
+        "expected_categories": [
+          "welcome",
+          "follow_up",
+          "reminder",
+          "notification",
+          "deal_update"
+        ]
+      }
+    },
+    {
+      "id": "EA_013",
+      "name": "Template Deletion",
+      "description": "Test deleting an email template",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Click Delete button on a template",
+        "Verify confirmation dialog is displayed",
+        "Confirm deletion",
+        "Verify template is removed from the list",
+        "Verify success message is displayed"
+      ],
+      "expected_result": "Template deletion works correctly with confirmation",
+      "test_data": {
+        "expected_behavior": [
+          "confirmation_dialog",
+          "template_removal",
+          "success_message"
+        ]
+      }
+    },
+    {
+      "id": "EA_014",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available",
+        "Verify empty state is handled gracefully"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response"
+        ]
+      }
+    },
+    {
+      "id": "EA_015",
+      "name": "Responsive Design",
+      "description": "Verify email automation page is responsive on different screen sizes",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to email automation page",
+        "Test on desktop view (1920x1080)",
+        "Verify all content is visible and properly laid out",
+        "Resize browser to tablet view (768x1024)",
+        "Verify layout adapts correctly",
+        "Resize browser to mobile view (375x667)",
+        "Verify content is accessible and readable",
+        "Verify modals adapt to smaller screens"
+      ],
+      "expected_result": "Page is responsive and functional on all screen sizes",
+      "test_data": {
+        "screen_sizes": [
+          "1920x1080",
+          "768x1024",
+          "375x667"
+        ]
+      }
+    }
+  ]
+}
+

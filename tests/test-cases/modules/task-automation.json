@@ -1,0 +1,416 @@
+{
+  "module": "Task Automation",
+  "description": "Comprehensive test cases for Task Automation functionality including template creation, task generation, and automated task management",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "id": "TA-001",
+      "name": "Task Automation Page Load",
+      "description": "Verify that the Task Automation page loads correctly with all components",
+      "priority": "High",
+      "category": "Page Load",
+      "steps": [
+        "Navigate to Task Automation page",
+        "Verify page title is displayed",
+        "Verify task templates list is loaded",
+        "Verify Create Template button is present",
+        "Verify tabs for Templates, Tasks, and Automation Log are available"
+      ],
+      "expected_result": "Page loads successfully with all components visible",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-002",
+      "name": "Create Task Template - Deal Stage Change",
+      "description": "Test creating a task template triggered by deal stage changes",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Click Create Template button",
+        "Fill in template name: 'Follow-up Call'",
+        "Add description: 'Call prospect after deal moves to proposal stage'",
+        "Set task type: 'call'",
+        "Set trigger type: 'deal_stage_change'",
+        "Set trigger conditions: stage_id = 2 (Proposal)",
+        "Set due date offset: 1 day",
+        "Set priority: 'high'",
+        "Set assign to: 'deal_owner'",
+        "Click Save"
+      ],
+      "expected_result": "Template is created successfully and appears in the templates list",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-003",
+      "name": "Create Task Template - Lead Created",
+      "description": "Test creating a task template triggered by lead creation",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Click Create Template button",
+        "Fill in template name: 'Initial Contact'",
+        "Add description: 'Make initial contact with new lead'",
+        "Set task type: 'email'",
+        "Set trigger type: 'lead_created'",
+        "Set trigger conditions: source = 'website'",
+        "Set due date offset: 0 days",
+        "Set due time: 09:00",
+        "Set priority: 'medium'",
+        "Set assign to: 'lead_owner'",
+        "Click Save"
+      ],
+      "expected_result": "Template is created successfully for lead creation trigger",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-004",
+      "name": "Create Task Template - Time Based",
+      "description": "Test creating a time-based task template",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Click Create Template button",
+        "Fill in template name: 'Monthly Review'",
+        "Add description: 'Monthly review of all active deals'",
+        "Set task type: 'meeting'",
+        "Set trigger type: 'time_based'",
+        "Set trigger conditions: frequency = 'monthly'",
+        "Set due date offset: 0 days",
+        "Set priority: 'medium'",
+        "Set assign to: 'specific_user'",
+        "Select specific user",
+        "Click Save"
+      ],
+      "expected_result": "Time-based template is created successfully",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-005",
+      "name": "Edit Task Template",
+      "description": "Test editing an existing task template",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Find an existing template in the list",
+        "Click Edit button",
+        "Modify template name",
+        "Update trigger conditions",
+        "Change due date offset",
+        "Update priority",
+        "Click Save"
+      ],
+      "expected_result": "Template is updated successfully with new values",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-006",
+      "name": "Delete Task Template",
+      "description": "Test deleting a task template",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Find an existing template in the list",
+        "Click Delete button",
+        "Confirm deletion in the confirmation dialog",
+        "Verify template is removed from the list"
+      ],
+      "expected_result": "Template is deleted successfully and removed from the list",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-007",
+      "name": "Template Activation/Deactivation",
+      "description": "Test activating and deactivating task templates",
+      "priority": "Medium",
+      "category": "Business Logic",
+      "steps": [
+        "Find an active template",
+        "Click toggle to deactivate",
+        "Verify template status changes to inactive",
+        "Click toggle to reactivate",
+        "Verify template status changes to active"
+      ],
+      "expected_result": "Template activation status can be toggled successfully",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-008",
+      "name": "Task Generation - Deal Stage Change",
+      "description": "Test automatic task generation when deal stage changes",
+      "priority": "High",
+      "category": "Automation Logic",
+      "steps": [
+        "Create template with deal stage change trigger",
+        "Move a deal to the trigger stage",
+        "Verify task is automatically created",
+        "Check task details match template",
+        "Verify task is assigned to correct user"
+      ],
+      "expected_result": "Task is automatically generated when deal stage changes",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-009",
+      "name": "Task Generation - Lead Created",
+      "description": "Test automatic task generation when new lead is created",
+      "priority": "High",
+      "category": "Automation Logic",
+      "steps": [
+        "Create template with lead creation trigger",
+        "Create new lead matching trigger conditions",
+        "Verify task is automatically created",
+        "Check task details match template",
+        "Verify task is assigned to lead owner"
+      ],
+      "expected_result": "Task is automatically generated when matching lead is created",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-010",
+      "name": "Task Assignment - Deal Owner",
+      "description": "Test task assignment to deal owner",
+      "priority": "High",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create template with assign_to_type = 'deal_owner'",
+        "Create task from template with deal reference",
+        "Verify task is assigned to deal owner",
+        "Check task assignment is correct"
+      ],
+      "expected_result": "Task is assigned to the deal owner",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-011",
+      "name": "Task Assignment - Lead Owner",
+      "description": "Test task assignment to lead owner",
+      "priority": "High",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create template with assign_to_type = 'lead_owner'",
+        "Create task from template with lead reference",
+        "Verify task is assigned to lead owner",
+        "Check task assignment is correct"
+      ],
+      "expected_result": "Task is assigned to the lead owner",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-012",
+      "name": "Task Assignment - Specific User",
+      "description": "Test task assignment to specific user",
+      "priority": "Medium",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create template with assign_to_type = 'specific_user'",
+        "Select specific user for assignment",
+        "Create task from template",
+        "Verify task is assigned to specified user"
+      ],
+      "expected_result": "Task is assigned to the specified user",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-013",
+      "name": "Task Assignment - Round Robin",
+      "description": "Test round robin task assignment",
+      "priority": "Medium",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create template with assign_to_type = 'round_robin'",
+        "Select user group for round robin",
+        "Create multiple tasks from template",
+        "Verify tasks are distributed evenly among users"
+      ],
+      "expected_result": "Tasks are distributed evenly using round robin logic",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-014",
+      "name": "Task Due Date Calculation",
+      "description": "Test automatic due date calculation based on template settings",
+      "priority": "High",
+      "category": "Scheduling Logic",
+      "steps": [
+        "Create template with due_date_offset = 2 days",
+        "Create task from template",
+        "Verify due date is calculated correctly",
+        "Test with different offset values",
+        "Verify due time is set correctly"
+      ],
+      "expected_result": "Due dates are calculated correctly based on template settings",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-015",
+      "name": "Task Template Variables",
+      "description": "Test template variables in task descriptions",
+      "priority": "Medium",
+      "category": "Template Logic",
+      "steps": [
+        "Create template with variables in description: 'Call {contact_name} about {deal_title}'",
+        "Create task from template with deal and contact references",
+        "Verify variables are replaced with actual values",
+        "Test with missing variable values"
+      ],
+      "expected_result": "Template variables are replaced with actual values",
+      "test_type": "Integration"
+    },
+    {
+      "id": "TA-016",
+      "name": "Task Management - View Tasks",
+      "description": "Test viewing and managing generated tasks",
+      "priority": "High",
+      "category": "Task Management",
+      "steps": [
+        "Navigate to Tasks tab",
+        "Verify all tasks are displayed",
+        "Check task details (title, description, due date, assignee)",
+        "Verify task status and priority",
+        "Test task filtering and sorting"
+      ],
+      "expected_result": "Tasks are displayed correctly with all details",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-017",
+      "name": "Task Management - Update Task Status",
+      "description": "Test updating task status",
+      "priority": "High",
+      "category": "Task Management",
+      "steps": [
+        "Find a pending task",
+        "Update status to 'in_progress'",
+        "Update status to 'completed'",
+        "Verify status changes are saved",
+        "Check completion timestamp is recorded"
+      ],
+      "expected_result": "Task status can be updated successfully",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-018",
+      "name": "Task Management - Reassign Task",
+      "description": "Test reassigning tasks to different users",
+      "priority": "Medium",
+      "category": "Task Management",
+      "steps": [
+        "Find an assigned task",
+        "Click reassign button",
+        "Select new assignee",
+        "Add reassignment reason",
+        "Confirm reassignment"
+      ],
+      "expected_result": "Task is reassigned successfully to new user",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-019",
+      "name": "Automation Log Viewing",
+      "description": "Test viewing automation execution logs",
+      "priority": "Medium",
+      "category": "Logging & Audit",
+      "steps": [
+        "Navigate to Automation Log tab",
+        "Verify log entries for template executions",
+        "Check log details for specific automation runs",
+        "Verify log includes task creation results",
+        "Test log filtering by date and template"
+      ],
+      "expected_result": "Automation logs are displayed correctly with details",
+      "test_type": "UI"
+    },
+    {
+      "id": "TA-020",
+      "name": "Template Search and Filter",
+      "description": "Test searching and filtering task templates",
+      "priority": "Medium",
+      "category": "Search & Filter",
+      "steps": [
+        "Use search box to find templates by name",
+        "Filter templates by trigger type",
+        "Filter templates by task type",
+        "Filter templates by status (active/inactive)",
+        "Verify search and filter results are accurate"
+      ],
+      "expected_result": "Search and filter functionality works correctly",
+      "test_type": "UI"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "endpoint": "GET /api/task-templates",
+      "description": "Get all task templates for organization",
+      "test_cases": ["TA-001", "TA-020"]
+    },
+    {
+      "endpoint": "POST /api/task-templates",
+      "description": "Create new task template",
+      "test_cases": ["TA-002", "TA-003", "TA-004"]
+    },
+    {
+      "endpoint": "PUT /api/task-templates/{template_id}",
+      "description": "Update existing task template",
+      "test_cases": ["TA-005", "TA-007"]
+    },
+    {
+      "endpoint": "DELETE /api/task-templates/{template_id}",
+      "description": "Delete task template",
+      "test_cases": ["TA-006"]
+    },
+    {
+      "endpoint": "GET /api/tasks",
+      "description": "Get all tasks for organization",
+      "test_cases": ["TA-016"]
+    },
+    {
+      "endpoint": "POST /api/tasks",
+      "description": "Create new task",
+      "test_cases": ["TA-008", "TA-009"]
+    },
+    {
+      "endpoint": "PUT /api/tasks/{task_id}",
+      "description": "Update existing task",
+      "test_cases": ["TA-017", "TA-018"]
+    },
+    {
+      "endpoint": "DELETE /api/tasks/{task_id}",
+      "description": "Delete task",
+      "test_cases": ["TA-017"]
+    }
+  ],
+  "test_data": {
+    "sample_templates": [
+      {
+        "name": "Follow-up Call",
+        "description": "Call prospect after deal moves to proposal stage",
+        "task_type": "call",
+        "trigger_type": "deal_stage_change",
+        "trigger_conditions": {"stage_id": 2},
+        "due_date_offset": 1,
+        "priority": "high",
+        "assign_to_type": "deal_owner"
+      },
+      {
+        "name": "Initial Contact",
+        "description": "Make initial contact with new lead",
+        "task_type": "email",
+        "trigger_type": "lead_created",
+        "trigger_conditions": {"source": "website"},
+        "due_date_offset": 0,
+        "priority": "medium",
+        "assign_to_type": "lead_owner"
+      },
+      {
+        "name": "Monthly Review",
+        "description": "Monthly review of all active deals",
+        "task_type": "meeting",
+        "trigger_type": "time_based",
+        "trigger_conditions": {"frequency": "monthly"},
+        "due_date_offset": 0,
+        "priority": "medium",
+        "assign_to_type": "specific_user"
+      }
+    ]
+  }
+}

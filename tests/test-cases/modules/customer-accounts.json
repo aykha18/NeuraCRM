@@ -1,0 +1,421 @@
+{
+  "module": "Customer Accounts",
+  "description": "Post-sale customer success and account management with onboarding, health scoring, and success metrics",
+  "test_cases": [
+    {
+      "id": "CA_001",
+      "name": "Customer Accounts Page Load",
+      "description": "Verify the customer accounts page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /customer-accounts",
+        "Verify page title contains 'Customer Accounts'",
+        "Verify page description is displayed",
+        "Verify customer accounts grid is displayed",
+        "Verify loading state is handled properly",
+        "Verify error state is handled gracefully"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/customer-accounts",
+        "expected_elements": [
+          "h1:contains('Customer Accounts')",
+          ".text-gray-600:contains('Manage customer accounts and track success metrics')",
+          ".grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3"
+        ]
+      }
+    },
+    {
+      "id": "CA_002",
+      "name": "Customer Accounts Display",
+      "description": "Verify customer accounts are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify accounts grid is displayed",
+        "Verify each account shows name and deal ID",
+        "Verify onboarding status is displayed with proper color coding",
+        "Verify health score is shown when available",
+        "Verify renewal probability is shown when available",
+        "Verify account actions (Metrics, Start Onboarding) are available"
+      ],
+      "expected_result": "All customer accounts display with complete information",
+      "test_data": {
+        "expected_account_info": [
+          "account_name",
+          "deal_id",
+          "onboarding_status",
+          "health_score",
+          "renewal_probability"
+        ],
+        "expected_actions": [
+          "metrics",
+          "start_onboarding"
+        ],
+        "onboarding_statuses": [
+          "pending",
+          "in_progress",
+          "completed",
+          "failed"
+        ]
+      }
+    },
+    {
+      "id": "CA_003",
+      "name": "Account Status Icons and Colors",
+      "description": "Test that account status icons and colors are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify status icons are displayed for each account",
+        "Verify completed status shows green checkmark",
+        "Verify in_progress status shows yellow clock",
+        "Verify pending status shows gray alert circle",
+        "Verify status colors match the status type",
+        "Verify status text is readable and properly formatted"
+      ],
+      "expected_result": "Status icons and colors are displayed correctly for all accounts",
+      "test_data": {
+        "status_icons": {
+          "completed": "CheckCircle",
+          "in_progress": "Clock",
+          "pending": "AlertCircle"
+        },
+        "status_colors": {
+          "completed": "bg-green-100 text-green-800",
+          "in_progress": "bg-yellow-100 text-yellow-800",
+          "pending": "bg-gray-100 text-gray-800"
+        }
+      }
+    },
+    {
+      "id": "CA_004",
+      "name": "Health Score Display",
+      "description": "Test that health scores are displayed with proper color coding",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify health scores are displayed when available",
+        "Verify high health scores (≥80) show green color",
+        "Verify medium health scores (60-79) show yellow color",
+        "Verify low health scores (<60) show red color",
+        "Verify health score percentage is displayed correctly",
+        "Verify health score icon (TrendingUp) is shown"
+      ],
+      "expected_result": "Health scores are displayed with appropriate color coding",
+      "test_data": {
+        "health_score_colors": {
+          "high": "text-green-600",
+          "medium": "text-yellow-600",
+          "low": "text-red-600"
+        },
+        "health_score_ranges": {
+          "high": "≥80",
+          "medium": "60-79",
+          "low": "<60"
+        }
+      }
+    },
+    {
+      "id": "CA_005",
+      "name": "Renewal Probability Display",
+      "description": "Test that renewal probabilities are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify renewal probabilities are displayed when available",
+        "Verify renewal probability percentage is shown",
+        "Verify renewal probability icon (BarChart3) is displayed",
+        "Verify renewal probability is color-coded green",
+        "Verify renewal probability is properly formatted"
+      ],
+      "expected_result": "Renewal probabilities are displayed correctly with proper formatting",
+      "test_data": {
+        "expected_display": [
+          "percentage_value",
+          "green_color_coding",
+          "bar_chart_icon"
+        ]
+      }
+    },
+    {
+      "id": "CA_006",
+      "name": "Success Metrics Modal",
+      "description": "Test viewing customer success metrics in modal",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Click 'Metrics' button on an account",
+        "Verify success metrics modal opens",
+        "Verify modal title is 'Customer Success Metrics'",
+        "Verify health score is displayed prominently",
+        "Verify renewal probability is displayed prominently",
+        "Verify key metrics section shows all required data",
+        "Verify engagement section shows level and last activity",
+        "Verify close button works correctly"
+      ],
+      "expected_result": "Success metrics modal displays all required information correctly",
+      "test_data": {
+        "expected_metrics": [
+          "health_score",
+          "renewal_probability",
+          "total_interactions",
+          "response_time_avg",
+          "feature_adoption",
+          "support_tickets",
+          "engagement_level",
+          "last_activity"
+        ]
+      }
+    },
+    {
+      "id": "CA_007",
+      "name": "Start Onboarding Process",
+      "description": "Test starting the onboarding process for an account",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Find an account with 'pending' onboarding status",
+        "Click 'Start Onboarding' button",
+        "Verify onboarding success modal opens",
+        "Verify modal shows 'Onboarding Started Successfully!'",
+        "Verify onboarding tasks are listed",
+        "Verify task details include title, description, due date, and status",
+        "Verify 'What happens next?' section is displayed",
+        "Verify 'Got it!' button closes the modal",
+        "Verify account status updates after onboarding starts"
+      ],
+      "expected_result": "Onboarding process starts successfully and shows task details",
+      "test_data": {
+        "expected_modal_content": [
+          "success_message",
+          "onboarding_tasks",
+          "task_details",
+          "next_steps",
+          "close_button"
+        ],
+        "expected_task_info": [
+          "title",
+          "description",
+          "due_date",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "CA_008",
+      "name": "Onboarding Tasks Display",
+      "description": "Test that onboarding tasks are displayed with proper formatting",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Start onboarding process for an account",
+        "Verify onboarding tasks are displayed in modal",
+        "Verify each task shows task number",
+        "Verify task title is displayed prominently",
+        "Verify task description is shown",
+        "Verify due date is displayed with calendar icon",
+        "Verify task status is color-coded",
+        "Verify task status badges are properly styled"
+      ],
+      "expected_result": "Onboarding tasks are displayed with proper formatting and information",
+      "test_data": {
+        "expected_task_elements": [
+          "task_number",
+          "task_title",
+          "task_description",
+          "due_date",
+          "status_badge"
+        ],
+        "status_colors": {
+          "pending": "bg-yellow-100 text-yellow-800",
+          "in_progress": "bg-blue-100 text-blue-800",
+          "completed": "bg-green-100 text-green-800"
+        }
+      }
+    },
+    {
+      "id": "CA_009",
+      "name": "Account Actions Availability",
+      "description": "Test that account actions are available based on account status",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify 'Metrics' button is available for all accounts",
+        "Verify 'Start Onboarding' button is only available for pending accounts",
+        "Verify 'Start Onboarding' button is not shown for completed accounts",
+        "Verify 'Start Onboarding' button is not shown for in_progress accounts",
+        "Verify button styling is consistent and accessible"
+      ],
+      "expected_result": "Account actions are available based on appropriate account status",
+      "test_data": {
+        "action_availability": {
+          "metrics": "all_accounts",
+          "start_onboarding": "pending_only"
+        }
+      }
+    },
+    {
+      "id": "CA_010",
+      "name": "Loading State Handling",
+      "description": "Test that loading states are handled properly",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Verify loading spinner is displayed initially",
+        "Verify loading spinner is centered on page",
+        "Verify loading text is displayed",
+        "Verify loading state disappears when data loads",
+        "Verify smooth transition from loading to content"
+      ],
+      "expected_result": "Loading states are handled properly with smooth transitions",
+      "test_data": {
+        "expected_loading_elements": [
+          "spinner",
+          "loading_text",
+          "centered_layout"
+        ]
+      }
+    },
+    {
+      "id": "CA_011",
+      "name": "Error State Handling",
+      "description": "Test that error states are handled gracefully",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Simulate API failure or network error",
+        "Verify error message is displayed",
+        "Verify error message is properly styled",
+        "Verify error message is informative",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available"
+      ],
+      "expected_result": "Error states are handled gracefully with proper error display",
+      "test_data": {
+        "expected_error_elements": [
+          "error_message",
+          "error_styling",
+          "informative_text"
+        ]
+      }
+    },
+    {
+      "id": "CA_012",
+      "name": "Empty State Handling",
+      "description": "Test that empty states are handled when no accounts exist",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to customer accounts page with no accounts",
+        "Verify empty state is displayed appropriately",
+        "Verify empty state message is informative",
+        "Verify empty state styling is consistent",
+        "Verify empty state doesn't show action buttons inappropriately"
+      ],
+      "expected_result": "Empty states are handled appropriately with informative messaging",
+      "test_data": {
+        "expected_empty_state": [
+          "informative_message",
+          "consistent_styling",
+          "no_inappropriate_actions"
+        ]
+      }
+    },
+    {
+      "id": "CA_013",
+      "name": "Responsive Design",
+      "description": "Verify customer accounts page is responsive on different screen sizes",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Test on desktop view (1920x1080)",
+        "Verify grid layout is properly displayed",
+        "Resize browser to tablet view (768x1024)",
+        "Verify layout adapts to 2 columns",
+        "Resize browser to mobile view (375x667)",
+        "Verify layout adapts to single column",
+        "Verify modals adapt to smaller screens",
+        "Verify all content is accessible and readable"
+      ],
+      "expected_result": "Page is responsive and functional on all screen sizes",
+      "test_data": {
+        "screen_sizes": [
+          "1920x1080",
+          "768x1024",
+          "375x667"
+        ],
+        "expected_layouts": [
+          "3_columns_desktop",
+          "2_columns_tablet",
+          "1_column_mobile"
+        ]
+      }
+    },
+    {
+      "id": "CA_014",
+      "name": "Modal Interactions",
+      "description": "Test that modal interactions work correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Open success metrics modal",
+        "Verify modal backdrop is displayed",
+        "Verify clicking backdrop doesn't close modal",
+        "Verify close button (X) closes modal",
+        "Verify modal content is scrollable if needed",
+        "Open onboarding modal",
+        "Verify modal animations work smoothly",
+        "Verify modal z-index is correct"
+      ],
+      "expected_result": "Modal interactions work correctly with proper behavior",
+      "test_data": {
+        "expected_modal_behavior": [
+          "backdrop_display",
+          "close_button_functionality",
+          "scrollable_content",
+          "smooth_animations",
+          "correct_z_index"
+        ]
+      }
+    },
+    {
+      "id": "CA_015",
+      "name": "Data Refresh and Updates",
+      "description": "Test that data refreshes and updates correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer accounts page",
+        "Start onboarding for an account",
+        "Verify account list refreshes after onboarding starts",
+        "Verify account status updates in the list",
+        "Verify success metrics data is current",
+        "Verify onboarding tasks reflect latest status",
+        "Verify no stale data is displayed"
+      ],
+      "expected_result": "Data refreshes and updates correctly after actions",
+      "test_data": {
+        "expected_refresh_behavior": [
+          "list_updates",
+          "status_updates",
+          "current_data",
+          "no_stale_data"
+        ]
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,521 @@
+{
+  "module": "Financial Management",
+  "description": "Comprehensive financial management suite with invoice management, payment tracking, revenue recognition, and financial reporting",
+  "test_cases": [
+    {
+      "id": "FM_001",
+      "name": "Financial Management Page Load",
+      "description": "Verify the financial management page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /financial-management",
+        "Verify page title contains 'Financial Management'",
+        "Verify tabs are displayed (Dashboard, Invoices, Payments, Revenue, Reports, Settings)",
+        "Verify default tab is 'Dashboard'",
+        "Verify loading state is handled properly",
+        "Verify error state is handled gracefully"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/financial-management",
+        "expected_tabs": [
+          "dashboard",
+          "invoices",
+          "payments",
+          "revenue",
+          "reports",
+          "settings"
+        ]
+      }
+    },
+    {
+      "id": "FM_002",
+      "name": "Financial Dashboard Display",
+      "description": "Verify the financial dashboard displays key metrics correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Verify Dashboard tab is active",
+        "Verify revenue metrics are displayed",
+        "Verify invoice metrics are displayed",
+        "Verify payment metrics are displayed",
+        "Verify outstanding amounts are shown",
+        "Verify recent activities are listed",
+        "Verify revenue trend chart is displayed",
+        "Verify payment methods breakdown is shown",
+        "Verify invoice status breakdown is displayed"
+      ],
+      "expected_result": "Financial dashboard displays all key metrics and charts",
+      "test_data": {
+        "expected_metrics": [
+          "total_revenue",
+          "monthly_revenue",
+          "revenue_growth",
+          "total_invoices",
+          "paid_invoices",
+          "overdue_invoices",
+          "collection_rate",
+          "total_payments",
+          "average_payment_time",
+          "payment_success_rate",
+          "total_outstanding",
+          "overdue_amount",
+          "current_amount"
+        ]
+      }
+    },
+    {
+      "id": "FM_003",
+      "name": "Invoice Management Display",
+      "description": "Verify invoice management tab displays invoices correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Invoices tab",
+        "Verify invoices list is displayed",
+        "Verify each invoice shows invoice number, customer, amount, status, dates",
+        "Verify invoice status is color-coded",
+        "Verify invoice actions (View, Edit, Send, Download) are available",
+        "Verify 'Create Invoice' button is present",
+        "Verify invoice filters and search are available"
+      ],
+      "expected_result": "Invoice management displays all invoices with complete information",
+      "test_data": {
+        "expected_invoice_info": [
+          "invoice_number",
+          "customer_name",
+          "total_amount",
+          "status",
+          "issue_date",
+          "due_date",
+          "balance_due"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "send",
+          "download"
+        ],
+        "invoice_statuses": [
+          "draft",
+          "sent",
+          "paid",
+          "overdue",
+          "cancelled"
+        ]
+      }
+    },
+    {
+      "id": "FM_004",
+      "name": "Invoice Creation Form",
+      "description": "Test creating a new invoice",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Invoices tab",
+        "Click 'Create Invoice' button",
+        "Verify invoice creation modal opens",
+        "Fill in invoice details (deal, customer, amount, dates)",
+        "Verify tax calculation is automatic",
+        "Verify total amount is calculated correctly",
+        "Submit the form",
+        "Verify new invoice is created and appears in the list",
+        "Verify invoice status is 'draft' initially"
+      ],
+      "expected_result": "Invoice creation form works correctly and creates new invoices",
+      "test_data": {
+        "form_fields": [
+          "deal_id",
+          "customer_account_id",
+          "issue_date",
+          "due_date",
+          "subtotal",
+          "tax_rate",
+          "description",
+          "notes"
+        ],
+        "expected_calculations": [
+          "tax_amount",
+          "total_amount",
+          "balance_due"
+        ]
+      }
+    },
+    {
+      "id": "FM_005",
+      "name": "Payment Management Display",
+      "description": "Verify payment management tab displays payments correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Payments tab",
+        "Verify payments list is displayed",
+        "Verify each payment shows payment number, invoice, amount, date, method, status",
+        "Verify payment status is color-coded",
+        "Verify payment actions (View, Edit, Refund) are available",
+        "Verify 'Create Payment' button is present",
+        "Verify payment filters and search are available"
+      ],
+      "expected_result": "Payment management displays all payments with complete information",
+      "test_data": {
+        "expected_payment_info": [
+          "payment_number",
+          "invoice_id",
+          "amount",
+          "payment_date",
+          "payment_method",
+          "status",
+          "payment_reference"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "refund"
+        ],
+        "payment_statuses": [
+          "pending",
+          "completed",
+          "failed",
+          "refunded"
+        ]
+      }
+    },
+    {
+      "id": "FM_006",
+      "name": "Payment Creation Form",
+      "description": "Test creating a new payment",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Payments tab",
+        "Click 'Create Payment' button",
+        "Verify payment creation modal opens",
+        "Select invoice from dropdown",
+        "Fill in payment details (amount, date, method, reference)",
+        "Verify payment amount validation works",
+        "Submit the form",
+        "Verify new payment is created and appears in the list",
+        "Verify invoice balance is updated correctly"
+      ],
+      "expected_result": "Payment creation form works correctly and creates new payments",
+      "test_data": {
+        "form_fields": [
+          "invoice_id",
+          "amount",
+          "payment_date",
+          "payment_method",
+          "payment_reference",
+          "notes"
+        ],
+        "expected_validation": [
+          "amount_validation",
+          "invoice_selection",
+          "balance_update"
+        ]
+      }
+    },
+    {
+      "id": "FM_007",
+      "name": "Revenue Recognition Display",
+      "description": "Verify revenue recognition tab displays revenue records correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Revenue tab",
+        "Verify revenue list is displayed",
+        "Verify each revenue record shows invoice, deal, amount, recognition date, type, status",
+        "Verify revenue type and category are displayed",
+        "Verify revenue actions (View, Edit) are available",
+        "Verify 'Create Revenue' button is present",
+        "Verify revenue filters and search are available"
+      ],
+      "expected_result": "Revenue recognition displays all revenue records with complete information",
+      "test_data": {
+        "expected_revenue_info": [
+          "invoice_id",
+          "deal_id",
+          "amount",
+          "recognition_date",
+          "recognition_type",
+          "revenue_type",
+          "revenue_category",
+          "status"
+        ],
+        "expected_actions": [
+          "view",
+          "edit"
+        ],
+        "recognition_types": [
+          "immediate",
+          "deferred",
+          "milestone"
+        ]
+      }
+    },
+    {
+      "id": "FM_008",
+      "name": "Revenue Creation Form",
+      "description": "Test creating a new revenue record",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Revenue tab",
+        "Click 'Create Revenue' button",
+        "Verify revenue creation modal opens",
+        "Select invoice from dropdown",
+        "Fill in revenue details (amount, recognition date, type, category)",
+        "Verify revenue type selection works",
+        "Submit the form",
+        "Verify new revenue record is created and appears in the list",
+        "Verify revenue status is set correctly"
+      ],
+      "expected_result": "Revenue creation form works correctly and creates new revenue records",
+      "test_data": {
+        "form_fields": [
+          "invoice_id",
+          "amount",
+          "recognition_date",
+          "recognition_type",
+          "recognition_period",
+          "revenue_type",
+          "revenue_category",
+          "notes"
+        ],
+        "revenue_types": [
+          "product",
+          "service",
+          "subscription",
+          "support"
+        ]
+      }
+    },
+    {
+      "id": "FM_009",
+      "name": "Financial Reports Display",
+      "description": "Verify financial reports tab displays reports correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Reports tab",
+        "Verify reports list is displayed",
+        "Verify each report shows name, type, date range, status",
+        "Verify report actions (View, Download, Delete) are available",
+        "Verify 'Generate Report' button is present",
+        "Verify report filters and search are available",
+        "Verify report types are properly categorized"
+      ],
+      "expected_result": "Financial reports displays all reports with complete information",
+      "test_data": {
+        "expected_report_info": [
+          "report_name",
+          "report_type",
+          "start_date",
+          "end_date",
+          "status",
+          "generated_at"
+        ],
+        "expected_actions": [
+          "view",
+          "download",
+          "delete"
+        ],
+        "report_types": [
+          "profit_loss",
+          "cash_flow",
+          "aging_report",
+          "revenue_analysis",
+          "payment_summary"
+        ]
+      }
+    },
+    {
+      "id": "FM_010",
+      "name": "Report Generation Form",
+      "description": "Test generating a new financial report",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Reports tab",
+        "Click 'Generate Report' button",
+        "Verify report generation modal opens",
+        "Select report type from dropdown",
+        "Fill in report details (name, date range, options)",
+        "Verify date range validation works",
+        "Submit the form",
+        "Verify report generation starts",
+        "Verify new report appears in the list when complete"
+      ],
+      "expected_result": "Report generation form works correctly and creates new reports",
+      "test_data": {
+        "form_fields": [
+          "report_type",
+          "report_name",
+          "start_date",
+          "end_date",
+          "include_charts"
+        ],
+        "expected_validation": [
+          "date_range_validation",
+          "report_type_selection",
+          "name_validation"
+        ]
+      }
+    },
+    {
+      "id": "FM_011",
+      "name": "Tab Navigation",
+      "description": "Test navigation between financial management tabs",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Dashboard tab",
+        "Verify Dashboard content is displayed",
+        "Click on Invoices tab",
+        "Verify Invoices content is displayed",
+        "Click on Payments tab",
+        "Verify Payments content is displayed",
+        "Click on Revenue tab",
+        "Verify Revenue content is displayed",
+        "Click on Reports tab",
+        "Verify Reports content is displayed",
+        "Click on Settings tab",
+        "Verify Settings content is displayed",
+        "Verify active tab is highlighted"
+      ],
+      "expected_result": "Tab navigation works correctly and shows appropriate content",
+      "test_data": {
+        "tabs": [
+          "dashboard",
+          "invoices",
+          "payments",
+          "revenue",
+          "reports",
+          "settings"
+        ]
+      }
+    },
+    {
+      "id": "FM_012",
+      "name": "Invoice Status Management",
+      "description": "Test invoice status updates and management",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Invoices tab",
+        "Find a draft invoice",
+        "Click 'Send' button",
+        "Verify invoice status updates to 'sent'",
+        "Find a sent invoice",
+        "Click 'Mark as Paid' button",
+        "Verify invoice status updates to 'paid'",
+        "Verify invoice balance updates to zero",
+        "Verify payment record is created automatically"
+      ],
+      "expected_result": "Invoice status management works correctly with proper updates",
+      "test_data": {
+        "status_transitions": [
+          "draft → sent",
+          "sent → paid",
+          "sent → overdue",
+          "overdue → paid"
+        ]
+      }
+    },
+    {
+      "id": "FM_013",
+      "name": "Payment Processing",
+      "description": "Test payment processing and validation",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Click on Payments tab",
+        "Create a new payment",
+        "Verify payment amount validation works",
+        "Verify payment cannot exceed invoice balance",
+        "Verify payment method validation works",
+        "Verify payment reference is optional",
+        "Submit payment",
+        "Verify payment status is 'completed'",
+        "Verify invoice balance is updated correctly"
+      ],
+      "expected_result": "Payment processing works correctly with proper validation",
+      "test_data": {
+        "expected_validation": [
+          "amount_validation",
+          "balance_validation",
+          "method_validation",
+          "reference_optional"
+        ]
+      }
+    },
+    {
+      "id": "FM_014",
+      "name": "Financial Calculations",
+      "description": "Test that financial calculations are accurate",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to financial management page",
+        "Create a new invoice with specific amounts",
+        "Verify tax calculation is correct",
+        "Verify total amount calculation is accurate",
+        "Verify balance due calculation is correct",
+        "Create a payment for the invoice",
+        "Verify remaining balance calculation is accurate",
+        "Verify revenue recognition amounts match invoice amounts",
+        "Verify dashboard totals are calculated correctly"
+      ],
+      "expected_result": "All financial calculations are accurate and consistent",
+      "test_data": {
+        "expected_calculations": [
+          "tax_amount",
+          "total_amount",
+          "balance_due",
+          "remaining_balance",
+          "revenue_amounts",
+          "dashboard_totals"
+        ]
+      }
+    },
+    {
+      "id": "FM_015",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to financial management page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available",
+        "Verify empty state is handled gracefully",
+        "Verify form validation errors are displayed properly"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response",
+          "validation_errors"
+        ]
+      }
+    }
+  ]
+}
+

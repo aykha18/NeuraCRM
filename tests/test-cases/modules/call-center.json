@@ -1,0 +1,519 @@
+{
+  "module": "Call Center",
+  "description": "Complete call center integration with PBX systems, real-time call management, queue systems, and call center operations",
+  "test_cases": [
+    {
+      "id": "CC_001",
+      "name": "Call Center Page Load",
+      "description": "Verify the call center page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /telephony",
+        "Verify page title contains 'Call Center' or 'Telephony'",
+        "Verify tabs are displayed (Dashboard, Calls, Agents, Queues, Settings)",
+        "Verify default tab is 'Dashboard'",
+        "Verify loading state is handled properly",
+        "Verify error state is handled gracefully"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/telephony",
+        "expected_tabs": [
+          "dashboard",
+          "calls",
+          "agents",
+          "queues",
+          "settings"
+        ]
+      }
+    },
+    {
+      "id": "CC_002",
+      "name": "Call Center Dashboard Display",
+      "description": "Verify the call center dashboard displays key metrics correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Verify Dashboard tab is active",
+        "Verify active calls count is displayed",
+        "Verify queued calls count is shown",
+        "Verify agent availability metrics are displayed",
+        "Verify queue status is shown",
+        "Verify recent calls are listed",
+        "Verify agent status is displayed",
+        "Verify queue metrics are shown",
+        "Verify hourly and daily stats are displayed",
+        "Verify alerts are shown when applicable"
+      ],
+      "expected_result": "Call center dashboard displays all key metrics and real-time data",
+      "test_data": {
+        "expected_metrics": [
+          "active_calls",
+          "queued_calls",
+          "available_agents",
+          "busy_agents",
+          "offline_agents",
+          "current_queue_status",
+          "recent_calls",
+          "agent_status",
+          "queue_metrics",
+          "hourly_stats",
+          "daily_stats",
+          "alerts"
+        ]
+      }
+    },
+    {
+      "id": "CC_003",
+      "name": "Call Management Display",
+      "description": "Verify call management displays calls correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Calls tab",
+        "Verify calls list is displayed",
+        "Verify each call shows caller ID, called number, direction, status, duration, agent",
+        "Verify call status is color-coded",
+        "Verify call direction is clearly indicated",
+        "Verify call actions (View, Transfer, Hold, Mute, Record) are available",
+        "Verify call filters and search are available",
+        "Verify call history is properly paginated"
+      ],
+      "expected_result": "Call management displays all calls with complete information",
+      "test_data": {
+        "expected_call_info": [
+          "caller_id",
+          "called_number",
+          "direction",
+          "status",
+          "start_time",
+          "duration",
+          "agent_id",
+          "recording_url",
+          "transcription"
+        ],
+        "expected_actions": [
+          "view",
+          "transfer",
+          "hold",
+          "mute",
+          "record",
+          "conference",
+          "hangup"
+        ],
+        "call_directions": [
+          "inbound",
+          "outbound"
+        ],
+        "call_statuses": [
+          "ringing",
+          "answered",
+          "completed",
+          "missed",
+          "busy",
+          "failed"
+        ]
+      }
+    },
+    {
+      "id": "CC_004",
+      "name": "Call Actions and Controls",
+      "description": "Test call actions and real-time call controls",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Calls tab",
+        "Find an active call",
+        "Test call hold functionality",
+        "Test call mute functionality",
+        "Test call transfer functionality",
+        "Test call recording functionality",
+        "Test call conference functionality",
+        "Verify call actions are properly logged",
+        "Verify call status updates in real-time"
+      ],
+      "expected_result": "Call actions and controls work correctly with real-time updates",
+      "test_data": {
+        "expected_call_controls": [
+          "hold_call",
+          "mute_call",
+          "transfer_call",
+          "record_call",
+          "conference_call",
+          "hangup_call"
+        ]
+      }
+    },
+    {
+      "id": "CC_005",
+      "name": "Agent Management Display",
+      "description": "Verify agent management displays agents correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Agents tab",
+        "Verify agents list is displayed",
+        "Verify each agent shows name, email, status, active calls, queues",
+        "Verify agent status is color-coded",
+        "Verify agent availability is clearly indicated",
+        "Verify agent actions (View, Edit, Assign Queue, Set Status) are available",
+        "Verify agent filters and search are available",
+        "Verify agent performance metrics are shown"
+      ],
+      "expected_result": "Agent management displays all agents with complete information",
+      "test_data": {
+        "expected_agent_info": [
+          "name",
+          "email",
+          "status",
+          "active_calls",
+          "queues",
+          "skills",
+          "performance_metrics"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "assign_queue",
+          "set_status",
+          "view_performance"
+        ],
+        "agent_statuses": [
+          "available",
+          "busy",
+          "away",
+          "offline"
+        ]
+      }
+    },
+    {
+      "id": "CC_006",
+      "name": "Agent Status Management",
+      "description": "Test agent status updates and management",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Agents tab",
+        "Find an agent",
+        "Test changing agent status to 'Available'",
+        "Test changing agent status to 'Busy'",
+        "Test changing agent status to 'Away'",
+        "Test changing agent status to 'Offline'",
+        "Verify status changes are reflected in real-time",
+        "Verify status changes are logged",
+        "Verify queue assignments are maintained"
+      ],
+      "expected_result": "Agent status management works correctly with real-time updates",
+      "test_data": {
+        "expected_status_changes": [
+          "available",
+          "busy",
+          "away",
+          "offline"
+        ]
+      }
+    },
+    {
+      "id": "CC_007",
+      "name": "Queue Management Display",
+      "description": "Verify queue management displays queues correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Queues tab",
+        "Verify queues list is displayed",
+        "Verify each queue shows name, queue number, current calls, current agents, wait time",
+        "Verify queue status is clearly indicated",
+        "Verify queue metrics are displayed",
+        "Verify queue actions (View, Edit, Add Member, Configure) are available",
+        "Verify queue filters and search are available",
+        "Verify queue performance statistics are shown"
+      ],
+      "expected_result": "Queue management displays all queues with complete information",
+      "test_data": {
+        "expected_queue_info": [
+          "name",
+          "queue_number",
+          "current_calls",
+          "current_agents",
+          "wait_time",
+          "strategy",
+          "members",
+          "performance_metrics"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "add_member",
+          "configure",
+          "view_performance"
+        ]
+      }
+    },
+    {
+      "id": "CC_008",
+      "name": "Queue Configuration and Management",
+      "description": "Test queue configuration and member management",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Queues tab",
+        "Find a queue",
+        "Test adding a member to the queue",
+        "Test removing a member from the queue",
+        "Test configuring queue strategy",
+        "Test setting queue parameters",
+        "Test configuring hold music",
+        "Verify queue configuration is saved",
+        "Verify queue members are updated"
+      ],
+      "expected_result": "Queue configuration and management work correctly",
+      "test_data": {
+        "expected_queue_config": [
+          "member_management",
+          "strategy_configuration",
+          "parameter_settings",
+          "hold_music_config",
+          "queue_routing"
+        ]
+      }
+    },
+    {
+      "id": "CC_009",
+      "name": "PBX Provider Management",
+      "description": "Test PBX provider configuration and management",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Settings tab",
+        "Verify PBX providers section is displayed",
+        "Verify existing providers are listed",
+        "Verify provider actions (View, Edit, Test, Delete) are available",
+        "Test adding a new PBX provider",
+        "Test editing an existing provider",
+        "Test provider connection",
+        "Verify provider configuration is saved",
+        "Verify provider status is displayed"
+      ],
+      "expected_result": "PBX provider management works correctly",
+      "test_data": {
+        "expected_provider_info": [
+          "name",
+          "provider_type",
+          "host",
+          "port",
+          "username",
+          "status",
+          "connection_status"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "test_connection",
+          "delete",
+          "set_primary"
+        ],
+        "provider_types": [
+          "asterisk",
+          "freepbx",
+          "3cx",
+          "twilio",
+          "cisco"
+        ]
+      }
+    },
+    {
+      "id": "CC_010",
+      "name": "Real-time Call Monitoring",
+      "description": "Test real-time call monitoring and updates",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to call center page",
+        "Verify dashboard shows real-time data",
+        "Verify active calls are updated in real-time",
+        "Verify agent status changes are reflected immediately",
+        "Verify queue status updates in real-time",
+        "Verify call duration timers are accurate",
+        "Verify call status changes are immediate",
+        "Verify alerts are shown for important events",
+        "Verify WebSocket connection is maintained"
+      ],
+      "expected_result": "Real-time call monitoring works correctly with immediate updates",
+      "test_data": {
+        "expected_realtime_features": [
+          "active_calls_update",
+          "agent_status_update",
+          "queue_status_update",
+          "call_duration_timers",
+          "call_status_changes",
+          "real_time_alerts",
+          "websocket_connection"
+        ]
+      }
+    },
+    {
+      "id": "CC_011",
+      "name": "Call Recording and Transcription",
+      "description": "Test call recording and transcription functionality",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Calls tab",
+        "Find a call with recording",
+        "Test playing call recording",
+        "Verify recording quality is good",
+        "Test call transcription display",
+        "Verify transcription accuracy",
+        "Test downloading call recording",
+        "Verify recording permissions are respected",
+        "Verify transcription search functionality"
+      ],
+      "expected_result": "Call recording and transcription work correctly",
+      "test_data": {
+        "expected_recording_features": [
+          "recording_playback",
+          "recording_quality",
+          "transcription_display",
+          "transcription_accuracy",
+          "recording_download",
+          "permission_control",
+          "transcription_search"
+        ]
+      }
+    },
+    {
+      "id": "CC_012",
+      "name": "Call Analytics and Reporting",
+      "description": "Test call analytics and reporting functionality",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Verify call analytics are displayed",
+        "Verify call volume trends are shown",
+        "Verify answer rates are displayed",
+        "Verify wait times are shown",
+        "Verify service levels are displayed",
+        "Verify agent utilization metrics are shown",
+        "Verify call quality metrics are displayed",
+        "Test generating call reports",
+        "Verify report data is accurate"
+      ],
+      "expected_result": "Call analytics and reporting work correctly",
+      "test_data": {
+        "expected_analytics": [
+          "call_volume_trends",
+          "answer_rates",
+          "wait_times",
+          "service_levels",
+          "agent_utilization",
+          "call_quality_metrics",
+          "performance_reports"
+        ]
+      }
+    },
+    {
+      "id": "CC_013",
+      "name": "Call Filtering and Search",
+      "description": "Test call filtering and search functionality",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to call center page",
+        "Click on Calls tab",
+        "Use status filter to filter calls",
+        "Verify only calls with selected status are shown",
+        "Use direction filter to filter calls",
+        "Verify only calls with selected direction are shown",
+        "Use date range filter to filter calls",
+        "Verify only calls within date range are shown",
+        "Use search to find specific calls",
+        "Verify search results are accurate"
+      ],
+      "expected_result": "Call filtering and search work correctly",
+      "test_data": {
+        "expected_filters": [
+          "status_filter",
+          "direction_filter",
+          "date_range_filter",
+          "agent_filter",
+          "queue_filter"
+        ],
+        "expected_search": [
+          "caller_id_search",
+          "called_number_search",
+          "agent_search",
+          "duration_search"
+        ]
+      }
+    },
+    {
+      "id": "CC_014",
+      "name": "Call Center Alerts and Notifications",
+      "description": "Test call center alerts and notifications",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Verify alerts are displayed when applicable",
+        "Verify queue volume alerts are shown",
+        "Verify agent availability alerts are displayed",
+        "Verify SLA breach alerts are shown",
+        "Verify system status alerts are displayed",
+        "Test acknowledging alerts",
+        "Verify alert dismissal works",
+        "Verify alert history is maintained"
+      ],
+      "expected_result": "Call center alerts and notifications work correctly",
+      "test_data": {
+        "expected_alerts": [
+          "queue_volume_alerts",
+          "agent_availability_alerts",
+          "sla_breach_alerts",
+          "system_status_alerts",
+          "performance_alerts"
+        ]
+      }
+    },
+    {
+      "id": "CC_015",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to call center page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available",
+        "Verify empty state is handled gracefully",
+        "Verify WebSocket connection errors are handled",
+        "Verify PBX connection errors are displayed"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response",
+          "websocket_connection_error",
+          "pbx_connection_error"
+        ]
+      }
+    }
+  ]
+}
+

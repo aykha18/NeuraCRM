@@ -1,0 +1,404 @@
+{
+  "module": "Sentiment Analysis",
+  "description": "AI-powered sentiment analysis of customer interactions across support tickets, chats, and activities",
+  "test_cases": [
+    {
+      "id": "SA_001",
+      "name": "Sentiment Analysis Page Load",
+      "description": "Verify the sentiment analysis page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /sentiment-analysis",
+        "Verify page title contains 'Sentiment Analysis'",
+        "Verify page description is displayed",
+        "Verify overall sentiment score section is displayed",
+        "Verify navigation tabs are present (Overview, Support Tickets, Chat Messages, Activities)",
+        "Verify Overview tab is active by default"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/sentiment-analysis",
+        "expected_elements": [
+          "h1:contains('Sentiment Analysis')",
+          ".text-gray-600:contains('Analyze customer sentiment')",
+          ".bg-white.rounded-lg.shadow-sm.border"
+        ]
+      }
+    },
+    {
+      "id": "SA_002",
+      "name": "Overall Sentiment Score Display",
+      "description": "Verify overall sentiment score is displayed with correct formatting",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Verify overall sentiment section is displayed",
+        "Verify sentiment emoji is shown (😊, 😞, or 😐)",
+        "Verify sentiment label is displayed (POSITIVE, NEGATIVE, or NEUTRAL)",
+        "Verify sentiment score is displayed with 2 decimal places",
+        "Verify total interactions count is displayed",
+        "Verify sentiment label color matches sentiment type"
+      ],
+      "expected_result": "Overall sentiment score displays with proper formatting and colors",
+      "test_data": {
+        "expected_sentiment_labels": ["POSITIVE", "NEGATIVE", "NEUTRAL"],
+        "expected_emojis": ["😊", "😞", "😐"],
+        "expected_colors": ["#10b981", "#ef4444", "#6b7280"]
+      }
+    },
+    {
+      "id": "SA_003",
+      "name": "Navigation Tabs Functionality",
+      "description": "Test navigation between different sentiment analysis tabs",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Verify Overview tab is active by default",
+        "Click on Support Tickets tab",
+        "Verify Support Tickets content is displayed",
+        "Click on Chat Messages tab",
+        "Verify Chat Messages content is displayed",
+        "Click on Activities tab",
+        "Verify Activities content is displayed",
+        "Click back to Overview tab",
+        "Verify Overview content is displayed"
+      ],
+      "expected_result": "All tabs switch correctly and display appropriate content",
+      "test_data": {
+        "tabs": [
+          "overview",
+          "tickets",
+          "chats",
+          "activities"
+        ]
+      }
+    },
+    {
+      "id": "SA_004",
+      "name": "Overview Tab Content",
+      "description": "Verify Overview tab displays all summary information correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Ensure Overview tab is active",
+        "Verify sentiment distribution bar chart is displayed",
+        "Verify overall sentiment breakdown pie chart is displayed",
+        "Verify summary cards for Support Tickets, Chat Messages, and Activities are displayed",
+        "Verify each summary card shows positive, negative, and neutral counts",
+        "Verify charts are interactive and responsive"
+      ],
+      "expected_result": "Overview tab shows all summary sections with charts and data",
+      "test_data": {
+        "expected_sections": [
+          "Sentiment Distribution",
+          "Overall Sentiment Breakdown",
+          "Support Tickets",
+          "Chat Messages",
+          "Activities"
+        ]
+      }
+    },
+    {
+      "id": "SA_005",
+      "name": "Support Tickets Tab",
+      "description": "Verify Support Tickets tab displays sentiment analysis data correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Click on Support Tickets tab",
+        "Verify 'Support Ticket Sentiment Analysis' heading is displayed",
+        "Verify table is displayed with columns: Ticket, Title, Sentiment, Status, Created",
+        "Verify each ticket row shows ticket number, title, description preview",
+        "Verify sentiment column shows icon, label, and score",
+        "Verify status column shows colored status badges",
+        "Verify created date is formatted correctly"
+      ],
+      "expected_result": "Support Tickets tab displays complete sentiment analysis table",
+      "test_data": {
+        "expected_columns": [
+          "Ticket",
+          "Title",
+          "Sentiment",
+          "Status",
+          "Created"
+        ],
+        "expected_status_colors": [
+          "bg-green-100 text-green-800",
+          "bg-gray-100 text-gray-800",
+          "bg-yellow-100 text-yellow-800"
+        ]
+      }
+    },
+    {
+      "id": "SA_006",
+      "name": "Chat Messages Tab",
+      "description": "Verify Chat Messages tab displays sentiment analysis data correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Click on Chat Messages tab",
+        "Verify 'Chat Message Sentiment Analysis' heading is displayed",
+        "Verify table is displayed with columns: Room, Message, Sentiment, Created",
+        "Verify each message row shows room name and message content",
+        "Verify sentiment column shows icon, label, and score",
+        "Verify message content is truncated appropriately",
+        "Verify created date is formatted correctly"
+      ],
+      "expected_result": "Chat Messages tab displays complete sentiment analysis table",
+      "test_data": {
+        "expected_columns": [
+          "Room",
+          "Message",
+          "Sentiment",
+          "Created"
+        ]
+      }
+    },
+    {
+      "id": "SA_007",
+      "name": "Activities Tab",
+      "description": "Verify Activities tab displays sentiment analysis data correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Click on Activities tab",
+        "Verify 'Activity Sentiment Analysis' heading is displayed",
+        "Verify table is displayed with columns: Type, Message, Sentiment, Created",
+        "Verify each activity row shows activity type and message content",
+        "Verify sentiment column shows icon, label, and score",
+        "Verify message content is truncated appropriately",
+        "Verify created date is formatted correctly"
+      ],
+      "expected_result": "Activities tab displays complete sentiment analysis table",
+      "test_data": {
+        "expected_columns": [
+          "Type",
+          "Message",
+          "Sentiment",
+          "Created"
+        ]
+      }
+    },
+    {
+      "id": "SA_008",
+      "name": "Sentiment Color Coding",
+      "description": "Verify sentiment colors are consistent and meaningful",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Verify positive sentiment is displayed in green color (#10b981)",
+        "Verify negative sentiment is displayed in red color (#ef4444)",
+        "Verify neutral sentiment is displayed in gray color (#6b7280)",
+        "Verify sentiment icons are consistent (CheckCircle, XCircle, AlertTriangle)",
+        "Verify sentiment emojis are consistent (😊, 😞, 😐)",
+        "Verify color coding is consistent across all tabs"
+      ],
+      "expected_result": "Sentiment color coding is consistent and meaningful throughout",
+      "test_data": {
+        "color_mappings": {
+          "positive": "#10b981",
+          "negative": "#ef4444",
+          "neutral": "#6b7280"
+        },
+        "icon_mappings": {
+          "positive": "CheckCircle",
+          "negative": "XCircle",
+          "neutral": "AlertTriangle"
+        }
+      }
+    },
+    {
+      "id": "SA_009",
+      "name": "API Data Loading",
+      "description": "Verify sentiment analysis data loads from API correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Wait for page to load completely",
+        "Verify loading spinner is shown initially",
+        "Verify data is displayed after loading",
+        "Check browser network tab for API calls to sentiment analysis endpoints",
+        "Verify all 4 API endpoints are called: overview, support-tickets, chat-messages, activities",
+        "Verify data is displayed in all tabs"
+      ],
+      "expected_result": "Data loads successfully from all API endpoints",
+      "test_data": {
+        "api_endpoints": [
+          "/api/sentiment-analysis/overview",
+          "/api/sentiment-analysis/support-tickets",
+          "/api/sentiment-analysis/chat-messages",
+          "/api/sentiment-analysis/activities"
+        ]
+      }
+    },
+    {
+      "id": "SA_010",
+      "name": "Chart Functionality",
+      "description": "Verify charts are interactive and display correct data",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Ensure Overview tab is active",
+        "Verify bar chart displays sentiment distribution by category",
+        "Verify pie chart displays overall sentiment breakdown",
+        "Verify charts are responsive and resize with window",
+        "Verify chart tooltips show correct data on hover",
+        "Verify chart legends are displayed and functional",
+        "Verify chart colors match sentiment color scheme"
+      ],
+      "expected_result": "Charts are interactive and display correct sentiment data",
+      "test_data": {
+        "chart_types": [
+          "BarChart",
+          "PieChart"
+        ],
+        "expected_chart_elements": [
+          "CartesianGrid",
+          "XAxis",
+          "YAxis",
+          "Tooltip",
+          "Legend",
+          "Bar",
+          "Pie"
+        ]
+      }
+    },
+    {
+      "id": "SA_011",
+      "name": "Data Formatting",
+      "description": "Verify all data is properly formatted (dates, scores, text truncation)",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Verify sentiment scores are displayed with 2 decimal places",
+        "Verify dates are formatted consistently (MMM DD, YYYY HH:MM)",
+        "Verify text content is truncated appropriately (100 chars for messages)",
+        "Verify ticket numbers are prefixed with #",
+        "Verify status badges are properly styled",
+        "Verify all numeric values are readable and properly aligned"
+      ],
+      "expected_result": "All data is properly formatted and readable",
+      "test_data": {
+        "formatting_types": [
+          "sentiment_score",
+          "date",
+          "text_truncation",
+          "ticket_number",
+          "status_badge"
+        ]
+      }
+    },
+    {
+      "id": "SA_012",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify error message is styled with red background",
+        "Verify error icon (XCircle) is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response"
+        ]
+      }
+    },
+    {
+      "id": "SA_013",
+      "name": "Loading States",
+      "description": "Verify loading states are displayed appropriately",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Verify loading spinner is displayed initially",
+        "Verify loading spinner is centered and properly styled",
+        "Verify loading state disappears when data loads",
+        "Verify no flickering or layout shifts during loading",
+        "Verify loading state is shown when switching tabs"
+      ],
+      "expected_result": "Loading states are displayed appropriately without layout shifts",
+      "test_data": {
+        "loading_elements": [
+          "animate-spin",
+          "rounded-full",
+          "border-b-2",
+          "border-blue-600"
+        ]
+      }
+    },
+    {
+      "id": "SA_014",
+      "name": "Responsive Design",
+      "description": "Verify sentiment analysis page is responsive on different screen sizes",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Test on desktop view (1920x1080)",
+        "Verify all content is visible and properly laid out",
+        "Resize browser to tablet view (768x1024)",
+        "Verify layout adapts correctly",
+        "Resize browser to mobile view (375x667)",
+        "Verify content is accessible and readable",
+        "Verify tables are horizontally scrollable on mobile",
+        "Verify charts are responsive and readable"
+      ],
+      "expected_result": "Page is responsive and functional on all screen sizes",
+      "test_data": {
+        "screen_sizes": [
+          "1920x1080",
+          "768x1024",
+          "375x667"
+        ]
+      }
+    },
+    {
+      "id": "SA_015",
+      "name": "Performance and Loading",
+      "description": "Verify page loads within acceptable time limits",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to sentiment analysis page",
+        "Measure initial page load time",
+        "Verify page loads within 5 seconds",
+        "Verify loading spinner is shown during data fetch",
+        "Verify no JavaScript errors in console",
+        "Verify all images and icons load correctly",
+        "Verify smooth transitions between tabs"
+      ],
+      "expected_result": "Page loads quickly and smoothly without errors",
+      "test_data": {
+        "max_load_time": "5 seconds",
+        "performance_metrics": [
+          "initial_load",
+          "tab_switching",
+          "data_rendering"
+        ]
+      }
+    }
+  ]
+}
+

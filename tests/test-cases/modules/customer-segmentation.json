@@ -1,0 +1,386 @@
+{
+  "module": "Customer Segmentation",
+  "description": "AI-powered customer segmentation with behavioral, demographic, transactional, and predictive analysis",
+  "test_cases": [
+    {
+      "id": "CS_001",
+      "name": "Customer Segmentation Page Load",
+      "description": "Verify the customer segmentation page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /customer-segmentation",
+        "Verify page title contains 'AI Customer Segmentation'",
+        "Verify page description is displayed",
+        "Verify AI insights banner is displayed",
+        "Verify segments list section is displayed",
+        "Verify segment details panel is displayed",
+        "Verify default 'Select a segment' message is shown"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/customer-segmentation",
+        "expected_elements": [
+          "h1:contains('AI Customer Segmentation')",
+          ".text-gray-600:contains('Automatically segment customers')",
+          ".bg-gradient-to-r.from-purple-50.to-pink-50"
+        ]
+      }
+    },
+    {
+      "id": "CS_002",
+      "name": "Customer Segments Display",
+      "description": "Verify customer segments are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Verify segments list is displayed",
+        "Verify each segment shows name and description",
+        "Verify segment type badge is displayed (behavioral, demographic, transactional, predictive)",
+        "Verify segment statistics are displayed (customers, avg deal, conversion, total value)",
+        "Verify refresh button is present for each segment",
+        "Verify segment count is displayed"
+      ],
+      "expected_result": "All customer segments display with complete information",
+      "test_data": {
+        "expected_segment_types": [
+          "behavioral",
+          "demographic", 
+          "transactional",
+          "predictive"
+        ],
+        "expected_statistics": [
+          "customer_count",
+          "avg_deal_value",
+          "conversion_rate",
+          "total_deal_value"
+        ]
+      }
+    },
+    {
+      "id": "CS_003",
+      "name": "Segment Selection and Details",
+      "description": "Test selecting a segment and viewing its details",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Click on a customer segment",
+        "Verify segment is highlighted/selected",
+        "Verify segment details panel shows segment overview",
+        "Verify risk score and opportunity score are displayed",
+        "Verify last updated date is shown",
+        "Verify AI insights section is displayed (if available)",
+        "Verify recommendations section is displayed (if available)",
+        "Verify segment members section is displayed"
+      ],
+      "expected_result": "Segment selection works correctly and details are displayed",
+      "test_data": {
+        "expected_details": [
+          "risk_score",
+          "opportunity_score",
+          "last_updated",
+          "insights",
+          "recommendations",
+          "members"
+        ]
+      }
+    },
+    {
+      "id": "CS_004",
+      "name": "Segment Type Color Coding",
+      "description": "Verify segment types have appropriate color coding",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Verify behavioral segments have blue color coding",
+        "Verify demographic segments have green color coding",
+        "Verify transactional segments have purple color coding",
+        "Verify predictive segments have orange color coding",
+        "Verify color coding is consistent across all segments"
+      ],
+      "expected_result": "Segment types are color-coded consistently and meaningfully",
+      "test_data": {
+        "color_mappings": {
+          "behavioral": "bg-blue-100 text-blue-800",
+          "demographic": "bg-green-100 text-green-800",
+          "transactional": "bg-purple-100 text-purple-800",
+          "predictive": "bg-orange-100 text-orange-800"
+        }
+      }
+    },
+    {
+      "id": "CS_005",
+      "name": "Risk and Opportunity Score Display",
+      "description": "Verify risk and opportunity scores are displayed with correct colors",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Select a segment to view details",
+        "Verify risk score is displayed with appropriate color",
+        "Verify opportunity score is displayed with appropriate color",
+        "Verify low risk scores (<30) are green",
+        "Verify medium risk scores (30-70) are yellow",
+        "Verify high risk scores (>70) are red",
+        "Verify high opportunity scores (>70) are green",
+        "Verify medium opportunity scores (40-70) are yellow",
+        "Verify low opportunity scores (<40) are red"
+      ],
+      "expected_result": "Risk and opportunity scores display with correct color coding",
+      "test_data": {
+        "risk_score_colors": {
+          "low": "text-green-600",
+          "medium": "text-yellow-600",
+          "high": "text-red-600"
+        },
+        "opportunity_score_colors": {
+          "high": "text-green-600",
+          "medium": "text-yellow-600",
+          "low": "text-red-600"
+        }
+      }
+    },
+    {
+      "id": "CS_006",
+      "name": "AI Insights Display",
+      "description": "Verify AI insights are displayed correctly for segments",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Select a segment with AI insights",
+        "Verify AI insights section is displayed",
+        "Verify key characteristics are shown (if available)",
+        "Verify performance summary is shown (if available)",
+        "Verify trends are listed (if available)",
+        "Verify insights are properly formatted and readable"
+      ],
+      "expected_result": "AI insights are displayed with proper formatting",
+      "test_data": {
+        "expected_insight_types": [
+          "key_characteristics",
+          "performance_summary",
+          "trends"
+        ]
+      }
+    },
+    {
+      "id": "CS_007",
+      "name": "Recommendations Display",
+      "description": "Verify AI recommendations are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Select a segment with recommendations",
+        "Verify recommendations section is displayed",
+        "Verify recommendations are listed as bullet points",
+        "Verify recommendations are actionable and clear",
+        "Verify recommendations are properly formatted"
+      ],
+      "expected_result": "AI recommendations are displayed clearly and actionably",
+      "test_data": {
+        "expected_format": "bullet_points",
+        "expected_content": "actionable_recommendations"
+      }
+    },
+    {
+      "id": "CS_008",
+      "name": "Segment Members Display",
+      "description": "Verify segment members are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Select a segment",
+        "Verify segment members section is displayed",
+        "Verify member count is shown in the header",
+        "Verify each member shows contact name, company, and email",
+        "Verify membership score/match percentage is displayed",
+        "Verify members list is scrollable if there are many members"
+      ],
+      "expected_result": "Segment members are displayed with complete information",
+      "test_data": {
+        "expected_member_info": [
+          "contact_name",
+          "contact_company",
+          "contact_email",
+          "membership_score"
+        ]
+      }
+    },
+    {
+      "id": "CS_009",
+      "name": "Segment Refresh Functionality",
+      "description": "Test refreshing a segment to update its data",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Click the refresh button on a segment",
+        "Verify refresh button shows loading state (spinning icon)",
+        "Verify segment data is updated after refresh",
+        "Verify refresh button returns to normal state",
+        "Verify segment members are updated if segment is selected"
+      ],
+      "expected_result": "Segment refresh functionality works correctly",
+      "test_data": {
+        "expected_behavior": [
+          "loading_state",
+          "data_update",
+          "ui_feedback"
+        ]
+      }
+    },
+    {
+      "id": "CS_010",
+      "name": "API Data Loading",
+      "description": "Verify customer segmentation data loads from API correctly",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Wait for page to load completely",
+        "Verify loading spinner is shown initially",
+        "Verify data is displayed after loading",
+        "Check browser network tab for API calls to customer segmentation endpoints",
+        "Verify all API endpoints are called: segments, members",
+        "Verify data is displayed in the UI"
+      ],
+      "expected_result": "Data loads successfully from all API endpoints",
+      "test_data": {
+        "api_endpoints": [
+          "/api/customer-segments",
+          "/api/customer-segments/{id}/members",
+          "/api/customer-segments/{id}/refresh"
+        ]
+      }
+    },
+    {
+      "id": "CS_011",
+      "name": "Data Formatting",
+      "description": "Verify all data is properly formatted (currency, percentages, dates)",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Verify currency values are formatted with $ symbol and commas",
+        "Verify percentages are formatted with % symbol",
+        "Verify dates are formatted consistently",
+        "Verify numbers are properly aligned and readable",
+        "Verify membership scores are displayed as percentages"
+      ],
+      "expected_result": "All data is properly formatted and readable",
+      "test_data": {
+        "formatting_types": [
+          "currency",
+          "percentage",
+          "date",
+          "number"
+        ]
+      }
+    },
+    {
+      "id": "CS_012",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available",
+        "Verify empty state is handled gracefully"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response"
+        ]
+      }
+    },
+    {
+      "id": "CS_013",
+      "name": "Loading States",
+      "description": "Verify loading states are displayed appropriately",
+      "type": "positive",
+      "priority": "low",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Verify loading spinner is displayed initially",
+        "Verify loading spinner is centered and properly styled",
+        "Verify loading state disappears when data loads",
+        "Verify no flickering or layout shifts during loading",
+        "Verify refresh loading states work correctly"
+      ],
+      "expected_result": "Loading states are displayed appropriately without layout shifts",
+      "test_data": {
+        "loading_elements": [
+          "animate-spin",
+          "rounded-full",
+          "border-b-2",
+          "border-purple-600"
+        ]
+      }
+    },
+    {
+      "id": "CS_014",
+      "name": "Responsive Design",
+      "description": "Verify customer segmentation page is responsive on different screen sizes",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Test on desktop view (1920x1080)",
+        "Verify all content is visible and properly laid out",
+        "Resize browser to tablet view (768x1024)",
+        "Verify layout adapts correctly",
+        "Resize browser to mobile view (375x667)",
+        "Verify content is accessible and readable",
+        "Verify segment details panel adapts to smaller screens"
+      ],
+      "expected_result": "Page is responsive and functional on all screen sizes",
+      "test_data": {
+        "screen_sizes": [
+          "1920x1080",
+          "768x1024",
+          "375x667"
+        ]
+      }
+    },
+    {
+      "id": "CS_015",
+      "name": "Performance and Loading",
+      "description": "Verify page loads within acceptable time limits",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer segmentation page",
+        "Measure initial page load time",
+        "Verify page loads within 5 seconds",
+        "Verify loading spinner is shown during data fetch",
+        "Verify no JavaScript errors in console",
+        "Verify all images and icons load correctly",
+        "Verify smooth interactions when selecting segments"
+      ],
+      "expected_result": "Page loads quickly and smoothly without errors",
+      "test_data": {
+        "max_load_time": "5 seconds",
+        "performance_metrics": [
+          "initial_load",
+          "segment_selection",
+          "data_rendering"
+        ]
+      }
+    }
+  ]
+}
+

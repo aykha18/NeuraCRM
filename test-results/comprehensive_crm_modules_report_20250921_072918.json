@@ -1,0 +1,30 @@
+{
+  "test_suite": "Comprehensive CRM Modules",
+  "timestamp": "2025-09-21T07:29:18.973662",
+  "total_tests": 4,
+  "passed": 0,
+  "failed": 4,
+  "success_rate": 0.0,
+  "results": [
+    {
+      "test": "Customer Accounts Page Load Test",
+      "script": "test_customer_accounts_page_load.py",
+      "passed": false
+    },
+    {
+      "test": "Financial Management Page Load Test",
+      "script": "test_financial_management_page_load.py",
+      "passed": false
+    },
+    {
+      "test": "Customer Support Page Load Test",
+      "script": "test_customer_support_page_load.py",
+      "passed": false
+    },
+    {
+      "test": "Call Center Page Load Test",
+      "script": "test_call_center_page_load.py",
+      "passed": false
+    }
+  ]
+}

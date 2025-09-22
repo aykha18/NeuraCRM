@@ -1,0 +1,527 @@
+{
+  "module": "Customer Support",
+  "description": "Complete support ticket lifecycle with SLA tracking, knowledge base, customer satisfaction surveys, and support analytics",
+  "test_cases": [
+    {
+      "id": "CS_001",
+      "name": "Customer Support Page Load",
+      "description": "Verify the customer support page loads correctly with all components",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to /customer-support",
+        "Verify page title contains 'Customer Support'",
+        "Verify tabs are displayed (Tickets, Knowledge Base, Analytics, Surveys)",
+        "Verify default tab is 'Tickets'",
+        "Verify loading state is handled properly",
+        "Verify error state is handled gracefully"
+      ],
+      "expected_result": "Page loads with all components visible and functional",
+      "test_data": {
+        "url": "/customer-support",
+        "expected_tabs": [
+          "tickets",
+          "knowledge",
+          "analytics",
+          "surveys"
+        ]
+      }
+    },
+    {
+      "id": "CS_002",
+      "name": "Support Tickets Display",
+      "description": "Verify support tickets are displayed with correct information",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer support page",
+        "Verify Tickets tab is active",
+        "Verify tickets list is displayed",
+        "Verify each ticket shows number, title, priority, status, customer, assigned agent, dates",
+        "Verify ticket priority is color-coded",
+        "Verify ticket status is color-coded",
+        "Verify ticket actions (View, Edit, Assign, Escalate, Resolve) are available",
+        "Verify 'Create Ticket' button is present",
+        "Verify ticket filters and search are available"
+      ],
+      "expected_result": "Support tickets display with complete information and proper formatting",
+      "test_data": {
+        "expected_ticket_info": [
+          "ticket_number",
+          "title",
+          "priority",
+          "status",
+          "category",
+          "customer_name",
+          "customer_email",
+          "assigned_to_name",
+          "created_at",
+          "updated_at",
+          "sla_deadline"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "assign",
+          "escalate",
+          "resolve",
+          "close",
+          "cancel"
+        ],
+        "priorities": [
+          "low",
+          "medium",
+          "high",
+          "urgent",
+          "critical"
+        ],
+        "statuses": [
+          "open",
+          "in_progress",
+          "pending_customer",
+          "resolved",
+          "closed",
+          "cancelled"
+        ]
+      }
+    },
+    {
+      "id": "CS_003",
+      "name": "Ticket Creation Form",
+      "description": "Test creating a new support ticket",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer support page",
+        "Click 'Create Ticket' button",
+        "Verify ticket creation modal opens",
+        "Fill in ticket details (title, description, priority, category, customer info)",
+        "Verify priority selection works",
+        "Verify category selection works",
+        "Verify customer information validation works",
+        "Submit the form",
+        "Verify new ticket is created and appears in the list",
+        "Verify ticket status is 'open' initially"
+      ],
+      "expected_result": "Ticket creation form works correctly and creates new tickets",
+      "test_data": {
+        "form_fields": [
+          "title",
+          "description",
+          "priority",
+          "category",
+          "subcategory",
+          "customer_name",
+          "customer_email",
+          "assigned_to_id"
+        ],
+        "expected_validation": [
+          "title_required",
+          "description_required",
+          "customer_email_validation",
+          "priority_selection"
+        ]
+      }
+    },
+    {
+      "id": "CS_004",
+      "name": "Ticket Priority and Status Colors",
+      "description": "Test that ticket priority and status colors are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Verify ticket priorities are color-coded",
+        "Verify low priority shows appropriate color",
+        "Verify medium priority shows appropriate color",
+        "Verify high priority shows appropriate color",
+        "Verify urgent priority shows appropriate color",
+        "Verify critical priority shows appropriate color",
+        "Verify ticket statuses are color-coded",
+        "Verify open status shows appropriate color",
+        "Verify in_progress status shows appropriate color",
+        "Verify resolved status shows appropriate color"
+      ],
+      "expected_result": "Ticket priorities and statuses are displayed with proper color coding",
+      "test_data": {
+        "priority_colors": {
+          "low": "appropriate_color",
+          "medium": "appropriate_color",
+          "high": "appropriate_color",
+          "urgent": "appropriate_color",
+          "critical": "appropriate_color"
+        },
+        "status_colors": {
+          "open": "appropriate_color",
+          "in_progress": "appropriate_color",
+          "pending_customer": "appropriate_color",
+          "resolved": "appropriate_color",
+          "closed": "appropriate_color",
+          "cancelled": "appropriate_color"
+        }
+      }
+    },
+    {
+      "id": "CS_005",
+      "name": "Ticket Assignment",
+      "description": "Test assigning tickets to support agents",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Find an unassigned ticket",
+        "Click 'Assign' button",
+        "Verify assignment modal opens",
+        "Select an agent from dropdown",
+        "Add assignment reason",
+        "Submit the assignment",
+        "Verify ticket is assigned to the selected agent",
+        "Verify ticket status updates appropriately",
+        "Verify assignment is reflected in the ticket list"
+      ],
+      "expected_result": "Ticket assignment works correctly and updates ticket status",
+      "test_data": {
+        "expected_assignment_info": [
+          "agent_selection",
+          "assignment_reason",
+          "assignment_type",
+          "status_update"
+        ]
+      }
+    },
+    {
+      "id": "CS_006",
+      "name": "Ticket Escalation",
+      "description": "Test escalating tickets to higher priority or different agents",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Find a ticket that can be escalated",
+        "Click 'Escalate' button",
+        "Verify escalation modal opens",
+        "Select escalation reason",
+        "Select escalated to agent/team",
+        "Submit the escalation",
+        "Verify ticket is escalated",
+        "Verify escalation is logged",
+        "Verify ticket priority may be updated"
+      ],
+      "expected_result": "Ticket escalation works correctly with proper logging",
+      "test_data": {
+        "expected_escalation_info": [
+          "escalation_reason",
+          "escalated_to_agent",
+          "escalation_logging",
+          "priority_update"
+        ]
+      }
+    },
+    {
+      "id": "CS_007",
+      "name": "Ticket Resolution",
+      "description": "Test resolving tickets with resolution details",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer support page",
+        "Find a ticket that can be resolved",
+        "Click 'Resolve' button",
+        "Verify resolution modal opens",
+        "Fill in resolution details",
+        "Select resolution category",
+        "Add resolution notes",
+        "Set follow-up requirements if needed",
+        "Submit the resolution",
+        "Verify ticket status updates to 'resolved'",
+        "Verify resolution is logged"
+      ],
+      "expected_result": "Ticket resolution works correctly with proper status updates",
+      "test_data": {
+        "expected_resolution_info": [
+          "resolution_description",
+          "resolution_notes",
+          "closure_reason",
+          "closure_category",
+          "follow_up_required",
+          "follow_up_date",
+          "customer_satisfaction",
+          "internal_notes"
+        ]
+      }
+    },
+    {
+      "id": "CS_008",
+      "name": "Knowledge Base Display",
+      "description": "Verify knowledge base articles are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Click on Knowledge Base tab",
+        "Verify articles list is displayed",
+        "Verify each article shows title, category, status, view count, helpful count",
+        "Verify article status is color-coded",
+        "Verify article actions (View, Edit, Delete, Publish) are available",
+        "Verify 'Create Article' button is present",
+        "Verify article filters and search are available",
+        "Verify article categories are displayed"
+      ],
+      "expected_result": "Knowledge base displays all articles with complete information",
+      "test_data": {
+        "expected_article_info": [
+          "title",
+          "category",
+          "subcategory",
+          "status",
+          "visibility",
+          "view_count",
+          "helpful_count",
+          "not_helpful_count",
+          "author_name",
+          "created_at",
+          "updated_at"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "delete",
+          "publish",
+          "archive"
+        ],
+        "article_statuses": [
+          "draft",
+          "published",
+          "archived"
+        ]
+      }
+    },
+    {
+      "id": "CS_009",
+      "name": "Knowledge Base Article Creation",
+      "description": "Test creating a new knowledge base article",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Click on Knowledge Base tab",
+        "Click 'Create Article' button",
+        "Verify article creation modal opens",
+        "Fill in article details (title, content, summary, category, tags)",
+        "Verify category selection works",
+        "Verify tag input works",
+        "Verify content editor is functional",
+        "Submit the form",
+        "Verify new article is created and appears in the list",
+        "Verify article status is 'draft' initially"
+      ],
+      "expected_result": "Knowledge base article creation works correctly",
+      "test_data": {
+        "form_fields": [
+          "title",
+          "content",
+          "summary",
+          "category",
+          "subcategory",
+          "tags",
+          "visibility",
+          "meta_description"
+        ],
+        "expected_validation": [
+          "title_required",
+          "content_required",
+          "category_selection",
+          "tag_formatting"
+        ]
+      }
+    },
+    {
+      "id": "CS_010",
+      "name": "Support Analytics Display",
+      "description": "Verify support analytics are displayed correctly",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Click on Analytics tab",
+        "Verify analytics dashboard is displayed",
+        "Verify ticket metrics are shown",
+        "Verify response metrics are displayed",
+        "Verify satisfaction metrics are shown",
+        "Verify breakdown charts are displayed",
+        "Verify performance trends are shown",
+        "Verify SLA compliance metrics are displayed"
+      ],
+      "expected_result": "Support analytics display all key metrics and charts",
+      "test_data": {
+        "expected_metrics": [
+          "total_tickets",
+          "open_tickets",
+          "resolved_tickets",
+          "closed_tickets",
+          "resolution_rate",
+          "avg_first_response_time",
+          "avg_resolution_time",
+          "sla_breach_count",
+          "sla_compliance_rate",
+          "avg_satisfaction_rating",
+          "nps_score",
+          "survey_count"
+        ]
+      }
+    },
+    {
+      "id": "CS_011",
+      "name": "Customer Satisfaction Surveys",
+      "description": "Test customer satisfaction survey functionality",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Click on Surveys tab",
+        "Verify surveys list is displayed",
+        "Verify each survey shows title, status, response count, satisfaction score",
+        "Verify survey actions (View, Edit, Send, Analyze) are available",
+        "Verify 'Create Survey' button is present",
+        "Verify survey templates are available",
+        "Verify survey responses are displayed"
+      ],
+      "expected_result": "Customer satisfaction surveys display correctly with all information",
+      "test_data": {
+        "expected_survey_info": [
+          "survey_title",
+          "status",
+          "response_count",
+          "satisfaction_score",
+          "created_at",
+          "sent_at"
+        ],
+        "expected_actions": [
+          "view",
+          "edit",
+          "send",
+          "analyze",
+          "delete"
+        ]
+      }
+    },
+    {
+      "id": "CS_012",
+      "name": "SLA Tracking and Management",
+      "description": "Test SLA tracking and deadline management",
+      "type": "positive",
+      "priority": "high",
+      "steps": [
+        "Navigate to customer support page",
+        "Verify SLA deadlines are displayed on tickets",
+        "Verify overdue tickets are highlighted",
+        "Verify SLA breach notifications are shown",
+        "Verify SLA compliance metrics are accurate",
+        "Verify SLA escalation rules work correctly",
+        "Verify SLA reporting is available"
+      ],
+      "expected_result": "SLA tracking and management works correctly",
+      "test_data": {
+        "expected_sla_features": [
+          "deadline_display",
+          "overdue_highlighting",
+          "breach_notifications",
+          "compliance_metrics",
+          "escalation_rules",
+          "sla_reporting"
+        ]
+      }
+    },
+    {
+      "id": "CS_013",
+      "name": "Ticket Filtering and Search",
+      "description": "Test ticket filtering and search functionality",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Use status filter to filter tickets",
+        "Verify only tickets with selected status are shown",
+        "Use priority filter to filter tickets",
+        "Verify only tickets with selected priority are shown",
+        "Use category filter to filter tickets",
+        "Verify only tickets with selected category are shown",
+        "Use search to find specific tickets",
+        "Verify search results are accurate",
+        "Verify multiple filters can be combined"
+      ],
+      "expected_result": "Ticket filtering and search work correctly",
+      "test_data": {
+        "expected_filters": [
+          "status_filter",
+          "priority_filter",
+          "category_filter",
+          "assigned_agent_filter",
+          "date_range_filter"
+        ],
+        "expected_search": [
+          "ticket_number_search",
+          "title_search",
+          "customer_search",
+          "description_search"
+        ]
+      }
+    },
+    {
+      "id": "CS_014",
+      "name": "Ticket Comments and Communication",
+      "description": "Test ticket comments and customer communication",
+      "type": "positive",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Open a ticket for viewing",
+        "Verify comments section is displayed",
+        "Add a new comment",
+        "Verify comment is added to the ticket",
+        "Verify comment author and timestamp are shown",
+        "Verify internal vs external comments are distinguished",
+        "Verify comment types are properly categorized",
+        "Verify customer notifications work for external comments"
+      ],
+      "expected_result": "Ticket comments and communication work correctly",
+      "test_data": {
+        "expected_comment_features": [
+          "comment_display",
+          "comment_author",
+          "comment_timestamp",
+          "internal_external_distinction",
+          "comment_types",
+          "customer_notifications"
+        ]
+      }
+    },
+    {
+      "id": "CS_015",
+      "name": "Error Handling",
+      "description": "Verify graceful handling when API fails or data is missing",
+      "type": "negative",
+      "priority": "medium",
+      "steps": [
+        "Navigate to customer support page",
+        "Simulate API failure (network error or 500 response)",
+        "Verify error message is displayed",
+        "Verify page remains functional after error",
+        "Verify retry mechanism works if available",
+        "Verify empty state is handled gracefully",
+        "Verify form validation errors are displayed properly"
+      ],
+      "expected_result": "Page handles API failures gracefully with proper error display",
+      "test_data": {
+        "error_scenarios": [
+          "network_timeout",
+          "api_500_error",
+          "api_404_error",
+          "empty_data_response",
+          "validation_errors"
+        ]
+      }
+    }
+  ]
+}
+

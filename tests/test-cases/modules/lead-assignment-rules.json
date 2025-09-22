@@ -1,0 +1,295 @@
+{
+  "module": "Lead Assignment Rules",
+  "description": "Comprehensive test cases for Lead Assignment Rules functionality including rule creation, management, and automated lead assignment",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "id": "LAR-001",
+      "name": "Lead Assignment Rules Page Load",
+      "description": "Verify that the Lead Assignment Rules page loads correctly with all components",
+      "priority": "High",
+      "category": "Page Load",
+      "steps": [
+        "Navigate to Lead Assignment Rules page",
+        "Verify page title is displayed",
+        "Verify rules list is loaded",
+        "Verify Create Rule button is present",
+        "Verify search and filter options are available"
+      ],
+      "expected_result": "Page loads successfully with all components visible",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-002",
+      "name": "Create Lead Assignment Rule - Basic",
+      "description": "Test creating a basic lead assignment rule with simple conditions",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Click Create Rule button",
+        "Fill in rule name: 'Website Leads'",
+        "Add description: 'Assign website leads to sales team'",
+        "Set conditions: source = 'website'",
+        "Set assignment type: 'user'",
+        "Select assigned user",
+        "Set priority: 1",
+        "Click Save"
+      ],
+      "expected_result": "Rule is created successfully and appears in the rules list",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-003",
+      "name": "Create Lead Assignment Rule - Complex Conditions",
+      "description": "Test creating a rule with multiple conditions and complex logic",
+      "priority": "High",
+      "category": "CRUD Operations",
+      "steps": [
+        "Click Create Rule button",
+        "Fill in rule name: 'Enterprise Leads'",
+        "Add description: 'Assign enterprise leads to senior sales team'",
+        "Set conditions: source = 'referral' AND company_size = 'enterprise'",
+        "Set assignment type: 'round_robin'",
+        "Select user group for round robin",
+        "Set priority: 2",
+        "Click Save"
+      ],
+      "expected_result": "Rule is created with complex conditions and appears in the rules list",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-004",
+      "name": "Edit Lead Assignment Rule",
+      "description": "Test editing an existing lead assignment rule",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Find an existing rule in the list",
+        "Click Edit button",
+        "Modify rule name",
+        "Update conditions",
+        "Change assignment type",
+        "Update priority",
+        "Click Save"
+      ],
+      "expected_result": "Rule is updated successfully with new values",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-005",
+      "name": "Delete Lead Assignment Rule",
+      "description": "Test deleting a lead assignment rule",
+      "priority": "Medium",
+      "category": "CRUD Operations",
+      "steps": [
+        "Find an existing rule in the list",
+        "Click Delete button",
+        "Confirm deletion in the confirmation dialog",
+        "Verify rule is removed from the list"
+      ],
+      "expected_result": "Rule is deleted successfully and removed from the list",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-006",
+      "name": "Rule Priority Management",
+      "description": "Test that rules are executed in priority order",
+      "priority": "High",
+      "category": "Business Logic",
+      "steps": [
+        "Create multiple rules with different priorities",
+        "Verify rules are displayed in priority order",
+        "Test rule execution order",
+        "Verify higher priority rules are evaluated first"
+      ],
+      "expected_result": "Rules are executed in correct priority order",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-007",
+      "name": "Rule Activation/Deactivation",
+      "description": "Test activating and deactivating rules",
+      "priority": "Medium",
+      "category": "Business Logic",
+      "steps": [
+        "Find an active rule",
+        "Click toggle to deactivate",
+        "Verify rule status changes to inactive",
+        "Click toggle to reactivate",
+        "Verify rule status changes to active"
+      ],
+      "expected_result": "Rule activation status can be toggled successfully",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-008",
+      "name": "Rule Conditions Validation",
+      "description": "Test validation of rule conditions",
+      "priority": "High",
+      "category": "Validation",
+      "steps": [
+        "Try to create rule with empty conditions",
+        "Try to create rule with invalid condition format",
+        "Try to create rule with missing required fields",
+        "Verify appropriate error messages are shown"
+      ],
+      "expected_result": "Validation errors are displayed for invalid conditions",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-009",
+      "name": "Assignment Type - User",
+      "description": "Test rule assignment to specific user",
+      "priority": "High",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create rule with assignment type 'user'",
+        "Select specific user for assignment",
+        "Create test lead matching rule conditions",
+        "Verify lead is assigned to specified user"
+      ],
+      "expected_result": "Lead is assigned to the specified user",
+      "test_type": "Integration"
+    },
+    {
+      "id": "LAR-010",
+      "name": "Assignment Type - Round Robin",
+      "description": "Test round robin assignment logic",
+      "priority": "High",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create rule with assignment type 'round_robin'",
+        "Select user group for round robin",
+        "Create multiple test leads matching rule conditions",
+        "Verify leads are distributed evenly among users"
+      ],
+      "expected_result": "Leads are distributed evenly using round robin logic",
+      "test_type": "Integration"
+    },
+    {
+      "id": "LAR-011",
+      "name": "Assignment Type - Load Balanced",
+      "description": "Test load balanced assignment based on current workload",
+      "priority": "Medium",
+      "category": "Assignment Logic",
+      "steps": [
+        "Create rule with assignment type 'load_balanced'",
+        "Select user group for load balancing",
+        "Create test leads with varying workloads",
+        "Verify leads are assigned to users with lighter workloads"
+      ],
+      "expected_result": "Leads are assigned to users with lighter workloads",
+      "test_type": "Integration"
+    },
+    {
+      "id": "LAR-012",
+      "name": "Rule Search and Filter",
+      "description": "Test searching and filtering rules",
+      "priority": "Medium",
+      "category": "Search & Filter",
+      "steps": [
+        "Use search box to find rules by name",
+        "Filter rules by assignment type",
+        "Filter rules by status (active/inactive)",
+        "Filter rules by priority",
+        "Verify search and filter results are accurate"
+      ],
+      "expected_result": "Search and filter functionality works correctly",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-013",
+      "name": "Rule Execution Log",
+      "description": "Test viewing rule execution history and logs",
+      "priority": "Medium",
+      "category": "Logging & Audit",
+      "steps": [
+        "Navigate to rule execution log",
+        "Verify log entries for rule executions",
+        "Check log details for specific rule runs",
+        "Verify log includes assignment results"
+      ],
+      "expected_result": "Rule execution logs are displayed correctly",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-014",
+      "name": "Bulk Rule Operations",
+      "description": "Test bulk operations on multiple rules",
+      "priority": "Low",
+      "category": "Bulk Operations",
+      "steps": [
+        "Select multiple rules using checkboxes",
+        "Perform bulk activation",
+        "Perform bulk deactivation",
+        "Perform bulk deletion",
+        "Verify bulk operations work correctly"
+      ],
+      "expected_result": "Bulk operations are performed successfully on selected rules",
+      "test_type": "UI"
+    },
+    {
+      "id": "LAR-015",
+      "name": "Rule Import/Export",
+      "description": "Test importing and exporting rule configurations",
+      "priority": "Low",
+      "category": "Data Management",
+      "steps": [
+        "Export rules to JSON/CSV format",
+        "Import rules from file",
+        "Verify imported rules are created correctly",
+        "Test import validation for invalid formats"
+      ],
+      "expected_result": "Rules can be imported and exported successfully",
+      "test_type": "UI"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "endpoint": "GET /api/lead-assignment-rules",
+      "description": "Get all lead assignment rules for organization",
+      "test_cases": ["LAR-001", "LAR-012"]
+    },
+    {
+      "endpoint": "POST /api/lead-assignment-rules",
+      "description": "Create new lead assignment rule",
+      "test_cases": ["LAR-002", "LAR-003", "LAR-008"]
+    },
+    {
+      "endpoint": "PUT /api/lead-assignment-rules/{rule_id}",
+      "description": "Update existing lead assignment rule",
+      "test_cases": ["LAR-004", "LAR-007"]
+    },
+    {
+      "endpoint": "DELETE /api/lead-assignment-rules/{rule_id}",
+      "description": "Delete lead assignment rule",
+      "test_cases": ["LAR-005", "LAR-014"]
+    }
+  ],
+  "test_data": {
+    "sample_rules": [
+      {
+        "name": "Website Leads",
+        "description": "Assign website leads to sales team",
+        "conditions": {"source": "website"},
+        "assignment_type": "user",
+        "assigned_user_id": 1,
+        "assignment_priority": 1
+      },
+      {
+        "name": "Enterprise Leads",
+        "description": "Assign enterprise leads to senior sales team",
+        "conditions": {"source": "referral", "company_size": "enterprise"},
+        "assignment_type": "round_robin",
+        "assignment_priority": 2
+      },
+      {
+        "name": "High Value Leads",
+        "description": "Assign high value leads to top performers",
+        "conditions": {"estimated_value": {"min": 10000}},
+        "assignment_type": "load_balanced",
+        "assignment_priority": 3
+      }
+    ]
+  }
+}
