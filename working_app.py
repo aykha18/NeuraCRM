@@ -2819,6 +2819,453 @@ def get_financial_reports(current_user: User = Depends(get_current_user), db: Se
     except Exception as e:
         return {"error": f"Failed to fetch financial reports: {str(e)}"}
 
+# Enhanced Financial Reporting Suite
+@app.get("/api/financial/reports/profit-loss")
+def get_profit_loss_statement(
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate Profit & Loss Statement"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Default to current month if no dates provided
+        if not start_date:
+            start_date = datetime.utcnow().replace(day=1).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Revenue (from recognized revenue)
+        revenue_data = db.execute(text("""
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_revenue,
+                COUNT(*) as transaction_count
+            FROM revenue 
+            WHERE organization_id = :org_id 
+            AND status = 'recognized'
+            AND recognition_date >= :start_date 
+            AND recognition_date <= :end_date
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt,
+            "end_date": end_dt
+        }).fetchone()
+        
+        # Cost of Goods Sold (from invoices with cost data)
+        cogs_data = db.execute(text("""
+            SELECT 
+                COALESCE(SUM(CAST(invoice_data->>'cost' AS DECIMAL)), 0) as total_cogs,
+                COUNT(*) as invoice_count
+            FROM invoices 
+            WHERE organization_id = :org_id 
+            AND status IN ('paid', 'partially_paid')
+            AND invoice_date >= :start_date 
+            AND invoice_date <= :end_date
+            AND invoice_data->>'cost' IS NOT NULL
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt,
+            "end_date": end_dt
+        }).fetchone()
+        
+        # Operating Expenses (estimated from payment categories)
+        expenses_data = db.execute(text("""
+            SELECT 
+                COALESCE(SUM(
+                    CASE 
+                        WHEN payment_data->>'category' IN ('operating', 'administrative', 'marketing') 
+                        THEN amount 
+                        ELSE 0 
+                    END
+                ), 0) as operating_expenses,
+                COUNT(*) as expense_transactions
+            FROM payments 
+            WHERE organization_id = :org_id 
+            AND status = 'completed'
+            AND payment_date >= :start_date 
+            AND payment_date <= :end_date
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt,
+            "end_date": end_dt
+        }).fetchone()
+        
+        # Calculate key metrics
+        total_revenue = float(revenue_data.total_revenue or 0)
+        total_cogs = float(cogs_data.total_cogs or 0)
+        operating_expenses = float(expenses_data.operating_expenses or 0)
+        
+        gross_profit = total_revenue - total_cogs
+        gross_profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
+        
+        operating_income = gross_profit - operating_expenses
+        operating_margin = (operating_income / total_revenue * 100) if total_revenue > 0 else 0
+        
+        # Net Income (simplified - assuming no taxes or interest for now)
+        net_income = operating_income
+        net_margin = (net_income / total_revenue * 100) if total_revenue > 0 else 0
+        
+        return {
+            "report_period": {
+                "start_date": start_date,
+                "end_date": end_date
+            },
+            "revenue": {
+                "total_revenue": total_revenue,
+                "transaction_count": revenue_data.transaction_count or 0
+            },
+            "cost_of_goods_sold": {
+                "total_cogs": total_cogs,
+                "invoice_count": cogs_data.invoice_count or 0
+            },
+            "gross_profit": {
+                "amount": gross_profit,
+                "margin_percentage": round(gross_profit_margin, 2)
+            },
+            "operating_expenses": {
+                "amount": operating_expenses,
+                "transaction_count": expenses_data.expense_transactions or 0
+            },
+            "operating_income": {
+                "amount": operating_income,
+                "margin_percentage": round(operating_margin, 2)
+            },
+            "net_income": {
+                "amount": net_income,
+                "margin_percentage": round(net_margin, 2)
+            },
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to generate P&L statement: {str(e)}"}
+
+@app.get("/api/financial/reports/cash-flow")
+def get_cash_flow_statement(
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate Cash Flow Statement"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Default to current month if no dates provided
+        if not start_date:
+            start_date = datetime.utcnow().replace(day=1).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Cash from Operations (payments received)
+        operating_cash = db.execute(text("""
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_cash_in,
+                COUNT(*) as transaction_count
+            FROM payments 
+            WHERE organization_id = :org_id 
+            AND status = 'completed'
+            AND payment_date >= :start_date 
+            AND payment_date <= :end_date
+            AND payment_type IN ('income', 'receivable_payment')
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt,
+            "end_date": end_dt
+        }).fetchone()
+        
+        # Cash from Investing (simplified - no investing activities for now)
+        investing_cash = 0
+        
+        # Cash from Financing (simplified - no financing activities for now)
+        financing_cash = 0
+        
+        # Cash Outflows (payments made)
+        cash_outflows = db.execute(text("""
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_cash_out,
+                COUNT(*) as transaction_count
+            FROM payments 
+            WHERE organization_id = :org_id 
+            AND status = 'completed'
+            AND payment_date >= :start_date 
+            AND payment_date <= :end_date
+            AND payment_type IN ('expense', 'payable_payment')
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt,
+            "end_date": end_dt
+        }).fetchone()
+        
+        # Calculate net cash flow
+        cash_from_operations = float(operating_cash.total_cash_in or 0)
+        cash_from_investing = investing_cash
+        cash_from_financing = financing_cash
+        cash_outflows_total = float(cash_outflows.total_cash_out or 0)
+        
+        net_cash_flow = cash_from_operations + cash_from_investing + cash_from_financing - cash_outflows_total
+        
+        # Get beginning and ending cash (simplified calculation)
+        beginning_cash = db.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) as beginning_cash
+            FROM payments 
+            WHERE organization_id = :org_id 
+            AND status = 'completed'
+            AND payment_date < :start_date
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_dt
+        }).scalar() or 0
+        
+        ending_cash = float(beginning_cash) + net_cash_flow
+        
+        return {
+            "report_period": {
+                "start_date": start_date,
+                "end_date": end_date
+            },
+            "beginning_cash": float(beginning_cash),
+            "cash_from_operations": {
+                "amount": cash_from_operations,
+                "transaction_count": operating_cash.transaction_count or 0
+            },
+            "cash_from_investing": {
+                "amount": cash_from_investing,
+                "transaction_count": 0
+            },
+            "cash_from_financing": {
+                "amount": cash_from_financing,
+                "transaction_count": 0
+            },
+            "cash_outflows": {
+                "amount": cash_outflows_total,
+                "transaction_count": cash_outflows.transaction_count or 0
+            },
+            "net_cash_flow": net_cash_flow,
+            "ending_cash": ending_cash,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to generate cash flow statement: {str(e)}"}
+
+@app.get("/api/financial/reports/aging")
+def get_aging_reports(
+    report_type: str = "receivables",  # receivables, payables
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate Aging Reports for Receivables or Payables"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        current_date = datetime.utcnow().date()
+        
+        if report_type == "receivables":
+            # Aging Report for Outstanding Invoices
+            aging_data = db.execute(text("""
+                SELECT 
+                    i.id,
+                    i.invoice_number,
+                    i.customer_name,
+                    i.total_amount,
+                    i.invoice_date,
+                    i.due_date,
+                    COALESCE(SUM(p.amount), 0) as paid_amount,
+                    (i.total_amount - COALESCE(SUM(p.amount), 0)) as outstanding_amount,
+                    (CURRENT_DATE - i.due_date) as days_overdue
+                FROM invoices i
+                LEFT JOIN payments p ON i.id = p.invoice_id AND p.status = 'completed'
+                WHERE i.organization_id = :org_id 
+                AND i.status IN ('sent', 'overdue')
+                GROUP BY i.id, i.invoice_number, i.customer_name, i.total_amount, i.invoice_date, i.due_date
+                HAVING (i.total_amount - COALESCE(SUM(p.amount), 0)) > 0
+                ORDER BY i.due_date ASC
+            """), {"org_id": current_user.organization_id}).fetchall()
+            
+            # Categorize by age
+            current = []
+            days_30 = []
+            days_60 = []
+            days_90_plus = []
+            total_outstanding = 0
+            
+            for row in aging_data:
+                outstanding = float(row.outstanding_amount)
+                days_overdue = row.days_overdue or 0
+                total_outstanding += outstanding
+                
+                invoice_data = {
+                    "id": row.id,
+                    "invoice_number": row.invoice_number,
+                    "customer_name": row.customer_name,
+                    "total_amount": float(row.total_amount),
+                    "paid_amount": float(row.paid_amount),
+                    "outstanding_amount": outstanding,
+                    "invoice_date": row.invoice_date.isoformat() if row.invoice_date else None,
+                    "due_date": row.due_date.isoformat() if row.due_date else None,
+                    "days_overdue": days_overdue
+                }
+                
+                if days_overdue <= 0:
+                    current.append(invoice_data)
+                elif days_overdue <= 30:
+                    days_30.append(invoice_data)
+                elif days_overdue <= 60:
+                    days_60.append(invoice_data)
+                else:
+                    days_90_plus.append(invoice_data)
+            
+            return {
+                "report_type": "receivables",
+                "report_date": current_date.isoformat(),
+                "total_outstanding": total_outstanding,
+                "aging_summary": {
+                    "current": {
+                        "count": len(current),
+                        "amount": sum(item["outstanding_amount"] for item in current)
+                    },
+                    "days_1_30": {
+                        "count": len(days_30),
+                        "amount": sum(item["outstanding_amount"] for item in days_30)
+                    },
+                    "days_31_60": {
+                        "count": len(days_60),
+                        "amount": sum(item["outstanding_amount"] for item in days_60)
+                    },
+                    "days_90_plus": {
+                        "count": len(days_90_plus),
+                        "amount": sum(item["outstanding_amount"] for item in days_90_plus)
+                    }
+                },
+                "detailed_invoices": {
+                    "current": current,
+                    "days_1_30": days_30,
+                    "days_31_60": days_60,
+                    "days_90_plus": days_90_plus
+                },
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        
+        else:
+            # Payables aging report (if needed in the future)
+            return {"error": "Payables aging report not implemented yet"}
+            
+    except Exception as e:
+        return {"error": f"Failed to generate aging report: {str(e)}"}
+
+@app.get("/api/financial/reports/summary")
+def get_financial_summary(
+    period: str = "month",  # month, quarter, year
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive financial summary"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Calculate date range based on period
+        now = datetime.utcnow()
+        if period == "month":
+            start_date = now.replace(day=1)
+            end_date = now
+        elif period == "quarter":
+            quarter = (now.month - 1) // 3 + 1
+            start_date = datetime(now.year, (quarter - 1) * 3 + 1, 1)
+            end_date = now
+        elif period == "year":
+            start_date = datetime(now.year, 1, 1)
+            end_date = now
+        else:
+            return {"error": "Invalid period. Use 'month', 'quarter', or 'year'"}
+        
+        # Key financial metrics
+        metrics = db.execute(text("""
+            SELECT 
+                -- Revenue metrics
+                (SELECT COALESCE(SUM(amount), 0) FROM revenue 
+                 WHERE organization_id = :org_id AND status = 'recognized' 
+                 AND recognition_date >= :start_date AND recognition_date <= :end_date) as total_revenue,
+                
+                -- Invoice metrics
+                (SELECT COUNT(*) FROM invoices 
+                 WHERE organization_id = :org_id 
+                 AND invoice_date >= :start_date AND invoice_date <= :end_date) as total_invoices,
+                
+                (SELECT COUNT(*) FROM invoices 
+                 WHERE organization_id = :org_id AND status = 'paid'
+                 AND invoice_date >= :start_date AND invoice_date <= :end_date) as paid_invoices,
+                
+                -- Payment metrics
+                (SELECT COALESCE(SUM(amount), 0) FROM payments 
+                 WHERE organization_id = :org_id AND status = 'completed'
+                 AND payment_date >= :start_date AND payment_date <= :end_date) as total_payments,
+                
+                -- Outstanding receivables
+                (SELECT COALESCE(SUM(i.total_amount - COALESCE(p.paid_amount, 0)), 0)
+                 FROM invoices i
+                 LEFT JOIN (
+                     SELECT invoice_id, SUM(amount) as paid_amount
+                     FROM payments 
+                     WHERE status = 'completed'
+                     GROUP BY invoice_id
+                 ) p ON i.id = p.invoice_id
+                 WHERE i.organization_id = :org_id AND i.status IN ('sent', 'overdue')) as outstanding_receivables
+        """), {
+            "org_id": current_user.organization_id,
+            "start_date": start_date,
+            "end_date": end_date
+        }).fetchone()
+        
+        # Calculate ratios and percentages
+        total_revenue = float(metrics.total_revenue or 0)
+        total_invoices = metrics.total_invoices or 0
+        paid_invoices = metrics.paid_invoices or 0
+        total_payments = float(metrics.total_payments or 0)
+        outstanding_receivables = float(metrics.outstanding_receivables or 0)
+        
+        collection_rate = (paid_invoices / total_invoices * 100) if total_invoices > 0 else 0
+        average_invoice_value = (total_revenue / total_invoices) if total_invoices > 0 else 0
+        
+        return {
+            "period": period,
+            "date_range": {
+                "start_date": start_date.strftime('%Y-%m-%d'),
+                "end_date": end_date.strftime('%Y-%m-%d')
+            },
+            "revenue": {
+                "total_revenue": total_revenue,
+                "average_invoice_value": round(average_invoice_value, 2)
+            },
+            "invoices": {
+                "total_invoices": total_invoices,
+                "paid_invoices": paid_invoices,
+                "collection_rate": round(collection_rate, 2)
+            },
+            "payments": {
+                "total_payments": total_payments
+            },
+            "receivables": {
+                "outstanding_amount": outstanding_receivables
+            },
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to generate financial summary: {str(e)}"}
+
 @app.post("/api/financial/reports/generate")
 def generate_financial_report(report_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Generate a new financial report"""

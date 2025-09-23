@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Clock,
   BarChart3,
+  BarChart,
   PieChart,
   LineChart,
   Filter,
@@ -126,7 +127,7 @@ interface CustomerAccount {
 }
 
 const FinancialManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'payments' | 'revenue' | 'reports' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'payments' | 'revenue' | 'reports' | 'profit-loss' | 'cash-flow' | 'aging' | 'settings'>('dashboard');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [revenue, setRevenue] = useState<Revenue[]>([]);
@@ -169,6 +170,17 @@ const FinancialManagement: React.FC = () => {
     start_date: '',
     end_date: '',
     include_charts: true
+  });
+  
+  // Enhanced Financial Reports states
+  const [profitLossData, setProfitLossData] = useState<any>(null);
+  const [cashFlowData, setCashFlowData] = useState<any>(null);
+  const [agingData, setAgingData] = useState<any>(null);
+  const [financialSummary, setFinancialSummary] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportDateRange, setReportDateRange] = useState({
+    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0]
   });
   
   // Data for dropdowns
@@ -288,6 +300,12 @@ const FinancialManagement: React.FC = () => {
       fetchPayments();
     } else if (activeTab === 'revenue') {
       fetchRevenue();
+    } else if (activeTab === 'profit-loss') {
+      fetchProfitLossReport(reportDateRange.start_date, reportDateRange.end_date);
+    } else if (activeTab === 'cash-flow') {
+      fetchCashFlowReport(reportDateRange.start_date, reportDateRange.end_date);
+    } else if (activeTab === 'aging') {
+      fetchAgingReport('receivables');
     }
   }, [activeTab]);
 
@@ -318,6 +336,67 @@ const FinancialManagement: React.FC = () => {
       setError('Failed to fetch dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Enhanced Financial Reports fetch functions
+  const fetchProfitLossReport = async (startDate?: string, endDate?: string) => {
+    try {
+      setReportLoading(true);
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      
+      const data = await apiRequest(`/api/financial/reports/profit-loss?${params.toString()}`);
+      setProfitLossData(data);
+    } catch (err) {
+      console.error('Error fetching P&L report:', err);
+      setError('Failed to fetch Profit & Loss report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const fetchCashFlowReport = async (startDate?: string, endDate?: string) => {
+    try {
+      setReportLoading(true);
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      
+      const data = await apiRequest(`/api/financial/reports/cash-flow?${params.toString()}`);
+      setCashFlowData(data);
+    } catch (err) {
+      console.error('Error fetching cash flow report:', err);
+      setError('Failed to fetch Cash Flow report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const fetchAgingReport = async (reportType: string = 'receivables') => {
+    try {
+      setReportLoading(true);
+      const data = await apiRequest(`/api/financial/reports/aging?report_type=${reportType}`);
+      setAgingData(data);
+    } catch (err) {
+      console.error('Error fetching aging report:', err);
+      setError('Failed to fetch Aging report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const fetchFinancialSummary = async (period: string = 'month') => {
+    try {
+      setReportLoading(true);
+      const data = await apiRequest(`/api/financial/reports/summary?period=${period}`);
+      setFinancialSummary(data);
+    } catch (err) {
+      console.error('Error fetching financial summary:', err);
+      setError('Failed to fetch Financial Summary');
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -1038,7 +1117,10 @@ const FinancialManagement: React.FC = () => {
     { id: 'invoices', name: 'Invoices', icon: <FileText className="w-5 h-5" /> },
     { id: 'payments', name: 'Payments', icon: <CreditCard className="w-5 h-5" /> },
     { id: 'revenue', name: 'Revenue', icon: <TrendingUp className="w-5 h-5" /> },
-    { id: 'reports', name: 'Reports', icon: <PieChart className="w-5 h-5" /> },
+    { id: 'profit-loss', name: 'P&L Statement', icon: <BarChart className="w-5 h-5" /> },
+    { id: 'cash-flow', name: 'Cash Flow', icon: <TrendingUp className="w-5 h-5" /> },
+    { id: 'aging', name: 'Aging Reports', icon: <Clock className="w-5 h-5" /> },
+    { id: 'reports', name: 'Legacy Reports', icon: <PieChart className="w-5 h-5" /> },
     { id: 'settings', name: 'Settings', icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -1781,6 +1863,366 @@ const FinancialManagement: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Profit & Loss Statement Tab */}
+      {activeTab === 'profit-loss' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Profit & Loss Statement</h2>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={reportDateRange.start_date}
+                onChange={(e) => setReportDateRange({...reportDateRange, start_date: e.target.value})}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <input
+                type="date"
+                value={reportDateRange.end_date}
+                onChange={(e) => setReportDateRange({...reportDateRange, end_date: e.target.value})}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <Button
+                variant="primary"
+                onClick={() => fetchProfitLossReport(reportDateRange.start_date, reportDateRange.end_date)}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
+          </div>
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Generating report...</span>
+            </div>
+          ) : profitLossData && !profitLossData.error ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  P&L Statement for {profitLossData.report_period?.start_date} to {profitLossData.report_period?.end_date}
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Revenue */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Total Revenue</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(profitLossData.revenue?.total_revenue || 0)}
+                  </span>
+                </div>
+                
+                {/* Cost of Goods Sold */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300 ml-4">Cost of Goods Sold</span>
+                  <span className="text-red-600 dark:text-red-400">
+                    {formatCurrency(profitLossData.cost_of_goods_sold?.total_cogs || 0)}
+                  </span>
+                </div>
+                
+                {/* Gross Profit */}
+                <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 dark:border-gray-600">
+                  <span className="font-semibold text-gray-900 dark:text-white">Gross Profit</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(profitLossData.gross_profit?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Operating Expenses */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300 ml-4">Operating Expenses</span>
+                  <span className="text-red-600 dark:text-red-400">
+                    {formatCurrency(profitLossData.operating_expenses?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Operating Income */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Operating Income</span>
+                  <span className="font-medium text-blue-600 dark:text-blue-400">
+                    {formatCurrency(profitLossData.operating_income?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Net Income */}
+                <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 dark:border-gray-600">
+                  <span className="font-bold text-gray-900 dark:text-white">Net Income</span>
+                  <span className="font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(profitLossData.net_income?.amount || 0)}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Key Metrics */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Gross Profit Margin</h4>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {profitLossData.gross_profit?.margin_percentage || 0}%
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Operating Margin</h4>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {profitLossData.operating_income?.margin_percentage || 0}%
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Net Margin</h4>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {profitLossData.net_income?.margin_percentage || 0}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 text-center">
+              <p className="text-gray-600 dark:text-gray-400">No data available for the selected period.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cash Flow Statement Tab */}
+      {activeTab === 'cash-flow' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Cash Flow Statement</h2>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={reportDateRange.start_date}
+                onChange={(e) => setReportDateRange({...reportDateRange, start_date: e.target.value})}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <input
+                type="date"
+                value={reportDateRange.end_date}
+                onChange={(e) => setReportDateRange({...reportDateRange, end_date: e.target.value})}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <Button
+                variant="primary"
+                onClick={() => fetchCashFlowReport(reportDateRange.start_date, reportDateRange.end_date)}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
+          </div>
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Generating report...</span>
+            </div>
+          ) : cashFlowData && !cashFlowData.error ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Cash Flow Statement for {cashFlowData.report_period?.start_date} to {cashFlowData.report_period?.end_date}
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Beginning Cash */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Beginning Cash</span>
+                  <span className="font-semibold text-gray-600 dark:text-gray-400">
+                    {formatCurrency(cashFlowData.beginning_cash || 0)}
+                  </span>
+                </div>
+                
+                {/* Cash from Operations */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Cash from Operations</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(cashFlowData.cash_from_operations?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Cash from Investing */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Cash from Investing</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(cashFlowData.cash_from_investing?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Cash from Financing */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Cash from Financing</span>
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                    {formatCurrency(cashFlowData.cash_from_financing?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Cash Outflows */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="font-medium text-gray-900 dark:text-white">Cash Outflows</span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">
+                    {formatCurrency(cashFlowData.cash_outflows?.amount || 0)}
+                  </span>
+                </div>
+                
+                {/* Net Cash Flow */}
+                <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 dark:border-gray-600">
+                  <span className="font-bold text-gray-900 dark:text-white">Net Cash Flow</span>
+                  <span className={`font-bold ${(cashFlowData.net_cash_flow || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(cashFlowData.net_cash_flow || 0)}
+                  </span>
+                </div>
+                
+                {/* Ending Cash */}
+                <div className="flex justify-between items-center py-2 border-b-2 border-gray-300 dark:border-gray-600">
+                  <span className="font-bold text-gray-900 dark:text-white">Ending Cash</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(cashFlowData.ending_cash || 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 text-center">
+              <p className="text-gray-600 dark:text-gray-400">No data available for the selected period.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Aging Reports Tab */}
+      {activeTab === 'aging' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Aging Reports</h2>
+            <Button
+              variant="primary"
+              onClick={() => fetchAgingReport('receivables')}
+              disabled={reportLoading}
+            >
+              {reportLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Generating report...</span>
+            </div>
+          ) : agingData && !agingData.error ? (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Current</h3>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(agingData.aging_summary?.current?.amount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {agingData.aging_summary?.current?.count || 0} invoices
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">1-30 Days</h3>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {formatCurrency(agingData.aging_summary?.days_1_30?.amount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {agingData.aging_summary?.days_1_30?.count || 0} invoices
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">31-60 Days</h3>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {formatCurrency(agingData.aging_summary?.days_31_60?.amount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {agingData.aging_summary?.days_31_60?.count || 0} invoices
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4">
+                  <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">90+ Days</h3>
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {formatCurrency(agingData.aging_summary?.days_90_plus?.amount || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {agingData.aging_summary?.days_90_plus?.count || 0} invoices
+                  </p>
+                </div>
+              </div>
+
+              {/* Detailed Invoices */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Detailed Invoice Aging</h3>
+                
+                {/* Current Invoices */}
+                {agingData.detailed_invoices?.current?.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-medium text-green-600 dark:text-green-400 mb-3">Current (0 days overdue)</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Invoice</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          {agingData.detailed_invoices.current.map((invoice: any) => (
+                            <tr key={invoice.id}>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{invoice.invoice_number}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{invoice.customer_name}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.outstanding_amount)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{invoice.due_date}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Overdue Invoices */}
+                {agingData.detailed_invoices?.days_1_30?.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-medium text-yellow-600 dark:text-yellow-400 mb-3">1-30 Days Overdue</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Invoice</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Days Overdue</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          {agingData.detailed_invoices.days_1_30.map((invoice: any) => (
+                            <tr key={invoice.id}>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{invoice.invoice_number}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{invoice.customer_name}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.outstanding_amount)}</td>
+                              <td className="px-4 py-3 text-sm text-yellow-600 dark:text-yellow-400">{invoice.days_overdue} days</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 text-center">
+              <p className="text-gray-600 dark:text-gray-400">No aging data available.</p>
             </div>
           )}
         </div>
