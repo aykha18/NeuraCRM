@@ -792,7 +792,6 @@ def get_kanban_stats(current_user: User = Depends(get_current_user), db: Session
         
     except Exception as e:
         return {"error": f"Failed to fetch kanban stats: {str(e)}"}
-
 @app.get("/api/kanban/stage/{stage_id}/deals")
 def get_stage_deals(
     stage_id: int,
@@ -1589,7 +1588,6 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
         return {"message": "User deleted successfully"}
     except Exception as e:
         return {"error": f"Failed to delete user: {str(e)}"}
-
 # Email Automation endpoints
 @app.get("/api/email/templates")
 def get_email_templates(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -2377,7 +2375,6 @@ def start_customer_onboarding(account_id: int, current_user: User = Depends(get_
 # ============================================================================
 # FINANCIAL MANAGEMENT ENDPOINTS
 # ============================================================================
-
 # Invoice Management
 @app.get("/api/invoices")
 def get_invoices(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -3897,7 +3894,6 @@ def delete_knowledge_base_article(article_id: int, current_user: User = Depends(
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to delete knowledge base article: {str(e)}"}
-
 # Support Analytics
 @app.get("/api/support/analytics/dashboard")
 def get_support_analytics_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -5482,7 +5478,6 @@ def get_contacts_paginated(
         
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
-
 @app.put("/api/leads/{lead_id}")
 def update_lead(lead_id: int, lead_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Update a lead"""
@@ -6266,7 +6261,6 @@ class ForecastingModelCreate(BaseModel):
     model_algorithm: str  # 'ARIMA', 'Prophet', 'Linear_Regression', 'Exponential_Smoothing'
     training_data_period: str  # '3_months', '6_months', '12_months', '24_months'
     forecast_horizon: str  # '1_month', '3_months', '6_months', '12_months'
-
 class ForecastingModelResponse(BaseModel):
     id: int
     name: str
@@ -7032,6 +7026,8 @@ def get_pbx_providers(current_user: User = Depends(get_current_user), db: Sessio
                 "display_name": p.display_name,
                 "host": p.host,
                 "port": p.port,
+                "username": p.username,
+                "api_key": p.api_key,
                 "is_active": p.is_active,
                 "is_primary": p.is_primary,
                 "recording_enabled": p.recording_enabled,
@@ -7098,6 +7094,8 @@ def create_pbx_provider(
             "display_name": provider.display_name,
             "host": provider.host,
             "port": provider.port,
+            "username": provider.username,
+            "api_key": provider.api_key,
             "is_active": provider.is_active,
             "is_primary": provider.is_primary,
             "recording_enabled": provider.recording_enabled,
@@ -7136,6 +7134,8 @@ def get_pbx_provider(
             "display_name": provider.display_name,
             "host": provider.host,
             "port": provider.port,
+            "username": provider.username,
+            "api_key": provider.api_key,
             "is_active": provider.is_active,
             "is_primary": provider.is_primary,
             "recording_enabled": provider.recording_enabled,
@@ -9390,7 +9390,6 @@ def enroll_lead_in_campaign(
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to enroll lead: {str(e)}"}
-
 @app.get("/api/lead-nurturing-campaigns/{campaign_id}/enrollments", response_model=list[LeadCampaignEnrollmentResponse])
 def get_campaign_enrollments(
     campaign_id: int,
@@ -10163,7 +10162,6 @@ def create_automated_tasks_for_deal(deal_id: int, deal_stage: str, organization_
         db.rollback()
         logger.error(f"Error creating automated tasks for deal {deal_id}: {str(e)}")
         return []
-
 def create_automated_tasks_for_lead(lead_id: int, lead_status: str, organization_id: int, db: Session):
     """Create automated tasks based on lead status"""
     try:
@@ -10226,6 +10224,4 @@ def create_automated_tasks_for_lead(lead_id: int, lead_status: str, organization
         logger.error(f"Error creating automated tasks for lead {lead_id}: {str(e)}")
         return []
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# ... (rest of the code remains unchanged)
