@@ -10221,7 +10221,20 @@ def create_automated_tasks_for_lead(lead_id: int, lead_status: str, organization
         return created_tasks
     except Exception as e:
         db.rollback()
-        logger.error(f"Error creating automated tasks for lead {lead_id}: {str(e)}")
+        logger.error(f"Error creating automated tasks for lead {lead_id}: {str(e)}")                                                                            
         return []
 
-# ... (rest of the code remains unchanged)
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    
+    # Get port from environment variable (Railway sets this)
+    port = int(os.environ.get("PORT", 8000))
+    
+    # Start the FastAPI server
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info"
+    )
