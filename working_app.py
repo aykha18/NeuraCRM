@@ -8875,6 +8875,105 @@ def process_approval_action(
         db.rollback()
         return {"error": f"Failed to process approval action: {str(e)}"}
 
+@app.post("/api/approval-workflows/create-samples")
+def create_sample_workflows(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create sample approval workflows for demonstration"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        sample_workflows = [
+            {
+                "workflow_name": "High Value Deal Approval",
+                "workflow_description": "Approval required for deals over $10,000",
+                "entity_type": "deal",
+                "trigger_conditions": {"deal_value": {"min": 10000}},
+                "approval_steps": [
+                    {"approver_id": 1, "due_days": 2},
+                    {"approver_id": 2, "due_days": 1}
+                ],
+                "auto_approve_conditions": {"deal_value": {"max": 5000}},
+                "is_active": True
+            },
+            {
+                "workflow_name": "Expense Approval",
+                "workflow_description": "Approval required for expenses over $500",
+                "entity_type": "expense",
+                "trigger_conditions": {"expense_amount": {"min": 500}},
+                "approval_steps": [
+                    {"approver_id": 1, "due_days": 3}
+                ],
+                "auto_approve_conditions": {"expense_amount": {"max": 200}},
+                "is_active": True
+            },
+            {
+                "workflow_name": "Lead Qualification Review",
+                "workflow_description": "Review process for qualified leads",
+                "entity_type": "lead_qualification",
+                "trigger_conditions": {"lead_score": {"min": 80}},
+                "approval_steps": [
+                    {"approver_id": 1, "due_days": 1}
+                ],
+                "auto_approve_conditions": None,
+                "is_active": True
+            },
+            {
+                "workflow_name": "Task Assignment Approval",
+                "workflow_description": "Approval for high-priority task assignments",
+                "entity_type": "task",
+                "trigger_conditions": {"task_priority": "high"},
+                "approval_steps": [
+                    {"approver_id": 1, "due_days": 1}
+                ],
+                "auto_approve_conditions": {"task_priority": "low"},
+                "is_active": True
+            }
+        ]
+        
+        created_workflows = []
+        for workflow_data in sample_workflows:
+            result = db.execute(text("""
+                INSERT INTO approval_workflows 
+                (organization_id, workflow_name, workflow_description, entity_type,
+                 trigger_conditions, approval_steps, is_active, auto_approve_conditions,
+                 created_by, created_at, updated_at)
+                VALUES (:org_id, :name, :description, :entity_type, :trigger_conditions,
+                        :approval_steps, :is_active, :auto_approve_conditions,
+                        :created_by, :created_at, :updated_at)
+                RETURNING id, workflow_name
+            """), {
+                "org_id": current_user.organization_id,
+                "name": workflow_data["workflow_name"],
+                "description": workflow_data["workflow_description"],
+                "entity_type": workflow_data["entity_type"],
+                "trigger_conditions": json.dumps(workflow_data["trigger_conditions"]),
+                "approval_steps": json.dumps(workflow_data["approval_steps"]),
+                "is_active": workflow_data["is_active"],
+                "auto_approve_conditions": json.dumps(workflow_data["auto_approve_conditions"]) if workflow_data["auto_approve_conditions"] else None,
+                "created_by": current_user.id,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }).fetchone()
+            
+            created_workflows.append({
+                "id": result.id,
+                "name": result.workflow_name
+            })
+        
+        db.commit()
+        
+        return {
+            "message": f"Created {len(created_workflows)} sample workflows",
+            "workflows": created_workflows
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create sample workflows: {str(e)}"}
+
 @app.get("/api/approval-requests/my-pending")
 def get_my_pending_approvals(
     current_user: User = Depends(get_current_user),

@@ -73,6 +73,16 @@ const ApprovalWorkflows: React.FC = () => {
   const [approvalComments, setApprovalComments] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterEntityType, setFilterEntityType] = useState<string>('all');
+  
+  // Create Workflow Modal State
+  const [newWorkflow, setNewWorkflow] = useState({
+    workflow_name: '',
+    workflow_description: '',
+    entity_type: 'deal',
+    trigger_conditions: {},
+    approval_steps: [],
+    is_active: true
+  });
 
   const tabs = [
     { id: 'workflows', name: 'Workflows', icon: <Settings className="w-5 h-5" /> },
@@ -101,9 +111,10 @@ const ApprovalWorkflows: React.FC = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        setWorkflows(data);
+        setWorkflows(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to fetch workflows:', data.error);
+        setWorkflows([]);
       }
     } catch (error) {
       console.error('Error fetching workflows:', error);
@@ -136,9 +147,10 @@ const ApprovalWorkflows: React.FC = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        setRequests(data);
+        setRequests(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to fetch requests:', data.error);
+        setRequests([]);
       }
     } catch (error) {
       console.error('Error fetching requests:', error);
@@ -157,9 +169,10 @@ const ApprovalWorkflows: React.FC = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        setPendingApprovals(data);
+        setPendingApprovals(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to fetch pending approvals:', data.error);
+        setPendingApprovals([]);
       }
     } catch (error) {
       console.error('Error fetching pending approvals:', error);
@@ -183,6 +196,61 @@ const ApprovalWorkflows: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching approval steps:', error);
+    }
+  };
+
+  const createSampleWorkflows = async () => {
+    try {
+      const response = await fetch('/api/approval-workflows/create-samples', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        fetchWorkflows();
+        alert(`Successfully created ${data.workflows.length} sample workflows!`);
+      } else {
+        alert(`Failed to create sample workflows: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating sample workflows:', error);
+      alert('Error creating sample workflows');
+    }
+  };
+
+  const createWorkflow = async () => {
+    try {
+      const response = await fetch('/api/approval-workflows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(newWorkflow)
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        setShowCreateWorkflow(false);
+        setNewWorkflow({
+          workflow_name: '',
+          workflow_description: '',
+          entity_type: 'deal',
+          trigger_conditions: {},
+          approval_steps: [],
+          is_active: true
+        });
+        fetchWorkflows();
+        alert('Workflow created successfully!');
+      } else {
+        alert(`Failed to create workflow: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating workflow:', error);
+      alert('Error creating workflow');
     }
   };
 
@@ -339,17 +407,26 @@ const ApprovalWorkflows: React.FC = () => {
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                     Approval Workflows
                   </h2>
-                  <button
-                    onClick={() => setShowCreateWorkflow(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create Workflow</span>
-                  </button>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={createSampleWorkflows}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Samples</span>
+                    </button>
+                    <button
+                      onClick={() => setShowCreateWorkflow(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Workflow</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {workflows.map((workflow) => (
+                  {workflows && Array.isArray(workflows) ? workflows.map((workflow) => (
                     <div key={workflow.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-2">
@@ -388,7 +465,11 @@ const ApprovalWorkflows: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                      No workflows found
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -429,7 +510,7 @@ const ApprovalWorkflows: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {requests.map((request) => (
+                        {requests && Array.isArray(requests) ? requests.map((request) => (
                           <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
@@ -487,7 +568,13 @@ const ApprovalWorkflows: React.FC = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                              No requests found
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -503,7 +590,7 @@ const ApprovalWorkflows: React.FC = () => {
                 </h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {pendingApprovals.map((request) => (
+                  {pendingApprovals && Array.isArray(pendingApprovals) ? pendingApprovals.map((request) => (
                     <div key={request.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-2">
@@ -579,7 +666,11 @@ const ApprovalWorkflows: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                      No pending approvals found
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -599,6 +690,100 @@ const ApprovalWorkflows: React.FC = () => {
               </div>
             )}
           </>
+        )}
+
+        {/* Create Workflow Modal */}
+        {showCreateWorkflow && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Create New Approval Workflow
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Workflow Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newWorkflow.workflow_name}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, workflow_name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Enter workflow name"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={newWorkflow.workflow_description}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, workflow_description: e.target.value})}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Enter workflow description"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Entity Type
+                  </label>
+                  <select
+                    value={newWorkflow.entity_type}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, entity_type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="deal">Deal</option>
+                    <option value="task">Task</option>
+                    <option value="expense">Expense</option>
+                    <option value="lead_qualification">Lead Qualification</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={newWorkflow.is_active}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, is_active: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                    Active
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreateWorkflow(false);
+                    setNewWorkflow({
+                      workflow_name: '',
+                      workflow_description: '',
+                      entity_type: 'deal',
+                      trigger_conditions: {},
+                      approval_steps: [],
+                      is_active: true
+                    });
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createWorkflow}
+                  disabled={!newWorkflow.workflow_name.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Create Workflow
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Approval Modal */}
