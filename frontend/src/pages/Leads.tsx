@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Search, Filter, Eye, Trash2, X, ChevronUp, ChevronDown, Download, Plus, Zap, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fetchLeads, getLead, createLead, updateLead, deleteLead, convertLeadToDeal } from "../services/leads";
+import { getStoredUtmAttribution, type UtmAttribution } from "../utils/utm";
 import { scoreAllLeads, getScoringAnalytics } from "../services/leadScoring";
 import DetailModal from "../components/DetailModal";
 import LeadScore from "../components/LeadScore";
@@ -78,6 +79,7 @@ export default function LeadsPage() {
     contact_id: null,
     owner_id: 1
   });
+  const [utm, setUtm] = useState<UtmAttribution | null>(null);
   const [scoringAnalytics, setScoringAnalytics] = useState<any>(null);
   const [showScoringModal, setShowScoringModal] = useState(false);
   const [scoringLoading, setScoringLoading] = useState(false);
@@ -95,6 +97,10 @@ export default function LeadsPage() {
         setError("Failed to load leads");
         setLoading(false);
       });
+    // Capture any stored UTM for display in Create Lead modal
+    try {
+      setUtm(getStoredUtmAttribution());
+    } catch {}
   }, []);
 
   if (loading) return <div className="p-8 text-lg">Loading...</div>;
@@ -983,6 +989,30 @@ export default function LeadsPage() {
                 <option value="social">Social Media</option>
                 <option value="email">Email Campaign</option>
               </select>
+            </div>
+
+            {/* UTM Attribution Preview */}
+            <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 mt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Attribution (UTM)</span>
+                {!utm && (
+                  <span className="text-xs text-gray-500">No UTM detected</span>
+                )}
+              </div>
+              {utm && (
+                <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  {utm.utm_source && <div><b>utm_source:</b> {utm.utm_source}</div>}
+                  {utm.utm_medium && <div><b>utm_medium:</b> {utm.utm_medium}</div>}
+                  {utm.utm_campaign && <div><b>utm_campaign:</b> {utm.utm_campaign}</div>}
+                  {utm.utm_term && <div><b>utm_term:</b> {utm.utm_term}</div>}
+                  {utm.utm_content && <div><b>utm_content:</b> {utm.utm_content}</div>}
+                  {utm.gclid && <div><b>gclid:</b> {utm.gclid}</div>}
+                  {utm.fbclid && <div><b>fbclid:</b> {utm.fbclid}</div>}
+                  {utm.referrer_url && <div className="truncate"><b>referrer:</b> {utm.referrer_url}</div>}
+                  {utm.landing_page_url && <div className="truncate"><b>landing:</b> {utm.landing_page_url}</div>}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-gray-500">These values are captured from the URL and will be saved with the lead.</div>
             </div>
             <div className="flex gap-4 pt-4">
               <button

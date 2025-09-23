@@ -98,6 +98,16 @@ class Lead(Base):
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     status = Column(String)
     source = Column(String)
+    # UTM and attribution fields
+    utm_source = Column(String)
+    utm_medium = Column(String)
+    utm_campaign = Column(String)
+    utm_term = Column(String)
+    utm_content = Column(String)
+    referrer_url = Column(String)
+    landing_page_url = Column(String)
+    gclid = Column(String)
+    fbclid = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     # Lead Scoring Fields
     score = Column(Integer, default=0)  # 0-100 score

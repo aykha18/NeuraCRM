@@ -1,4 +1,5 @@
 import { apiRequest } from '../utils/api';
+import { getStoredUtmAttribution } from '../utils/utm';
 
 export interface Lead {
   id: number;
@@ -7,6 +8,16 @@ export interface Lead {
   email?: string;
   phone?: string;
   source?: string;
+  // UTM fields (frontend mirror; optional on read)
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  referrer_url?: string;
+  landing_page_url?: string;
+  gclid?: string;
+  fbclid?: string;
   status?: string;
   priority?: string;
   estimated_value?: number;
@@ -26,9 +37,10 @@ export async function getLead(id: number): Promise<Lead> {
 }
 
 export async function createLead(data: Partial<Lead>): Promise<Lead> {
+  const utm = getStoredUtmAttribution() || {};
   return apiRequest<Lead>('/api/leads', {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...utm, ...data }),
   });
 }
 

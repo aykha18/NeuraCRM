@@ -173,6 +173,16 @@ class LeadUpdate(BaseModel):
     source: str | None = None
     contact_id: int | None = None
     owner_id: int | None = None
+    # UTM fields
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    utm_term: str | None = None
+    utm_content: str | None = None
+    referrer_url: str | None = None
+    landing_page_url: str | None = None
+    gclid: str | None = None
+    fbclid: str | None = None
 
 # Pydantic schema for Contact output
 class ContactOut(BaseModel):
@@ -448,6 +458,16 @@ def create_lead(lead_data: LeadUpdate, current_user: User = Depends(get_current_
             contact_id=lead_data.contact_id or 1,  # Default to contact 1
             owner_id=lead_data.owner_id or current_user.id,  # Default to current user
             organization_id=current_user.organization_id,  # Set to current user's organization
+            # UTM fields
+            utm_source=lead_data.utm_source,
+            utm_medium=lead_data.utm_medium,
+            utm_campaign=lead_data.utm_campaign,
+            utm_term=lead_data.utm_term,
+            utm_content=lead_data.utm_content,
+            referrer_url=lead_data.referrer_url,
+            landing_page_url=lead_data.landing_page_url,
+            gclid=lead_data.gclid,
+            fbclid=lead_data.fbclid,
             created_at=datetime.now()
         )
         
