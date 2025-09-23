@@ -19,6 +19,7 @@ import AdvancedForecasting from "./pages/AdvancedForecasting";
 import Telephony from "./pages/Telephony";
 import LeadAssignmentRules from "./pages/LeadAssignmentRules";
 import ApprovalWorkflows from "./pages/ApprovalWorkflows";
+import LeadNurturing from "./pages/LeadNurturing";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -75,6 +76,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ApprovalWorkflows />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/lead-nurturing" element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeadNurturing />
                 </Layout>
               </ProtectedRoute>
             } />

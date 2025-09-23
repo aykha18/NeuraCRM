@@ -6499,6 +6499,80 @@ class CompanySettingsResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Lead Nurturing Campaign Models
+class LeadNurturingCampaignCreate(BaseModel):
+    """Request schema for creating lead nurturing campaign"""
+    campaign_name: str
+    campaign_description: Optional[str] = None
+    campaign_type: str = "drip"  # 'drip', 'behavioral', 'mixed'
+    target_segment: Optional[str] = None  # Lead segment criteria
+    is_active: bool = True
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+class LeadNurturingCampaignResponse(BaseModel):
+    """Response schema for lead nurturing campaign"""
+    id: int
+    organization_id: int
+    campaign_name: str
+    campaign_description: Optional[str]
+    campaign_type: str
+    target_segment: Optional[str]
+    is_active: bool
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    total_leads: int
+    active_leads: int
+    converted_leads: int
+    conversion_rate: float
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+
+class NurturingStepCreate(BaseModel):
+    """Request schema for creating nurturing step"""
+    step_name: str
+    step_type: str  # 'email', 'task', 'call', 'wait'
+    step_order: int
+    delay_days: int = 0
+    delay_hours: int = 0
+    step_data: dict  # Step-specific data (email template, task details, etc.)
+    trigger_conditions: Optional[dict] = None  # Behavioral triggers
+    is_active: bool = True
+
+class NurturingStepResponse(BaseModel):
+    """Response schema for nurturing step"""
+    id: int
+    campaign_id: int
+    step_name: str
+    step_type: str
+    step_order: int
+    delay_days: int
+    delay_hours: int
+    step_data: dict
+    trigger_conditions: Optional[dict]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class LeadCampaignEnrollmentCreate(BaseModel):
+    """Request schema for enrolling lead in campaign"""
+    lead_id: int
+    campaign_id: int
+    enrollment_reason: Optional[str] = None
+
+class LeadCampaignEnrollmentResponse(BaseModel):
+    """Response schema for lead campaign enrollment"""
+    id: int
+    lead_id: int
+    campaign_id: int
+    enrollment_reason: Optional[str]
+    current_step: int
+    status: str  # 'active', 'paused', 'completed', 'converted'
+    enrolled_at: datetime
+    last_activity: Optional[datetime]
+    completed_at: Optional[datetime]
+
 # Approval Workflow Models
 class ApprovalWorkflowCreate(BaseModel):
     """Request schema for creating approval workflow"""
@@ -8988,6 +9062,387 @@ def create_sample_workflows(
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to create sample workflows: {str(e)}"}
+
+# Lead Nurturing Campaign Endpoints
+@app.get("/api/lead-nurturing-campaigns", response_model=list[LeadNurturingCampaignResponse])
+def get_lead_nurturing_campaigns(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all lead nurturing campaigns for the organization"""
+    if not DB_AVAILABLE:
+        return []
+    
+    try:
+        campaigns = db.execute(text("""
+            SELECT 
+                lnc.id,
+                lnc.organization_id,
+                lnc.campaign_name,
+                lnc.campaign_description,
+                lnc.campaign_type,
+                lnc.target_segment,
+                lnc.is_active,
+                lnc.start_date,
+                lnc.end_date,
+                lnc.created_at,
+                lnc.updated_at,
+                lnc.created_by,
+                COUNT(DISTINCT lce.lead_id) as total_leads,
+                COUNT(DISTINCT CASE WHEN lce.status = 'active' THEN lce.lead_id END) as active_leads,
+                COUNT(DISTINCT CASE WHEN lce.status = 'converted' THEN lce.lead_id END) as converted_leads,
+                CASE 
+                    WHEN COUNT(DISTINCT lce.lead_id) > 0 
+                    THEN ROUND(COUNT(DISTINCT CASE WHEN lce.status = 'converted' THEN lce.lead_id END) * 100.0 / COUNT(DISTINCT lce.lead_id), 2)
+                    ELSE 0 
+                END as conversion_rate
+            FROM lead_nurturing_campaigns lnc
+            LEFT JOIN lead_campaign_enrollments lce ON lnc.id = lce.campaign_id
+            WHERE lnc.organization_id = :org_id
+            GROUP BY lnc.id, lnc.organization_id, lnc.campaign_name, lnc.campaign_description,
+                     lnc.campaign_type, lnc.target_segment, lnc.is_active, lnc.start_date,
+                     lnc.end_date, lnc.created_at, lnc.updated_at, lnc.created_by
+            ORDER BY lnc.created_at DESC
+        """), {"org_id": current_user.organization_id}).fetchall()
+        
+        return [
+            {
+                "id": campaign.id,
+                "organization_id": campaign.organization_id,
+                "campaign_name": campaign.campaign_name,
+                "campaign_description": campaign.campaign_description,
+                "campaign_type": campaign.campaign_type,
+                "target_segment": campaign.target_segment,
+                "is_active": campaign.is_active,
+                "start_date": campaign.start_date,
+                "end_date": campaign.end_date,
+                "total_leads": campaign.total_leads or 0,
+                "active_leads": campaign.active_leads or 0,
+                "converted_leads": campaign.converted_leads or 0,
+                "conversion_rate": campaign.conversion_rate or 0.0,
+                "created_at": campaign.created_at,
+                "updated_at": campaign.updated_at,
+                "created_by": campaign.created_by
+            }
+            for campaign in campaigns
+        ]
+    except Exception as e:
+        print(f"Error fetching lead nurturing campaigns: {e}")
+        return []
+
+@app.post("/api/lead-nurturing-campaigns", response_model=LeadNurturingCampaignResponse)
+def create_lead_nurturing_campaign(
+    campaign_data: LeadNurturingCampaignCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new lead nurturing campaign"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Handle datetime fields properly
+        start_date = campaign_data.start_date if campaign_data.start_date else None
+        end_date = campaign_data.end_date if campaign_data.end_date else None
+        
+        result = db.execute(text("""
+            INSERT INTO lead_nurturing_campaigns 
+            (organization_id, campaign_name, campaign_description, campaign_type,
+             target_segment, is_active, start_date, end_date, created_by, created_at, updated_at)
+            VALUES (:org_id, :name, :description, :type, :target_segment, :is_active,
+                    :start_date, :end_date, :created_by, :created_at, :updated_at)
+            RETURNING id, campaign_name, created_at, updated_at
+        """), {
+            "org_id": current_user.organization_id,
+            "name": campaign_data.campaign_name,
+            "description": campaign_data.campaign_description,
+            "type": campaign_data.campaign_type,
+            "target_segment": campaign_data.target_segment,
+            "is_active": campaign_data.is_active,
+            "start_date": start_date,
+            "end_date": end_date,
+            "created_by": current_user.id,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }).fetchone()
+        
+        db.commit()
+        
+        return {
+            "id": result.id,
+            "organization_id": current_user.organization_id,
+            "campaign_name": result.campaign_name,
+            "campaign_description": campaign_data.campaign_description,
+            "campaign_type": campaign_data.campaign_type,
+            "target_segment": campaign_data.target_segment,
+            "is_active": campaign_data.is_active,
+            "start_date": campaign_data.start_date,
+            "end_date": campaign_data.end_date,
+            "total_leads": 0,
+            "active_leads": 0,
+            "converted_leads": 0,
+            "conversion_rate": 0.0,
+            "created_at": result.created_at,
+            "updated_at": result.updated_at,
+            "created_by": current_user.id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create campaign: {str(e)}"}
+
+@app.get("/api/lead-nurturing-campaigns/{campaign_id}/steps", response_model=list[NurturingStepResponse])
+def get_campaign_steps(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all steps for a specific campaign"""
+    if not DB_AVAILABLE:
+        return []
+    
+    try:
+        steps = db.execute(text("""
+            SELECT 
+                ns.id,
+                ns.campaign_id,
+                ns.step_name,
+                ns.step_type,
+                ns.step_order,
+                ns.delay_days,
+                ns.delay_hours,
+                ns.step_data,
+                ns.trigger_conditions,
+                ns.is_active,
+                ns.created_at,
+                ns.updated_at
+            FROM nurturing_steps ns
+            JOIN lead_nurturing_campaigns lnc ON ns.campaign_id = lnc.id
+            WHERE ns.campaign_id = :campaign_id 
+            AND lnc.organization_id = :org_id
+            ORDER BY ns.step_order ASC
+        """), {
+            "campaign_id": campaign_id,
+            "org_id": current_user.organization_id
+        }).fetchall()
+        
+        return [
+            {
+                "id": step.id,
+                "campaign_id": step.campaign_id,
+                "step_name": step.step_name,
+                "step_type": step.step_type,
+                "step_order": step.step_order,
+                "delay_days": step.delay_days,
+                "delay_hours": step.delay_hours,
+                "step_data": step.step_data,
+                "trigger_conditions": step.trigger_conditions,
+                "is_active": step.is_active,
+                "created_at": step.created_at,
+                "updated_at": step.updated_at
+            }
+            for step in steps
+        ]
+    except Exception as e:
+        print(f"Error fetching campaign steps: {e}")
+        return []
+
+@app.post("/api/lead-nurturing-campaigns/{campaign_id}/steps", response_model=NurturingStepResponse)
+def create_campaign_step(
+    campaign_id: int,
+    step_data: NurturingStepCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new step for a campaign"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Verify campaign belongs to organization
+        campaign = db.execute(text("""
+            SELECT id FROM lead_nurturing_campaigns 
+            WHERE id = :campaign_id AND organization_id = :org_id
+        """), {
+            "campaign_id": campaign_id,
+            "org_id": current_user.organization_id
+        }).fetchone()
+        
+        if not campaign:
+            return {"error": "Campaign not found"}
+        
+        result = db.execute(text("""
+            INSERT INTO nurturing_steps 
+            (campaign_id, step_name, step_type, step_order, delay_days, delay_hours,
+             step_data, trigger_conditions, is_active, created_at, updated_at)
+            VALUES (:campaign_id, :name, :type, :order, :delay_days, :delay_hours,
+                    :step_data, :trigger_conditions, :is_active, :created_at, :updated_at)
+            RETURNING id, step_name, created_at, updated_at
+        """), {
+            "campaign_id": campaign_id,
+            "name": step_data.step_name,
+            "type": step_data.step_type,
+            "order": step_data.step_order,
+            "delay_days": step_data.delay_days,
+            "delay_hours": step_data.delay_hours,
+            "step_data": json.dumps(step_data.step_data),
+            "trigger_conditions": json.dumps(step_data.trigger_conditions) if step_data.trigger_conditions else None,
+            "is_active": step_data.is_active,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }).fetchone()
+        
+        db.commit()
+        
+        return {
+            "id": result.id,
+            "campaign_id": campaign_id,
+            "step_name": result.step_name,
+            "step_type": step_data.step_type,
+            "step_order": step_data.step_order,
+            "delay_days": step_data.delay_days,
+            "delay_hours": step_data.delay_hours,
+            "step_data": step_data.step_data,
+            "trigger_conditions": step_data.trigger_conditions,
+            "is_active": step_data.is_active,
+            "created_at": result.created_at,
+            "updated_at": result.updated_at
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create step: {str(e)}"}
+
+@app.post("/api/lead-nurturing-campaigns/{campaign_id}/enroll", response_model=LeadCampaignEnrollmentResponse)
+def enroll_lead_in_campaign(
+    campaign_id: int,
+    enrollment_data: LeadCampaignEnrollmentCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Enroll a lead in a nurturing campaign"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Verify campaign and lead belong to organization
+        campaign = db.execute(text("""
+            SELECT id FROM lead_nurturing_campaigns 
+            WHERE id = :campaign_id AND organization_id = :org_id
+        """), {
+            "campaign_id": campaign_id,
+            "org_id": current_user.organization_id
+        }).fetchone()
+        
+        if not campaign:
+            return {"error": "Campaign not found"}
+        
+        lead = db.execute(text("""
+            SELECT id FROM leads 
+            WHERE id = :lead_id AND organization_id = :org_id
+        """), {
+            "lead_id": enrollment_data.lead_id,
+            "org_id": current_user.organization_id
+        }).fetchone()
+        
+        if not lead:
+            return {"error": "Lead not found"}
+        
+        # Check if already enrolled
+        existing = db.execute(text("""
+            SELECT id FROM lead_campaign_enrollments 
+            WHERE lead_id = :lead_id AND campaign_id = :campaign_id
+        """), {
+            "lead_id": enrollment_data.lead_id,
+            "campaign_id": campaign_id
+        }).fetchone()
+        
+        if existing:
+            return {"error": "Lead already enrolled in this campaign"}
+        
+        result = db.execute(text("""
+            INSERT INTO lead_campaign_enrollments 
+            (lead_id, campaign_id, enrollment_reason, current_step, status, enrolled_at, last_activity)
+            VALUES (:lead_id, :campaign_id, :reason, 1, 'active', :enrolled_at, :last_activity)
+            RETURNING id, enrolled_at
+        """), {
+            "lead_id": enrollment_data.lead_id,
+            "campaign_id": campaign_id,
+            "reason": enrollment_data.enrollment_reason,
+            "enrolled_at": datetime.utcnow(),
+            "last_activity": datetime.utcnow()
+        }).fetchone()
+        
+        db.commit()
+        
+        return {
+            "id": result.id,
+            "lead_id": enrollment_data.lead_id,
+            "campaign_id": campaign_id,
+            "enrollment_reason": enrollment_data.enrollment_reason,
+            "current_step": 1,
+            "status": "active",
+            "enrolled_at": result.enrolled_at,
+            "last_activity": result.enrolled_at,
+            "completed_at": None
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to enroll lead: {str(e)}"}
+
+@app.get("/api/lead-nurturing-campaigns/{campaign_id}/enrollments", response_model=list[LeadCampaignEnrollmentResponse])
+def get_campaign_enrollments(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all enrollments for a specific campaign"""
+    if not DB_AVAILABLE:
+        return []
+    
+    try:
+        enrollments = db.execute(text("""
+            SELECT 
+                lce.id,
+                lce.lead_id,
+                lce.campaign_id,
+                lce.enrollment_reason,
+                lce.current_step,
+                lce.status,
+                lce.enrolled_at,
+                lce.last_activity,
+                lce.completed_at,
+                l.name as lead_name,
+                l.email as lead_email
+            FROM lead_campaign_enrollments lce
+            JOIN leads l ON lce.lead_id = l.id
+            JOIN lead_nurturing_campaigns lnc ON lce.campaign_id = lnc.id
+            WHERE lce.campaign_id = :campaign_id 
+            AND lnc.organization_id = :org_id
+            ORDER BY lce.enrolled_at DESC
+        """), {
+            "campaign_id": campaign_id,
+            "org_id": current_user.organization_id
+        }).fetchall()
+        
+        return [
+            {
+                "id": enrollment.id,
+                "lead_id": enrollment.lead_id,
+                "campaign_id": enrollment.campaign_id,
+                "enrollment_reason": enrollment.enrollment_reason,
+                "current_step": enrollment.current_step,
+                "status": enrollment.status,
+                "enrolled_at": enrollment.enrolled_at,
+                "last_activity": enrollment.last_activity,
+                "completed_at": enrollment.completed_at
+            }
+            for enrollment in enrollments
+        ]
+    except Exception as e:
+        print(f"Error fetching campaign enrollments: {e}")
+        return []
 
 @app.get("/api/approval-requests/my-pending")
 def get_my_pending_approvals(
