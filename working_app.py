@@ -8885,6 +8885,21 @@ def create_sample_workflows(
         return {"error": "Database not available"}
     
     try:
+        # Check if sample workflows already exist
+        existing_workflows = db.execute(text("""
+            SELECT workflow_name FROM approval_workflows 
+            WHERE organization_id = :org_id 
+            AND workflow_name IN ('High Value Deal Approval', 'Expense Approval', 'Lead Qualification Review', 'Task Assignment Approval')
+        """), {"org_id": current_user.organization_id}).fetchall()
+        
+        if existing_workflows:
+            existing_names = [row.workflow_name for row in existing_workflows]
+            return {
+                "message": f"Sample workflows already exist: {', '.join(existing_names)}",
+                "workflows": [{"name": name} for name in existing_names],
+                "already_exists": True
+            }
+        
         sample_workflows = [
             {
                 "workflow_name": "High Value Deal Approval",

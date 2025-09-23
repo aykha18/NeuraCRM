@@ -19,6 +19,7 @@ import {
   Target,
   TrendingUp
 } from 'lucide-react';
+import AnimatedModal from '../components/AnimatedModal';
 
 interface ApprovalWorkflow {
   id: number;
@@ -73,6 +74,8 @@ const ApprovalWorkflows: React.FC = () => {
   const [approvalComments, setApprovalComments] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterEntityType, setFilterEntityType] = useState<string>('all');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Create Workflow Modal State
   const [newWorkflow, setNewWorkflow] = useState({
@@ -92,6 +95,13 @@ const ApprovalWorkflows: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Only fetch data if user is authenticated
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.log('No authentication token found, skipping API calls');
+      return;
+    }
+
     if (activeTab === 'workflows') {
       fetchWorkflows();
     } else if (activeTab === 'requests') {
@@ -106,7 +116,7 @@ const ApprovalWorkflows: React.FC = () => {
     try {
       const response = await fetch('/api/approval-workflows', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
       });
       const data = await response.json();
@@ -114,6 +124,10 @@ const ApprovalWorkflows: React.FC = () => {
         setWorkflows(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to fetch workflows:', data.error);
+        if (response.status === 401) {
+          console.error('Authentication failed - please log in again');
+          // Optionally redirect to login
+        }
         setWorkflows([]);
       }
     } catch (error) {
@@ -200,18 +214,31 @@ const ApprovalWorkflows: React.FC = () => {
   };
 
   const createSampleWorkflows = async () => {
+    // Check authentication first
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No authentication token found - please log in first');
+      alert('Please log in first to create sample workflows');
+      return;
+    }
+
     try {
       const response = await fetch('/api/approval-workflows/create-samples', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
       const data = await response.json();
       if (response.ok) {
         fetchWorkflows();
-        alert(`Successfully created ${data.workflows.length} sample workflows!`);
+        if (data.already_exists) {
+          setSuccessMessage(`Sample workflows already exist: ${data.workflows.map((w: any) => w.name).join(', ')}`);
+        } else {
+          setSuccessMessage(`Successfully created ${data.workflows.length} sample workflows!`);
+        }
+        setShowSuccessModal(true);
       } else {
         alert(`Failed to create sample workflows: ${data.error}`);
       }
@@ -222,12 +249,20 @@ const ApprovalWorkflows: React.FC = () => {
   };
 
   const createWorkflow = async () => {
+    // Check authentication first
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No authentication token found - please log in first');
+      alert('Please log in first to create workflows');
+      return;
+    }
+
     try {
       const response = await fetch('/api/approval-workflows', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(newWorkflow)
       });
@@ -244,7 +279,8 @@ const ApprovalWorkflows: React.FC = () => {
           is_active: true
         });
         fetchWorkflows();
-        alert('Workflow created successfully!');
+        setSuccessMessage('Workflow created successfully!');
+        setShowSuccessModal(true);
       } else {
         alert(`Failed to create workflow: ${data.error}`);
       }
@@ -274,7 +310,8 @@ const ApprovalWorkflows: React.FC = () => {
         setApprovalComments('');
         fetchPendingApprovals();
         fetchRequests();
-        alert(`Request ${action}d successfully`);
+        setSuccessMessage(`Request ${action}d successfully`);
+        setShowSuccessModal(true);
       } else {
         alert(`Failed to ${action} request: ${data.error}`);
       }
@@ -841,6 +878,30 @@ const ApprovalWorkflows: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Success Modal */}
+      <AnimatedModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Success"
+        animationType="scale"
+        size="sm"
+      >
+        <div className="text-center space-y-4">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900">
+            <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+          <p className="text-lg text-gray-900 dark:text-white">
+            {successMessage}
+          </p>
+          <button
+            onClick={() => setShowSuccessModal(false)}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+          >
+            OK
+          </button>
+        </div>
+      </AnimatedModal>
     </div>
   );
 };
