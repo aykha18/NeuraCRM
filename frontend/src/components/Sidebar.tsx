@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck, CheckCircle } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -31,6 +31,7 @@ const navigationSections = [
     items: [
       { name: "Email Automation", icon: <Mail />, path: "/email-automation" },
       { name: "Lead Assignment", icon: <UserCheck />, path: "/lead-assignment-rules" },
+      { name: "Approval Workflows", icon: <CheckCircle />, path: "/approval-workflows" },
       { name: "Chat", icon: <MessageCircle />, path: "/chat" },
     ]
   },

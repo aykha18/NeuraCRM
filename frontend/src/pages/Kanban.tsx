@@ -10,7 +10,7 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getKanbanBoard, moveDeal, watchDeal, unwatchDeal, updateDeal, type KanbanBoard as ApiKanbanBoard, type Deal as ApiDeal } from '../services/kanban';
 import StageManagementModal from '../components/StageManagementModal';
-import { Plus, Eye, Calendar, ArrowRight } from 'lucide-react';
+import { Plus, Eye, Calendar, ArrowRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 // import { Dialog, Transition } from '@headlessui/react';
 import DetailModal from '../components/DetailModal';
@@ -478,6 +478,41 @@ export default function Kanban() {
     }
   }, [dealForStageChange, queryClient]);
 
+  // Approval workflow functions
+  const handleApprovalRequest = useCallback(async (deal: FrontendDeal) => {
+    try {
+      const response = await fetch('/api/approval-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          entity_type: 'deal',
+          entity_id: parseInt(deal.id),
+          request_reason: `Approval request for deal: ${deal.title}`,
+          priority: 'medium',
+          request_data: {
+            deal_title: deal.title,
+            deal_value: deal.value,
+            deal_stage: deal.stage,
+            deal_owner: deal.owner
+          }
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        alert('Approval request submitted successfully!');
+      } else {
+        alert(`Failed to submit approval request: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error submitting approval request:', error);
+      alert('Error submitting approval request');
+    }
+  }, []);
+
   // Handle drag and drop
   const onDragEnd = useCallback((result: DropResult) => {
     const { source, destination } = result;
@@ -898,6 +933,13 @@ export default function Kanban() {
                                         title="Move to Stage"
                                       >
                                         <ArrowRight size={12} />
+                                      </button>
+                                      <button 
+                                        className="px-1.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold shadow hover:from-purple-600 hover:to-pink-600 transition-all duration-300 hover:scale-110 hover:shadow-lg transform flex items-center gap-1" 
+                                        onClick={e => {e.stopPropagation(); handleApprovalRequest(deal);}}
+                                        title="Request Approval"
+                                      >
+                                        <CheckCircle size={12} />
                                       </button>
                                     </div>
                                     <div className="flex items-center gap-1">

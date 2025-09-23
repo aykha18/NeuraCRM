@@ -18,6 +18,7 @@ import CustomerSegmentation from "./pages/CustomerSegmentation";
 import AdvancedForecasting from "./pages/AdvancedForecasting";
 import Telephony from "./pages/Telephony";
 import LeadAssignmentRules from "./pages/LeadAssignmentRules";
+import ApprovalWorkflows from "./pages/ApprovalWorkflows";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -67,6 +68,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <LeadAssignmentRules />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/approval-workflows" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ApprovalWorkflows />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -6499,6 +6499,77 @@ class CompanySettingsResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Approval Workflow Models
+class ApprovalWorkflowCreate(BaseModel):
+    """Request schema for creating approval workflow"""
+    workflow_name: str
+    workflow_description: Optional[str] = None
+    entity_type: str  # 'deal', 'task', 'expense', 'lead_qualification'
+    trigger_conditions: dict  # Conditions that trigger the workflow
+    approval_steps: list  # List of approval steps
+    is_active: bool = True
+    auto_approve_conditions: Optional[dict] = None  # Conditions for auto-approval
+
+class ApprovalWorkflowResponse(BaseModel):
+    """Response schema for approval workflow"""
+    id: int
+    organization_id: int
+    workflow_name: str
+    workflow_description: Optional[str]
+    entity_type: str
+    trigger_conditions: dict
+    approval_steps: list
+    is_active: bool
+    auto_approve_conditions: Optional[dict]
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+
+class ApprovalRequestCreate(BaseModel):
+    """Request schema for creating approval request"""
+    entity_type: str  # 'deal', 'task', 'expense', 'lead_qualification'
+    entity_id: int
+    workflow_id: Optional[int] = None
+    request_reason: str
+    request_data: Optional[dict] = None  # Additional data for the request
+    priority: str = 'medium'  # 'low', 'medium', 'high', 'urgent'
+
+class ApprovalRequestResponse(BaseModel):
+    """Response schema for approval request"""
+    id: int
+    organization_id: int
+    entity_type: str
+    entity_id: int
+    workflow_id: Optional[int]
+    request_reason: str
+    request_data: Optional[dict]
+    priority: str
+    status: str  # 'pending', 'approved', 'rejected', 'cancelled'
+    current_step: int
+    total_steps: int
+    requested_by: int
+    requested_at: datetime
+    completed_at: Optional[datetime]
+    completion_notes: Optional[str]
+
+class ApprovalStepResponse(BaseModel):
+    """Response schema for approval step"""
+    id: int
+    approval_request_id: int
+    step_number: int
+    approver_id: int
+    approver_name: str
+    status: str  # 'pending', 'approved', 'rejected', 'skipped'
+    comments: Optional[str]
+    approved_at: Optional[datetime]
+    due_date: Optional[datetime]
+
+class ApprovalActionRequest(BaseModel):
+    """Request schema for approval action"""
+    action: str  # 'approve', 'reject', 'delegate'
+    comments: Optional[str] = None
+    delegate_to: Optional[int] = None  # User ID to delegate to
+
 @app.get("/api/forecasting-models", response_model=list[ForecastingModelResponse])
 def get_forecasting_models(
     current_user: User = Depends(get_current_user),
@@ -8346,6 +8417,577 @@ def update_company_settings(
         db.rollback()
         logger.error(f"Error updating company settings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update company settings: {str(e)}")
+
+# Approval Workflow Endpoints
+@app.get("/api/approval-workflows", response_model=list[ApprovalWorkflowResponse])
+def get_approval_workflows(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all approval workflows for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        workflows = db.execute(text("""
+            SELECT id, organization_id, workflow_name, workflow_description, entity_type,
+                   trigger_conditions, approval_steps, is_active, auto_approve_conditions,
+                   created_at, updated_at, created_by
+            FROM approval_workflows 
+            WHERE organization_id = :org_id
+            ORDER BY created_at DESC
+        """), {"org_id": current_user.organization_id}).fetchall()
+        
+        return [
+            {
+                "id": w.id,
+                "organization_id": w.organization_id,
+                "workflow_name": w.workflow_name,
+                "workflow_description": w.workflow_description,
+                "entity_type": w.entity_type,
+                "trigger_conditions": w.trigger_conditions,
+                "approval_steps": w.approval_steps,
+                "is_active": w.is_active,
+                "auto_approve_conditions": w.auto_approve_conditions,
+                "created_at": w.created_at,
+                "updated_at": w.updated_at,
+                "created_by": w.created_by
+            }
+            for w in workflows
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch approval workflows: {str(e)}"}
+
+@app.post("/api/approval-workflows", response_model=ApprovalWorkflowResponse)
+def create_approval_workflow(
+    workflow_data: ApprovalWorkflowCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new approval workflow"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        result = db.execute(text("""
+            INSERT INTO approval_workflows 
+            (organization_id, workflow_name, workflow_description, entity_type,
+             trigger_conditions, approval_steps, is_active, auto_approve_conditions,
+             created_by, created_at, updated_at)
+            VALUES (:org_id, :name, :description, :entity_type, :trigger_conditions,
+                    :approval_steps, :is_active, :auto_approve_conditions,
+                    :created_by, :created_at, :updated_at)
+            RETURNING id, organization_id, workflow_name, workflow_description, entity_type,
+                      trigger_conditions, approval_steps, is_active, auto_approve_conditions,
+                      created_at, updated_at, created_by
+        """), {
+            "org_id": current_user.organization_id,
+            "name": workflow_data.workflow_name,
+            "description": workflow_data.workflow_description,
+            "entity_type": workflow_data.entity_type,
+            "trigger_conditions": json.dumps(workflow_data.trigger_conditions),
+            "approval_steps": json.dumps(workflow_data.approval_steps),
+            "is_active": workflow_data.is_active,
+            "auto_approve_conditions": json.dumps(workflow_data.auto_approve_conditions) if workflow_data.auto_approve_conditions else None,
+            "created_by": current_user.id,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }).fetchone()
+        
+        db.commit()
+        
+        return {
+            "id": result.id,
+            "organization_id": result.organization_id,
+            "workflow_name": result.workflow_name,
+            "workflow_description": result.workflow_description,
+            "entity_type": result.entity_type,
+            "trigger_conditions": result.trigger_conditions,
+            "approval_steps": result.approval_steps,
+            "is_active": result.is_active,
+            "auto_approve_conditions": result.auto_approve_conditions,
+            "created_at": result.created_at,
+            "updated_at": result.updated_at,
+            "created_by": result.created_by
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create approval workflow: {str(e)}"}
+
+@app.get("/api/approval-requests", response_model=list[ApprovalRequestResponse])
+def get_approval_requests(
+    status: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get approval requests for the organization"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        query = """
+            SELECT ar.id, ar.organization_id, ar.entity_type, ar.entity_id, ar.workflow_id,
+                   ar.request_reason, ar.request_data, ar.priority, ar.status,
+                   ar.current_step, ar.total_steps, ar.requested_by, ar.requested_at,
+                   ar.completed_at, ar.completion_notes, u.name as requester_name
+            FROM approval_requests ar
+            LEFT JOIN users u ON ar.requested_by = u.id
+            WHERE ar.organization_id = :org_id
+        """
+        params = {"org_id": current_user.organization_id}
+        
+        if status:
+            query += " AND ar.status = :status"
+            params["status"] = status
+        
+        if entity_type:
+            query += " AND ar.entity_type = :entity_type"
+            params["entity_type"] = entity_type
+        
+        query += " ORDER BY ar.requested_at DESC"
+        
+        requests = db.execute(text(query), params).fetchall()
+        
+        return [
+            {
+                "id": r.id,
+                "organization_id": r.organization_id,
+                "entity_type": r.entity_type,
+                "entity_id": r.entity_id,
+                "workflow_id": r.workflow_id,
+                "request_reason": r.request_reason,
+                "request_data": r.request_data,
+                "priority": r.priority,
+                "status": r.status,
+                "current_step": r.current_step,
+                "total_steps": r.total_steps,
+                "requested_by": r.requested_by,
+                "requested_at": r.requested_at,
+                "completed_at": r.completed_at,
+                "completion_notes": r.completion_notes
+            }
+            for r in requests
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch approval requests: {str(e)}"}
+
+@app.post("/api/approval-requests", response_model=ApprovalRequestResponse)
+def create_approval_request(
+    request_data: ApprovalRequestCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new approval request"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Find applicable workflow
+        workflow = None
+        if request_data.workflow_id:
+            workflow = db.execute(text("""
+                SELECT id, approval_steps, auto_approve_conditions
+                FROM approval_workflows 
+                WHERE id = :workflow_id AND organization_id = :org_id AND is_active = true
+            """), {
+                "workflow_id": request_data.workflow_id,
+                "org_id": current_user.organization_id
+            }).fetchone()
+        else:
+            # Find workflow by entity type and trigger conditions
+            workflows = db.execute(text("""
+                SELECT id, approval_steps, auto_approve_conditions, trigger_conditions
+                FROM approval_workflows 
+                WHERE entity_type = :entity_type AND organization_id = :org_id AND is_active = true
+                ORDER BY created_at ASC
+            """), {
+                "entity_type": request_data.entity_type,
+                "org_id": current_user.organization_id
+            }).fetchall()
+            
+            # Check trigger conditions for each workflow
+            for wf in workflows:
+                if check_trigger_conditions(wf.trigger_conditions, request_data.entity_type, request_data.entity_id, db):
+                    workflow = wf
+                    break
+        
+        if not workflow:
+            return {"error": "No applicable approval workflow found"}
+        
+        approval_steps = workflow.approval_steps
+        total_steps = len(approval_steps)
+        
+        # Check for auto-approval conditions
+        if workflow.auto_approve_conditions and check_auto_approve_conditions(
+            workflow.auto_approve_conditions, request_data.entity_type, request_data.entity_id, db
+        ):
+            # Auto-approve
+            result = db.execute(text("""
+                INSERT INTO approval_requests 
+                (organization_id, entity_type, entity_id, workflow_id, request_reason,
+                 request_data, priority, status, current_step, total_steps, requested_by,
+                 requested_at, completed_at, completion_notes)
+                VALUES (:org_id, :entity_type, :entity_id, :workflow_id, :reason,
+                        :request_data, :priority, 'approved', :total_steps, :total_steps,
+                        :requested_by, :requested_at, :completed_at, 'Auto-approved based on conditions')
+                RETURNING id, organization_id, entity_type, entity_id, workflow_id,
+                          request_reason, request_data, priority, status, current_step,
+                          total_steps, requested_by, requested_at, completed_at, completion_notes
+            """), {
+                "org_id": current_user.organization_id,
+                "entity_type": request_data.entity_type,
+                "entity_id": request_data.entity_id,
+                "workflow_id": workflow.id,
+                "reason": request_data.request_reason,
+                "request_data": json.dumps(request_data.request_data) if request_data.request_data else None,
+                "priority": request_data.priority,
+                "requested_by": current_user.id,
+                "requested_at": datetime.utcnow(),
+                "completed_at": datetime.utcnow()
+            }).fetchone()
+        else:
+            # Create pending approval request
+            result = db.execute(text("""
+                INSERT INTO approval_requests 
+                (organization_id, entity_type, entity_id, workflow_id, request_reason,
+                 request_data, priority, status, current_step, total_steps, requested_by, requested_at)
+                VALUES (:org_id, :entity_type, :entity_id, :workflow_id, :reason,
+                        :request_data, :priority, 'pending', 1, :total_steps,
+                        :requested_by, :requested_at)
+                RETURNING id, organization_id, entity_type, entity_id, workflow_id,
+                          request_reason, request_data, priority, status, current_step,
+                          total_steps, requested_by, requested_at, completed_at, completion_notes
+            """), {
+                "org_id": current_user.organization_id,
+                "entity_type": request_data.entity_type,
+                "entity_id": request_data.entity_id,
+                "workflow_id": workflow.id,
+                "reason": request_data.request_reason,
+                "request_data": json.dumps(request_data.request_data) if request_data.request_data else None,
+                "priority": request_data.priority,
+                "requested_by": current_user.id,
+                "requested_at": datetime.utcnow()
+            }).fetchone()
+            
+            # Create approval steps
+            for i, step in enumerate(approval_steps, 1):
+                due_date = None
+                if 'due_days' in step:
+                    due_date = datetime.utcnow() + timedelta(days=step['due_days'])
+                
+                db.execute(text("""
+                    INSERT INTO approval_steps 
+                    (approval_request_id, step_number, approver_id, status, due_date)
+                    VALUES (:request_id, :step_number, :approver_id, 'pending', :due_date)
+                """), {
+                    "request_id": result.id,
+                    "step_number": i,
+                    "approver_id": step['approver_id'],
+                    "due_date": due_date
+                })
+        
+        db.commit()
+        
+        return {
+            "id": result.id,
+            "organization_id": result.organization_id,
+            "entity_type": result.entity_type,
+            "entity_id": result.entity_id,
+            "workflow_id": result.workflow_id,
+            "request_reason": result.request_reason,
+            "request_data": result.request_data,
+            "priority": result.priority,
+            "status": result.status,
+            "current_step": result.current_step,
+            "total_steps": result.total_steps,
+            "requested_by": result.requested_by,
+            "requested_at": result.requested_at,
+            "completed_at": result.completed_at,
+            "completion_notes": result.completion_notes
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to create approval request: {str(e)}"}
+
+@app.get("/api/approval-requests/{request_id}/steps", response_model=list[ApprovalStepResponse])
+def get_approval_steps(
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get approval steps for a specific request"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        steps = db.execute(text("""
+            SELECT s.id, s.approval_request_id, s.step_number, s.approver_id,
+                   s.status, s.comments, s.approved_at, s.due_date, u.name as approver_name
+            FROM approval_steps s
+            LEFT JOIN users u ON s.approver_id = u.id
+            WHERE s.approval_request_id = :request_id
+            ORDER BY s.step_number ASC
+        """), {"request_id": request_id}).fetchall()
+        
+        return [
+            {
+                "id": s.id,
+                "approval_request_id": s.approval_request_id,
+                "step_number": s.step_number,
+                "approver_id": s.approver_id,
+                "approver_name": s.approver_name,
+                "status": s.status,
+                "comments": s.comments,
+                "approved_at": s.approved_at,
+                "due_date": s.due_date
+            }
+            for s in steps
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch approval steps: {str(e)}"}
+
+@app.post("/api/approval-requests/{request_id}/action")
+def process_approval_action(
+    request_id: int,
+    action_data: ApprovalActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Process an approval action (approve, reject, delegate)"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        # Get the approval request
+        request = db.execute(text("""
+            SELECT id, status, current_step, total_steps, entity_type, entity_id
+            FROM approval_requests 
+            WHERE id = :request_id AND organization_id = :org_id
+        """), {
+            "request_id": request_id,
+            "org_id": current_user.organization_id
+        }).fetchone()
+        
+        if not request:
+            return {"error": "Approval request not found"}
+        
+        if request.status != 'pending':
+            return {"error": "Approval request is not pending"}
+        
+        # Get current step
+        current_step = db.execute(text("""
+            SELECT id, approver_id, status
+            FROM approval_steps 
+            WHERE approval_request_id = :request_id AND step_number = :step_number
+        """), {
+            "request_id": request_id,
+            "step_number": request.current_step
+        }).fetchone()
+        
+        if not current_step:
+            return {"error": "Current approval step not found"}
+        
+        if current_step.approver_id != current_user.id:
+            return {"error": "You are not authorized to approve this step"}
+        
+        if current_step.status != 'pending':
+            return {"error": "This approval step has already been processed"}
+        
+        # Process the action
+        if action_data.action == 'approve':
+            # Update current step
+            db.execute(text("""
+                UPDATE approval_steps 
+                SET status = 'approved', comments = :comments, approved_at = :approved_at
+                WHERE id = :step_id
+            """), {
+                "step_id": current_step.id,
+                "comments": action_data.comments,
+                "approved_at": datetime.utcnow()
+            })
+            
+            # Check if this was the last step
+            if request.current_step >= request.total_steps:
+                # Complete the approval
+                db.execute(text("""
+                    UPDATE approval_requests 
+                    SET status = 'approved', completed_at = :completed_at, completion_notes = :notes
+                    WHERE id = :request_id
+                """), {
+                    "request_id": request_id,
+                    "completed_at": datetime.utcnow(),
+                    "notes": "Approved by all required approvers"
+                })
+            else:
+                # Move to next step
+                db.execute(text("""
+                    UPDATE approval_requests 
+                    SET current_step = :next_step
+                    WHERE id = :request_id
+                """), {
+                    "request_id": request_id,
+                    "next_step": request.current_step + 1
+                })
+        
+        elif action_data.action == 'reject':
+            # Reject the entire request
+            db.execute(text("""
+                UPDATE approval_steps 
+                SET status = 'rejected', comments = :comments, approved_at = :approved_at
+                WHERE id = :step_id
+            """), {
+                "step_id": current_step.id,
+                "comments": action_data.comments,
+                "approved_at": datetime.utcnow()
+            })
+            
+            db.execute(text("""
+                UPDATE approval_requests 
+                SET status = 'rejected', completed_at = :completed_at, completion_notes = :notes
+                WHERE id = :request_id
+            """), {
+                "request_id": request_id,
+                "completed_at": datetime.utcnow(),
+                "notes": f"Rejected by {current_user.name}: {action_data.comments or 'No reason provided'}"
+            })
+        
+        elif action_data.action == 'delegate':
+            if not action_data.delegate_to:
+                return {"error": "Delegate user ID is required"}
+            
+            # Delegate to another user
+            db.execute(text("""
+                UPDATE approval_steps 
+                SET approver_id = :delegate_to, comments = :comments
+                WHERE id = :step_id
+            """), {
+                "step_id": current_step.id,
+                "delegate_to": action_data.delegate_to,
+                "comments": f"Delegated to user {action_data.delegate_to}: {action_data.comments or 'No reason provided'}"
+            })
+        
+        db.commit()
+        
+        return {"message": f"Approval action '{action_data.action}' processed successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Failed to process approval action: {str(e)}"}
+
+@app.get("/api/approval-requests/my-pending")
+def get_my_pending_approvals(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get approval requests pending for the current user"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+    
+    try:
+        requests = db.execute(text("""
+            SELECT ar.id, ar.entity_type, ar.entity_id, ar.request_reason, ar.priority,
+                   ar.requested_at, ar.current_step, ar.total_steps, u.name as requester_name,
+                   s.due_date
+            FROM approval_requests ar
+            LEFT JOIN users u ON ar.requested_by = u.id
+            LEFT JOIN approval_steps s ON ar.id = s.approval_request_id AND s.step_number = ar.current_step
+            WHERE ar.organization_id = :org_id 
+            AND ar.status = 'pending' 
+            AND s.approver_id = :user_id
+            AND s.status = 'pending'
+            ORDER BY ar.priority DESC, ar.requested_at ASC
+        """), {
+            "org_id": current_user.organization_id,
+            "user_id": current_user.id
+        }).fetchall()
+        
+        return [
+            {
+                "id": r.id,
+                "entity_type": r.entity_type,
+                "entity_id": r.entity_id,
+                "request_reason": r.request_reason,
+                "priority": r.priority,
+                "requested_at": r.requested_at,
+                "current_step": r.current_step,
+                "total_steps": r.total_steps,
+                "requester_name": r.requester_name,
+                "due_date": r.due_date
+            }
+            for r in requests
+        ]
+    except Exception as e:
+        return {"error": f"Failed to fetch pending approvals: {str(e)}"}
+
+# Helper functions for approval workflows
+def check_trigger_conditions(conditions: dict, entity_type: str, entity_id: int, db: Session) -> bool:
+    """Check if trigger conditions are met for an entity"""
+    try:
+        if not conditions:
+            return True
+        
+        # Example conditions: {"deal_value": {"min": 10000}, "deal_stage": "proposal"}
+        if entity_type == 'deal':
+            deal = db.execute(text("""
+                SELECT value, stage_id, s.name as stage_name
+                FROM deals d
+                LEFT JOIN stages s ON d.stage_id = s.id
+                WHERE d.id = :deal_id
+            """), {"deal_id": entity_id}).fetchone()
+            
+            if not deal:
+                return False
+            
+            # Check value conditions
+            if 'deal_value' in conditions:
+                value_conditions = conditions['deal_value']
+                if 'min' in value_conditions and deal.value < value_conditions['min']:
+                    return False
+                if 'max' in value_conditions and deal.value > value_conditions['max']:
+                    return False
+            
+            # Check stage conditions
+            if 'deal_stage' in conditions:
+                if deal.stage_name != conditions['deal_stage']:
+                    return False
+        
+        return True
+    except Exception:
+        return False
+
+def check_auto_approve_conditions(conditions: dict, entity_type: str, entity_id: int, db: Session) -> bool:
+    """Check if auto-approval conditions are met"""
+    try:
+        if not conditions:
+            return False
+        
+        # Example: {"deal_value": {"max": 5000}, "deal_owner_role": "manager"}
+        if entity_type == 'deal':
+            deal = db.execute(text("""
+                SELECT d.value, u.role
+                FROM deals d
+                LEFT JOIN users u ON d.owner_id = u.id
+                WHERE d.id = :deal_id
+            """), {"deal_id": entity_id}).fetchone()
+            
+            if not deal:
+                return False
+            
+            # Check value conditions
+            if 'deal_value' in conditions:
+                value_conditions = conditions['deal_value']
+                if 'max' in value_conditions and deal.value <= value_conditions['max']:
+                    return True
+            
+            # Check owner role conditions
+            if 'deal_owner_role' in conditions:
+                if deal.role == conditions['deal_owner_role']:
+                    return True
+        
+        return False
+    except Exception:
+        return False
 
 @app.post("/api/company-settings", response_model=CompanySettingsResponse)
 def create_company_settings(
