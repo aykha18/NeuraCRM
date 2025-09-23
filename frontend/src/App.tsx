@@ -17,6 +17,7 @@ import SentimentAnalysis from "./pages/SentimentAnalysis";
 import CustomerSegmentation from "./pages/CustomerSegmentation";
 import AdvancedForecasting from "./pages/AdvancedForecasting";
 import Telephony from "./pages/Telephony";
+import LeadAssignmentRules from "./pages/LeadAssignmentRules";
 import Landing from "./pages/Landing";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
@@ -59,6 +60,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Leads />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/lead-assignment-rules" element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeadAssignmentRules />
                 </Layout>
               </ProtectedRoute>
             } />

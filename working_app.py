@@ -917,6 +917,14 @@ def create_deal(deal_data: dict, current_user: User = Depends(get_current_user),
         stage = db.query(Stage).filter(Stage.id == new_deal.stage_id).first()
         stage_name = stage.name if stage else "Unknown"
         
+        # Create automated tasks for new deal
+        created_tasks = create_automated_tasks_for_deal(
+            new_deal.id, 
+            stage_name, 
+            current_user.organization_id, 
+            db
+        )
+        
         # Get contact name for response
         contact_name = None
         if new_deal.contact_id:
@@ -934,7 +942,8 @@ def create_deal(deal_data: dict, current_user: User = Depends(get_current_user),
             "description": new_deal.description,
             "owner_id": new_deal.owner_id,
             "organization_id": new_deal.organization_id,
-            "created_at": new_deal.created_at.isoformat() if new_deal.created_at else None
+            "created_at": new_deal.created_at.isoformat() if new_deal.created_at else None,
+            "automated_tasks_created": len(created_tasks)
         }
     except Exception as e:
         print(f"Error creating deal: {e}")
@@ -2055,6 +2064,14 @@ def move_deal(deal_id: int, move_data: dict, current_user: User = Depends(get_cu
                 "updated_at": customer_account.updated_at.isoformat() if customer_account.updated_at else None
             }
             
+            # Create automated tasks for won deal
+            created_tasks = create_automated_tasks_for_deal(
+                deal_id, 
+                stage.name, 
+                current_user.organization_id, 
+                db
+            )
+            
             db.commit()
             
             return {
@@ -2067,7 +2084,8 @@ def move_deal(deal_id: int, move_data: dict, current_user: User = Depends(get_cu
                     "closed_at": deal.closed_at.isoformat(),
                     "outcome_reason": deal.outcome_reason
                 },
-                "customer_account": account_response
+                "customer_account": account_response,
+                "automated_tasks_created": len(created_tasks)
             }
         elif stage.name.lower() == "lost":
             # If moved to "Lost" stage
@@ -5088,6 +5106,24 @@ def create_lead(lead_data: dict, current_user: User = Depends(get_current_user),
         db.commit()
         db.refresh(new_lead)
         
+        # Apply lead assignment rules
+        assigned_user_id = apply_lead_assignment_rules(lead_data, current_user.organization_id, db)
+        if assigned_user_id:
+            db.execute(text("""
+                UPDATE leads SET assigned_to = :user_id 
+                WHERE id = :lead_id AND organization_id = :org_id
+            """), {"user_id": assigned_user_id, "lead_id": new_lead.id, "org_id": current_user.organization_id})
+            db.commit()
+            new_lead.assigned_to = assigned_user_id
+        
+        # Create automated tasks for new lead
+        created_tasks = create_automated_tasks_for_lead(
+            new_lead.id, 
+            new_lead.status, 
+            current_user.organization_id, 
+            db
+        )
+        
         # Return the created lead with proper field mapping
         return {
             "id": new_lead.id,
@@ -5097,9 +5133,11 @@ def create_lead(lead_data: dict, current_user: User = Depends(get_current_user),
             "contact_id": new_lead.contact_id,
             "owner_id": new_lead.owner_id,
             "organization_id": new_lead.organization_id,
+            "assigned_to": new_lead.assigned_to,
             "created_at": new_lead.created_at.isoformat() if new_lead.created_at else None,
             "score": new_lead.score,
             "score_confidence": new_lead.score_confidence,
+            "automated_tasks_created": len(created_tasks),
             # Include original fields for backward compatibility
             "name": new_lead.title,  # Map title to name for frontend compatibility
             "company": None,  # Not available in Lead model
@@ -5818,6 +5856,134 @@ class ForecastResultResponse(BaseModel):
     insights: Optional[dict]
     recommendations: Optional[Union[dict, list]]
     generated_at: datetime
+
+# Lead Assignment Rules Models
+class LeadAssignmentRuleCreate(BaseModel):
+    """Request schema for creating lead assignment rule"""
+    rule_name: str
+    rule_description: Optional[str] = None
+    criteria: dict  # Assignment criteria (e.g., {"source": "website", "priority": "high"})
+    assignment_type: str  # 'user', 'team', 'round_robin'
+    assigned_user_id: Optional[int] = None
+    assigned_team_id: Optional[int] = None
+    priority: int = 1  # Rule priority (1 = highest)
+    is_active: bool = True
+
+class LeadAssignmentRuleResponse(BaseModel):
+    """Response schema for lead assignment rule"""
+    id: int
+    organization_id: int
+    rule_name: str
+    rule_description: Optional[str]
+    criteria: dict
+    assignment_type: str
+    assigned_user_id: Optional[int]
+    assigned_team_id: Optional[int]
+    priority: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+
+class LeadAssignmentRuleUpdate(BaseModel):
+    """Request schema for updating lead assignment rule"""
+    rule_name: Optional[str] = None
+    rule_description: Optional[str] = None
+    criteria: Optional[dict] = None
+    assignment_type: Optional[str] = None
+    assigned_user_id: Optional[int] = None
+    assigned_team_id: Optional[int] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# Task Templates Models
+class TaskTemplateCreate(BaseModel):
+    """Request schema for creating task template"""
+    template_name: str
+    template_description: Optional[str] = None
+    task_type: str  # 'follow_up', 'meeting', 'call', 'email', 'document'
+    default_priority: str = 'medium'  # 'low', 'medium', 'high', 'urgent'
+    default_duration: Optional[int] = None  # minutes
+    default_assignee_id: Optional[int] = None
+    template_data: Optional[dict] = None  # Additional template data
+    is_active: bool = True
+
+class TaskTemplateResponse(BaseModel):
+    """Response schema for task template"""
+    id: int
+    organization_id: int
+    template_name: str
+    template_description: Optional[str]
+    task_type: str
+    default_priority: str
+    default_duration: Optional[int]
+    default_assignee_id: Optional[int]
+    template_data: Optional[dict]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+
+class TaskTemplateUpdate(BaseModel):
+    """Request schema for updating task template"""
+    template_name: Optional[str] = None
+    template_description: Optional[str] = None
+    task_type: Optional[str] = None
+    default_priority: Optional[str] = None
+    default_duration: Optional[int] = None
+    default_assignee_id: Optional[int] = None
+    template_data: Optional[dict] = None
+    is_active: Optional[bool] = None
+
+# Tasks Models
+class TaskCreate(BaseModel):
+    """Request schema for creating task"""
+    title: str
+    description: Optional[str] = None
+    task_type: str
+    status: str = 'pending'  # 'pending', 'in_progress', 'completed', 'cancelled'
+    priority: str = 'medium'
+    due_date: Optional[datetime] = None
+    assigned_to: Optional[int] = None
+    related_entity_type: Optional[str] = None  # 'lead', 'deal', 'contact'
+    related_entity_id: Optional[int] = None
+    estimated_duration: Optional[int] = None  # minutes
+    task_data: Optional[dict] = None
+
+class TaskResponse(BaseModel):
+    """Response schema for task"""
+    id: int
+    organization_id: int
+    title: str
+    description: Optional[str]
+    task_type: str
+    status: str
+    priority: str
+    due_date: Optional[datetime]
+    assigned_to: Optional[int]
+    related_entity_type: Optional[str]
+    related_entity_id: Optional[int]
+    completion_percentage: int
+    estimated_duration: Optional[int]
+    actual_duration: Optional[int]
+    task_data: Optional[dict]
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime]
+
+class TaskUpdate(BaseModel):
+    """Request schema for updating task"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    task_type: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    due_date: Optional[datetime] = None
+    assigned_to: Optional[int] = None
+    completion_percentage: Optional[int] = None
+    estimated_duration: Optional[int] = None
+    actual_duration: Optional[int] = None
+    task_data: Optional[dict] = None
 
 # Company Settings Models
 class CompanySettingsCreate(BaseModel):
@@ -6945,6 +7111,716 @@ def get_queue_members(
         raise HTTPException(status_code=500, detail=f"Failed to fetch queue members: {str(e)}")
 
 # Company Settings Endpoints
+# Lead Assignment Rules API Endpoints
+@app.get("/api/lead-assignment-rules", response_model=list[LeadAssignmentRuleResponse])
+def get_lead_assignment_rules(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all lead assignment rules for the organization"""
+    try:
+        rules = db.execute(text("""
+            SELECT id, organization_id, name as rule_name, description as rule_description, conditions as criteria, 
+                   assignment_type, assigned_user_id, NULL as assigned_team_id, assignment_priority as priority, 
+                   is_active, 
+                   COALESCE(created_at, NOW()) as created_at, 
+                   COALESCE(updated_at, NOW()) as updated_at, 
+                   created_by
+            FROM lead_assignment_rules 
+            WHERE organization_id = :org_id 
+            ORDER BY assignment_priority ASC, created_at DESC
+        """), {"org_id": current_user.organization_id}).fetchall()
+        
+        return [LeadAssignmentRuleResponse(
+            id=rule.id,
+            organization_id=rule.organization_id,
+            rule_name=rule.rule_name,
+            rule_description=rule.rule_description,
+            criteria=rule.criteria,
+            assignment_type=rule.assignment_type,
+            assigned_user_id=rule.assigned_user_id,
+            assigned_team_id=rule.assigned_team_id,
+            priority=rule.priority,
+            is_active=rule.is_active,
+            created_at=rule.created_at,
+            updated_at=rule.updated_at,
+            created_by=rule.created_by
+        ) for rule in rules]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching lead assignment rules: {str(e)}")
+
+@app.post("/api/lead-assignment-rules", response_model=LeadAssignmentRuleResponse)
+def create_lead_assignment_rule(
+    rule_data: LeadAssignmentRuleCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new lead assignment rule"""
+    try:
+        # Validate assignment type
+        if rule_data.assignment_type == 'user' and not rule_data.assigned_user_id:
+            raise HTTPException(status_code=400, detail="assigned_user_id is required for user assignment")
+        if rule_data.assignment_type == 'team' and not rule_data.assigned_team_id:
+            raise HTTPException(status_code=400, detail="assigned_team_id is required for team assignment")
+        
+        # Insert new rule
+        result = db.execute(text("""
+            INSERT INTO lead_assignment_rules 
+            (organization_id, name, description, conditions, assignment_type, 
+             assigned_user_id, assignment_priority, is_active, created_by)
+            VALUES (:org_id, :rule_name, :rule_description, :criteria, :assignment_type,
+                    :assigned_user_id, :priority, :is_active, :created_by)
+            RETURNING id, organization_id, name as rule_name, description as rule_description, conditions as criteria,
+                      assignment_type, assigned_user_id, NULL as assigned_team_id, assignment_priority as priority,
+                      is_active, NOW() as created_at, NOW() as updated_at, created_by
+        """), {
+            "org_id": current_user.organization_id,
+            "rule_name": rule_data.rule_name,
+            "rule_description": rule_data.rule_description,
+            "criteria": json.dumps(rule_data.criteria),
+            "assignment_type": rule_data.assignment_type,
+            "assigned_user_id": rule_data.assigned_user_id,
+            "assigned_team_id": rule_data.assigned_team_id,
+            "priority": rule_data.priority,
+            "is_active": rule_data.is_active,
+            "created_by": current_user.id
+        }).fetchone()
+        
+        db.commit()
+        
+        return LeadAssignmentRuleResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            rule_name=result.rule_name,
+            rule_description=result.rule_description,
+            criteria=result.criteria,
+            assignment_type=result.assignment_type,
+            assigned_user_id=result.assigned_user_id,
+            assigned_team_id=result.assigned_team_id,
+            priority=result.priority,
+            is_active=result.is_active,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            created_by=result.created_by
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating lead assignment rule: {str(e)}")
+
+@app.put("/api/lead-assignment-rules/{rule_id}", response_model=LeadAssignmentRuleResponse)
+def update_lead_assignment_rule(
+    rule_id: int,
+    rule_data: LeadAssignmentRuleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a lead assignment rule"""
+    try:
+        # Check if rule exists and belongs to organization
+        existing_rule = db.execute("""
+            SELECT id FROM lead_assignment_rules 
+            WHERE id = :rule_id AND organization_id = :org_id
+        """, {"rule_id": rule_id, "org_id": current_user.organization_id}).fetchone()
+        
+        if not existing_rule:
+            raise HTTPException(status_code=404, detail="Lead assignment rule not found")
+        
+        # Build update query dynamically
+        update_fields = []
+        update_values = {"rule_id": rule_id}
+        
+        if rule_data.rule_name is not None:
+            update_fields.append("rule_name = :rule_name")
+            update_values["rule_name"] = rule_data.rule_name
+        
+        if rule_data.rule_description is not None:
+            update_fields.append("rule_description = :rule_description")
+            update_values["rule_description"] = rule_data.rule_description
+        
+        if rule_data.criteria is not None:
+            update_fields.append("criteria = :criteria")
+            update_values["criteria"] = json.dumps(rule_data.criteria)
+        
+        if rule_data.assignment_type is not None:
+            update_fields.append("assignment_type = :assignment_type")
+            update_values["assignment_type"] = rule_data.assignment_type
+        
+        if rule_data.assigned_user_id is not None:
+            update_fields.append("assigned_user_id = :assigned_user_id")
+            update_values["assigned_user_id"] = rule_data.assigned_user_id
+        
+        if rule_data.assigned_team_id is not None:
+            update_fields.append("assigned_team_id = :assigned_team_id")
+            update_values["assigned_team_id"] = rule_data.assigned_team_id
+        
+        if rule_data.priority is not None:
+            update_fields.append("priority = :priority")
+            update_values["priority"] = rule_data.priority
+        
+        if rule_data.is_active is not None:
+            update_fields.append("is_active = :is_active")
+            update_values["is_active"] = rule_data.is_active
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        update_fields.append("updated_at = CURRENT_TIMESTAMP")
+        
+        update_query = f"""
+            UPDATE lead_assignment_rules 
+            SET {', '.join(update_fields)}
+            WHERE id = :rule_id AND organization_id = :org_id
+            RETURNING id, organization_id, rule_name, rule_description, criteria,
+                      assignment_type, assigned_user_id, assigned_team_id, priority,
+                      is_active, created_at, updated_at, created_by
+        """
+        update_values["org_id"] = current_user.organization_id
+        
+        result = db.execute(update_query, update_values).fetchone()
+        db.commit()
+        
+        return LeadAssignmentRuleResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            rule_name=result.rule_name,
+            rule_description=result.rule_description,
+            criteria=result.criteria,
+            assignment_type=result.assignment_type,
+            assigned_user_id=result.assigned_user_id,
+            assigned_team_id=result.assigned_team_id,
+            priority=result.priority,
+            is_active=result.is_active,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            created_by=result.created_by
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating lead assignment rule: {str(e)}")
+
+@app.delete("/api/lead-assignment-rules/{rule_id}")
+def delete_lead_assignment_rule(
+    rule_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a lead assignment rule"""
+    try:
+        result = db.execute("""
+            DELETE FROM lead_assignment_rules 
+            WHERE id = :rule_id AND organization_id = :org_id
+        """, {"rule_id": rule_id, "org_id": current_user.organization_id})
+        
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Lead assignment rule not found")
+        
+        db.commit()
+        return {"message": "Lead assignment rule deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting lead assignment rule: {str(e)}")
+
+@app.post("/api/lead-assignment-rules/{rule_id}/test")
+def test_lead_assignment_rule(
+    rule_id: int,
+    test_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Test a lead assignment rule with sample data"""
+    try:
+        # Get the rule
+        rule = db.execute("""
+            SELECT id, rule_name, criteria, assignment_type, assigned_user_id, assigned_team_id
+            FROM lead_assignment_rules 
+            WHERE id = :rule_id AND organization_id = :org_id AND is_active = true
+        """, {"rule_id": rule_id, "org_id": current_user.organization_id}).fetchone()
+        
+        if not rule:
+            raise HTTPException(status_code=404, detail="Lead assignment rule not found")
+        
+        # Test the criteria matching
+        criteria = rule.criteria
+        test_lead_data = test_data.get('lead_data', {})
+        
+        matches = True
+        for key, expected_value in criteria.items():
+            if key not in test_lead_data:
+                matches = False
+                break
+            if test_lead_data[key] != expected_value:
+                matches = False
+                break
+        
+        assignment_result = None
+        if matches:
+            if rule.assignment_type == 'user':
+                user = db.execute("""
+                    SELECT id, name, email FROM users 
+                    WHERE id = :user_id AND organization_id = :org_id
+                """, {"user_id": rule.assigned_user_id, "org_id": current_user.organization_id}).fetchone()
+                assignment_result = {
+                    "type": "user",
+                    "user_id": rule.assigned_user_id,
+                    "user_name": user.name if user else None,
+                    "user_email": user.email if user else None
+                }
+            elif rule.assignment_type == 'team':
+                assignment_result = {
+                    "type": "team",
+                    "team_id": rule.assigned_team_id
+                }
+            elif rule.assignment_type == 'round_robin':
+                assignment_result = {
+                    "type": "round_robin",
+                    "message": "Would be assigned using round-robin algorithm"
+                }
+        
+        return {
+            "rule_id": rule.id,
+            "rule_name": rule.rule_name,
+            "test_data": test_lead_data,
+            "criteria": criteria,
+            "matches": matches,
+            "assignment_result": assignment_result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error testing lead assignment rule: {str(e)}")
+
+# Task Templates API Endpoints
+@app.get("/api/task-templates", response_model=list[TaskTemplateResponse])
+def get_task_templates(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all task templates for the organization"""
+    try:
+        templates = db.execute(text("""
+            SELECT id, organization_id, name as template_name, description as template_description, task_type,
+                   priority as default_priority, due_date_offset as default_duration, assign_to_user_id as default_assignee_id, 
+                   description_template as template_data, is_active, 
+                   COALESCE(created_at, NOW()) as created_at, 
+                   COALESCE(updated_at, NOW()) as updated_at, 
+                   created_by
+            FROM task_templates 
+            WHERE organization_id = :org_id 
+            ORDER BY name ASC
+        """), {"org_id": current_user.organization_id}).fetchall()
+        
+        return [TaskTemplateResponse(
+            id=template.id,
+            organization_id=template.organization_id,
+            template_name=template.template_name,
+            template_description=template.template_description,
+            task_type=template.task_type,
+            default_priority=template.default_priority,
+            default_duration=template.default_duration,
+            default_assignee_id=template.default_assignee_id,
+            template_data=template.template_data,
+            is_active=template.is_active,
+            created_at=template.created_at,
+            updated_at=template.updated_at,
+            created_by=template.created_by
+        ) for template in templates]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching task templates: {str(e)}")
+
+@app.post("/api/task-templates", response_model=TaskTemplateResponse)
+def create_task_template(
+    template_data: TaskTemplateCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new task template"""
+    try:
+        result = db.execute("""
+            INSERT INTO task_templates 
+            (organization_id, template_name, template_description, task_type,
+             default_priority, default_duration, default_assignee_id, template_data,
+             is_active, created_by)
+            VALUES (:org_id, :template_name, :template_description, :task_type,
+                    :default_priority, :default_duration, :default_assignee_id, :template_data,
+                    :is_active, :created_by)
+            RETURNING id, organization_id, template_name, template_description, task_type,
+                      default_priority, default_duration, default_assignee_id, template_data,
+                      is_active, created_at, updated_at, created_by
+        """, {
+            "org_id": current_user.organization_id,
+            "template_name": template_data.template_name,
+            "template_description": template_data.template_description,
+            "task_type": template_data.task_type,
+            "default_priority": template_data.default_priority,
+            "default_duration": template_data.default_duration,
+            "default_assignee_id": template_data.default_assignee_id,
+            "template_data": json.dumps(template_data.template_data) if template_data.template_data else None,
+            "is_active": template_data.is_active,
+            "created_by": current_user.id
+        }).fetchone()
+        
+        db.commit()
+        
+        return TaskTemplateResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            template_name=result.template_name,
+            template_description=result.template_description,
+            task_type=result.task_type,
+            default_priority=result.default_priority,
+            default_duration=result.default_duration,
+            default_assignee_id=result.default_assignee_id,
+            template_data=result.template_data,
+            is_active=result.is_active,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            created_by=result.created_by
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating task template: {str(e)}")
+
+@app.put("/api/task-templates/{template_id}", response_model=TaskTemplateResponse)
+def update_task_template(
+    template_id: int,
+    template_data: TaskTemplateUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a task template"""
+    try:
+        # Check if template exists
+        existing_template = db.execute("""
+            SELECT id FROM task_templates 
+            WHERE id = :template_id AND organization_id = :org_id
+        """, {"template_id": template_id, "org_id": current_user.organization_id}).fetchone()
+        
+        if not existing_template:
+            raise HTTPException(status_code=404, detail="Task template not found")
+        
+        # Build update query dynamically
+        update_fields = []
+        update_values = {"template_id": template_id}
+        
+        if template_data.template_name is not None:
+            update_fields.append("template_name = :template_name")
+            update_values["template_name"] = template_data.template_name
+        
+        if template_data.template_description is not None:
+            update_fields.append("template_description = :template_description")
+            update_values["template_description"] = template_data.template_description
+        
+        if template_data.task_type is not None:
+            update_fields.append("task_type = :task_type")
+            update_values["task_type"] = template_data.task_type
+        
+        if template_data.default_priority is not None:
+            update_fields.append("default_priority = :default_priority")
+            update_values["default_priority"] = template_data.default_priority
+        
+        if template_data.default_duration is not None:
+            update_fields.append("default_duration = :default_duration")
+            update_values["default_duration"] = template_data.default_duration
+        
+        if template_data.default_assignee_id is not None:
+            update_fields.append("default_assignee_id = :default_assignee_id")
+            update_values["default_assignee_id"] = template_data.default_assignee_id
+        
+        if template_data.template_data is not None:
+            update_fields.append("template_data = :template_data")
+            update_values["template_data"] = json.dumps(template_data.template_data)
+        
+        if template_data.is_active is not None:
+            update_fields.append("is_active = :is_active")
+            update_values["is_active"] = template_data.is_active
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        update_fields.append("updated_at = CURRENT_TIMESTAMP")
+        
+        update_query = f"""
+            UPDATE task_templates 
+            SET {', '.join(update_fields)}
+            WHERE id = :template_id AND organization_id = :org_id
+            RETURNING id, organization_id, template_name, template_description, task_type,
+                      default_priority, default_duration, default_assignee_id, template_data,
+                      is_active, created_at, updated_at, created_by
+        """
+        update_values["org_id"] = current_user.organization_id
+        
+        result = db.execute(update_query, update_values).fetchone()
+        db.commit()
+        
+        return TaskTemplateResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            template_name=result.template_name,
+            template_description=result.template_description,
+            task_type=result.task_type,
+            default_priority=result.default_priority,
+            default_duration=result.default_duration,
+            default_assignee_id=result.default_assignee_id,
+            template_data=result.template_data,
+            is_active=result.is_active,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            created_by=result.created_by
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating task template: {str(e)}")
+
+@app.delete("/api/task-templates/{template_id}")
+def delete_task_template(
+    template_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a task template"""
+    try:
+        result = db.execute("""
+            DELETE FROM task_templates 
+            WHERE id = :template_id AND organization_id = :org_id
+        """, {"template_id": template_id, "org_id": current_user.organization_id})
+        
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Task template not found")
+        
+        db.commit()
+        return {"message": "Task template deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting task template: {str(e)}")
+
+# Tasks API Endpoints
+@app.get("/api/tasks", response_model=list[TaskResponse])
+def get_tasks(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status: Optional[str] = None,
+    assigned_to: Optional[int] = None,
+    task_type: Optional[str] = None,
+    priority: Optional[str] = None
+):
+    """Get all tasks for the organization with optional filters"""
+    try:
+        query = """
+            SELECT id, organization_id, title, description, task_type, status, priority,
+                   due_date, assigned_to_id as assigned_to, 
+                   CASE 
+                       WHEN lead_id IS NOT NULL THEN 'lead'
+                       WHEN deal_id IS NOT NULL THEN 'deal'
+                       WHEN contact_id IS NOT NULL THEN 'contact'
+                       ELSE NULL
+                   END as related_entity_type,
+                   COALESCE(lead_id, deal_id, contact_id) as related_entity_id,
+                   NULL as completion_percentage, NULL as estimated_duration, NULL as actual_duration, 
+                   NULL as task_data, 
+                   COALESCE(created_at, NOW()) as created_at, 
+                   COALESCE(updated_at, NOW()) as updated_at, 
+                   completed_at
+            FROM tasks 
+            WHERE organization_id = :org_id
+        """
+        params = {"org_id": current_user.organization_id}
+        
+        if status:
+            query += " AND status = :status"
+            params["status"] = status
+        
+        if assigned_to:
+            query += " AND assigned_to = :assigned_to"
+            params["assigned_to"] = assigned_to
+        
+        if task_type:
+            query += " AND task_type = :task_type"
+            params["task_type"] = task_type
+        
+        if priority:
+            query += " AND priority = :priority"
+            params["priority"] = priority
+        
+        query += " ORDER BY priority DESC, due_date ASC, created_at DESC"
+        
+        tasks = db.execute(text(query), params).fetchall()
+        
+        return [TaskResponse(
+            id=task.id,
+            organization_id=task.organization_id,
+            title=task.title,
+            description=task.description,
+            task_type=task.task_type,
+            status=task.status,
+            priority=task.priority,
+            due_date=task.due_date,
+            assigned_to=task.assigned_to,
+            related_entity_type=task.related_entity_type,
+            related_entity_id=task.related_entity_id,
+            completion_percentage=task.completion_percentage,
+            estimated_duration=task.estimated_duration,
+            actual_duration=task.actual_duration,
+            task_data=task.task_data,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            completed_at=task.completed_at
+        ) for task in tasks]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching tasks: {str(e)}")
+
+@app.post("/api/tasks", response_model=TaskResponse)
+def create_task(
+    task_data: TaskCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new task"""
+    try:
+        result = db.execute("""
+            INSERT INTO tasks 
+            (organization_id, title, description, task_type, status, priority,
+             due_date, assigned_to, related_entity_type, related_entity_id,
+             estimated_duration, task_data)
+            VALUES (:org_id, :title, :description, :task_type, :status, :priority,
+                    :due_date, :assigned_to, :related_entity_type, :related_entity_id,
+                    :estimated_duration, :task_data)
+            RETURNING id, organization_id, title, description, task_type, status, priority,
+                      due_date, assigned_to, related_entity_type, related_entity_id,
+                      completion_percentage, estimated_duration, actual_duration, task_data,
+                      created_at, updated_at, completed_at
+        """, {
+            "org_id": current_user.organization_id,
+            "title": task_data.title,
+            "description": task_data.description,
+            "task_type": task_data.task_type,
+            "status": task_data.status,
+            "priority": task_data.priority,
+            "due_date": task_data.due_date,
+            "assigned_to": task_data.assigned_to,
+            "related_entity_type": task_data.related_entity_type,
+            "related_entity_id": task_data.related_entity_id,
+            "estimated_duration": task_data.estimated_duration,
+            "task_data": json.dumps(task_data.task_data) if task_data.task_data else None
+        }).fetchone()
+        
+        db.commit()
+        
+        return TaskResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            title=result.title,
+            description=result.description,
+            task_type=result.task_type,
+            status=result.status,
+            priority=result.priority,
+            due_date=result.due_date,
+            assigned_to=result.assigned_to,
+            related_entity_type=result.related_entity_type,
+            related_entity_id=result.related_entity_id,
+            completion_percentage=result.completion_percentage,
+            estimated_duration=result.estimated_duration,
+            actual_duration=result.actual_duration,
+            task_data=result.task_data,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            completed_at=result.completed_at
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating task: {str(e)}")
+
+@app.post("/api/tasks/from-template/{template_id}")
+def create_task_from_template(
+    template_id: int,
+    task_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a task from a template"""
+    try:
+        # Get template
+        template = db.execute("""
+            SELECT id, template_name, template_description, task_type, default_priority,
+                   default_duration, default_assignee_id, template_data
+            FROM task_templates 
+            WHERE id = :template_id AND organization_id = :org_id AND is_active = true
+        """, {"template_id": template_id, "org_id": current_user.organization_id}).fetchone()
+        
+        if not template:
+            raise HTTPException(status_code=404, detail="Task template not found")
+        
+        # Create task from template
+        title = task_data.get('title', template.template_name)
+        description = task_data.get('description', template.template_description)
+        due_date = task_data.get('due_date')
+        assigned_to = task_data.get('assigned_to', template.default_assignee_id)
+        related_entity_type = task_data.get('related_entity_type')
+        related_entity_id = task_data.get('related_entity_id')
+        
+        result = db.execute("""
+            INSERT INTO tasks 
+            (organization_id, title, description, task_type, status, priority,
+             due_date, assigned_to, related_entity_type, related_entity_id,
+             estimated_duration, task_data)
+            VALUES (:org_id, :title, :description, :task_type, 'pending', :priority,
+                    :due_date, :assigned_to, :related_entity_type, :related_entity_id,
+                    :estimated_duration, :task_data)
+            RETURNING id, organization_id, title, description, task_type, status, priority,
+                      due_date, assigned_to, related_entity_type, related_entity_id,
+                      completion_percentage, estimated_duration, actual_duration, task_data,
+                      created_at, updated_at, completed_at
+        """, {
+            "org_id": current_user.organization_id,
+            "title": title,
+            "description": description,
+            "task_type": template.task_type,
+            "priority": template.default_priority,
+            "due_date": due_date,
+            "assigned_to": assigned_to,
+            "related_entity_type": related_entity_type,
+            "related_entity_id": related_entity_id,
+            "estimated_duration": template.default_duration,
+            "task_data": json.dumps(template.template_data) if template.template_data else None
+        }).fetchone()
+        
+        db.commit()
+        
+        return TaskResponse(
+            id=result.id,
+            organization_id=result.organization_id,
+            title=result.title,
+            description=result.description,
+            task_type=result.task_type,
+            status=result.status,
+            priority=result.priority,
+            due_date=result.due_date,
+            assigned_to=result.assigned_to,
+            related_entity_type=result.related_entity_type,
+            related_entity_id=result.related_entity_id,
+            completion_percentage=result.completion_percentage,
+            estimated_duration=result.estimated_duration,
+            actual_duration=result.actual_duration,
+            task_data=result.task_data,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+            completed_at=result.completed_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating task from template: {str(e)}")
+
 @app.get("/api/company-settings", response_model=CompanySettingsResponse)
 def get_company_settings(
     current_user: User = Depends(get_current_user),
@@ -7486,6 +8362,211 @@ def analyze_forecasting_trends(forecasts):
     except Exception as e:
         logger.error(f"Error analyzing forecasting trends: {e}")
         return {"trend": "stable", "confidence": "low", "insights": ["Analysis error"]}
+
+# Automation Functions
+def apply_lead_assignment_rules(lead_data: dict, organization_id: int, db: Session) -> Optional[int]:
+    """Apply lead assignment rules to automatically assign a lead"""
+    try:
+        # Get active assignment rules ordered by priority
+        rules = db.execute("""
+            SELECT id, criteria, assignment_type, assigned_user_id, assigned_team_id
+            FROM lead_assignment_rules 
+            WHERE organization_id = :org_id AND is_active = true
+            ORDER BY priority ASC, created_at ASC
+        """, {"org_id": organization_id}).fetchall()
+        
+        for rule in rules:
+            criteria = rule.criteria
+            matches = True
+            
+            # Check if lead data matches criteria
+            for key, expected_value in criteria.items():
+                if key not in lead_data:
+                    matches = False
+                    break
+                if lead_data[key] != expected_value:
+                    matches = False
+                    break
+            
+            if matches:
+                # Apply assignment based on type
+                if rule.assignment_type == 'user':
+                    return rule.assigned_user_id
+                elif rule.assignment_type == 'team':
+                    # For team assignment, get the team lead or distribute evenly
+                    # For now, return the assigned team leader if available
+                    return rule.assigned_team_id
+                elif rule.assignment_type == 'round_robin':
+                    # Implement round-robin logic
+                    return get_next_round_robin_user(organization_id, db)
+        
+        return None  # No matching rules found
+    except Exception as e:
+        logger.error(f"Error applying lead assignment rules: {str(e)}")
+        return None
+
+def get_next_round_robin_user(organization_id: int, db: Session) -> Optional[int]:
+    """Get next user in round-robin assignment"""
+    try:
+        # Get all active users in the organization
+        users = db.execute("""
+            SELECT id FROM users 
+            WHERE organization_id = :org_id AND is_active = true
+            ORDER BY id ASC
+        """, {"org_id": organization_id}).fetchall()
+        
+        if not users:
+            return None
+        
+        # Get the last assigned user for round-robin
+        last_assignment = db.execute("""
+            SELECT assigned_to FROM leads 
+            WHERE organization_id = :org_id AND assigned_to IS NOT NULL
+            ORDER BY created_at DESC 
+            LIMIT 1
+        """, {"org_id": organization_id}).fetchone()
+        
+        if not last_assignment:
+            return users[0].id
+        
+        # Find next user in rotation
+        current_user_id = last_assignment.assigned_to
+        user_ids = [user.id for user in users]
+        
+        if current_user_id not in user_ids:
+            return user_ids[0]
+        
+        current_index = user_ids.index(current_user_id)
+        next_index = (current_index + 1) % len(user_ids)
+        
+        return user_ids[next_index]
+    except Exception as e:
+        logger.error(f"Error getting next round-robin user: {str(e)}")
+        return None
+
+def create_automated_tasks_for_deal(deal_id: int, deal_stage: str, organization_id: int, db: Session):
+    """Create automated tasks based on deal stage"""
+    try:
+        # Get active task templates that match the deal stage
+        templates = db.execute("""
+            SELECT id, template_name, template_description, task_type, default_priority,
+                   default_duration, default_assignee_id, template_data
+            FROM task_templates 
+            WHERE organization_id = :org_id AND is_active = true
+            AND (template_data->>'trigger_stage' = :stage OR template_data->>'trigger_stage' IS NULL)
+        """, {"org_id": organization_id, "stage": deal_stage}).fetchall()
+        
+        created_tasks = []
+        
+        for template in templates:
+            # Calculate due date based on template settings
+            due_date = None
+            if template.template_data and 'due_date_offset' in template.template_data:
+                from datetime import timedelta
+                offset_days = template.template_data['due_date_offset']
+                due_date = datetime.now() + timedelta(days=offset_days)
+            
+            # Create task from template
+            result = db.execute("""
+                INSERT INTO tasks 
+                (organization_id, title, description, task_type, status, priority,
+                 due_date, assigned_to, related_entity_type, related_entity_id,
+                 estimated_duration, task_data)
+                VALUES (:org_id, :title, :description, :task_type, 'pending', :priority,
+                        :due_date, :assigned_to, 'deal', :deal_id,
+                        :estimated_duration, :task_data)
+                RETURNING id, title, task_type, status
+            """, {
+                "org_id": organization_id,
+                "title": template.template_name,
+                "description": template.template_description,
+                "task_type": template.task_type,
+                "priority": template.default_priority,
+                "due_date": due_date,
+                "assigned_to": template.default_assignee_id,
+                "deal_id": deal_id,
+                "estimated_duration": template.default_duration,
+                "task_data": json.dumps(template.template_data) if template.template_data else None
+            }).fetchone()
+            
+            created_tasks.append({
+                "id": result.id,
+                "title": result.title,
+                "task_type": result.task_type,
+                "status": result.status
+            })
+        
+        if created_tasks:
+            db.commit()
+            logger.info(f"Created {len(created_tasks)} automated tasks for deal {deal_id} in stage {deal_stage}")
+        
+        return created_tasks
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating automated tasks for deal {deal_id}: {str(e)}")
+        return []
+
+def create_automated_tasks_for_lead(lead_id: int, lead_status: str, organization_id: int, db: Session):
+    """Create automated tasks based on lead status"""
+    try:
+        # Get active task templates that match the lead status
+        templates = db.execute("""
+            SELECT id, template_name, template_description, task_type, default_priority,
+                   default_duration, default_assignee_id, template_data
+            FROM task_templates 
+            WHERE organization_id = :org_id AND is_active = true
+            AND (template_data->>'trigger_lead_status' = :status OR template_data->>'trigger_lead_status' IS NULL)
+        """, {"org_id": organization_id, "status": lead_status}).fetchall()
+        
+        created_tasks = []
+        
+        for template in templates:
+            # Calculate due date based on template settings
+            due_date = None
+            if template.template_data and 'due_date_offset' in template.template_data:
+                from datetime import timedelta
+                offset_days = template.template_data['due_date_offset']
+                due_date = datetime.now() + timedelta(days=offset_days)
+            
+            # Create task from template
+            result = db.execute("""
+                INSERT INTO tasks 
+                (organization_id, title, description, task_type, status, priority,
+                 due_date, assigned_to, related_entity_type, related_entity_id,
+                 estimated_duration, task_data)
+                VALUES (:org_id, :title, :description, :task_type, 'pending', :priority,
+                        :due_date, :assigned_to, 'lead', :lead_id,
+                        :estimated_duration, :task_data)
+                RETURNING id, title, task_type, status
+            """, {
+                "org_id": organization_id,
+                "title": template.template_name,
+                "description": template.template_description,
+                "task_type": template.task_type,
+                "priority": template.default_priority,
+                "due_date": due_date,
+                "assigned_to": template.default_assignee_id,
+                "lead_id": lead_id,
+                "estimated_duration": template.default_duration,
+                "task_data": json.dumps(template.template_data) if template.template_data else None
+            }).fetchone()
+            
+            created_tasks.append({
+                "id": result.id,
+                "title": result.title,
+                "task_type": result.task_type,
+                "status": result.status
+            })
+        
+        if created_tasks:
+            db.commit()
+            logger.info(f"Created {len(created_tasks)} automated tasks for lead {lead_id} with status {lead_status}")
+        
+        return created_tasks
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating automated tasks for lead {lead_id}: {str(e)}")
+        return []
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
