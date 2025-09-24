@@ -1035,22 +1035,74 @@ class PBXProvider(Base):
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     
     # Provider Details
-    name = Column(String, nullable=False)  # e.g., "Asterisk", "FreePBX", "3CX", "Twilio"
-    provider_type = Column(String, nullable=False)  # 'asterisk', 'freepbx', '3cx', 'twilio', 'custom'
+    name = Column(String, nullable=False)  # e.g., "Asterisk", "FreePBX", "3CX", "Twilio", "Yeastar"
+    provider_type = Column(String, nullable=False)  # 'asterisk', 'freepbx', '3cx', 'twilio', 'yeastar', 'custom'
     display_name = Column(String, nullable=False)
     description = Column(Text)
     
-    # Connection Settings
+    # Basic Connection Settings
     host = Column(String, nullable=False)  # IP or domain
-    port = Column(Integer, default=8088)  # AMI port for Asterisk, API port for others
+    port = Column(Integer, default=5060)  # SIP port (5060) or AMI port (8088)
     username = Column(String, nullable=False)
     password = Column(String, nullable=False)  # Encrypted
-    api_key = Column(String)  # For cloud providers like Twilio
+    authentication_name = Column(String)  # Separate auth name (often same as username)
     
-    # PBX Configuration
-    context = Column(String, default='default')  # Asterisk context
+    # Advanced Connection Settings
+    enable_outbound_proxy = Column(Boolean, default=False)
+    outbound_proxy_host = Column(String)
+    outbound_proxy_port = Column(Integer, default=5060)
+    transport = Column(String, default='UDP')  # UDP, TCP, TLS, DNS-NAPTR
+    enable_nat_traversal = Column(Boolean, default=False)
+    nat_type = Column(String)  # 'auto', 'force_rport', 'comedia'
+    local_network = Column(String)  # Local network CIDR
+    
+    # Trunk Configuration (Yeastar/Enterprise PBX)
+    trunk_type = Column(String, default='register')  # 'register', 'peer', 'user'
+    register_interval = Column(Integer, default=3600)  # Registration interval in seconds
+    register_timeout = Column(Integer, default=20)  # Registration timeout
+    max_retries = Column(Integer, default=5)  # Max registration retries
+    
+    # SIP Settings
+    sip_context = Column(String, default='default')  # SIP context
     caller_id_field = Column(String, default='CallerIDNum')  # Field to extract caller ID
     dialplan_context = Column(String, default='from-internal')  # Context for outbound calls
+    from_domain = Column(String)  # From domain for SIP
+    to_domain = Column(String)  # To domain for SIP
+    
+    # DID/DDI Configuration
+    did_numbers = Column(Text)  # JSON array of DID numbers
+    did_pattern = Column(String)  # DID pattern matching
+    did_strip_digits = Column(Integer, default=0)  # Digits to strip from DID
+    
+    # Caller ID Reformatting
+    inbound_caller_id_reformatting = Column(Boolean, default=False)
+    outbound_caller_id_reformatting = Column(Boolean, default=False)
+    caller_id_prefix = Column(String)  # Prefix to add to caller ID
+    caller_id_suffix = Column(String)  # Suffix to add to caller ID
+    caller_id_replacement_rules = Column(Text)  # JSON array of replacement rules
+    
+    # SIP Headers
+    custom_sip_headers = Column(Text)  # JSON object of custom SIP headers
+    p_asserted_identity = Column(String)  # P-Asserted-Identity header
+    remote_party_id = Column(String)  # Remote-Party-ID header
+    
+    # Codec Settings
+    preferred_codecs = Column(Text)  # JSON array of preferred codecs
+    codec_negotiation = Column(String, default='negotiate')  # 'negotiate', 'force'
+    dtmf_mode = Column(String, default='rfc2833')  # 'rfc2833', 'inband', 'sip_info'
+    
+    # Quality of Service (QoS)
+    enable_qos = Column(Boolean, default=False)
+    dscp_value = Column(Integer, default=46)  # DSCP value for QoS
+    bandwidth_limit = Column(Integer)  # Bandwidth limit in kbps
+    
+    # Security Settings
+    enable_srtp = Column(Boolean, default=False)
+    srtp_mode = Column(String, default='optional')  # 'optional', 'required'
+    enable_tls = Column(Boolean, default=False)
+    tls_cert_path = Column(String)  # Path to TLS certificate
+    tls_key_path = Column(String)  # Path to TLS private key
+    tls_ca_path = Column(String)  # Path to TLS CA certificate
     
     # Advanced Settings
     recording_enabled = Column(Boolean, default=True)
@@ -1058,21 +1110,41 @@ class PBXProvider(Base):
     transcription_enabled = Column(Boolean, default=False)
     cdr_enabled = Column(Boolean, default=True)
     cdr_path = Column(String, default='/var/log/asterisk/cdr-csv')
+    call_forwarding_enabled = Column(Boolean, default=True)
+    call_waiting_enabled = Column(Boolean, default=True)
+    three_way_calling_enabled = Column(Boolean, default=True)
+    
+    # Monitoring and Analytics
+    enable_call_monitoring = Column(Boolean, default=True)
+    enable_call_recording = Column(Boolean, default=False)
+    recording_format = Column(String, default='wav')  # 'wav', 'mp3', 'gsm'
+    recording_quality = Column(String, default='high')  # 'low', 'medium', 'high'
     
     # Webhook Settings
     webhook_url = Column(String)  # For incoming call notifications
     webhook_secret = Column(String)  # Webhook authentication secret
+    webhook_events = Column(Text)  # JSON array of webhook events to subscribe to
+    
+    # API Integration
+    api_endpoint = Column(String)  # API endpoint for provider
+    api_key = Column(String)  # For cloud providers like Twilio
+    api_secret = Column(String)  # API secret for authentication
+    api_version = Column(String, default='v1')  # API version
     
     # Status and Settings
     is_active = Column(Boolean, default=True)
     is_primary = Column(Boolean, default=False)  # Primary PBX for organization
     auto_assign_calls = Column(Boolean, default=True)
+    failover_enabled = Column(Boolean, default=False)
+    failover_provider_id = Column(Integer, ForeignKey('pbx_providers.id'), nullable=True)
     
     # Metadata
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_sync = Column(DateTime)
+    last_registration = Column(DateTime)  # Last successful registration
+    registration_status = Column(String, default='unknown')  # 'registered', 'failed', 'unknown'
     
     # Relationships
     organization = relationship('Organization')

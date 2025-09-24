@@ -70,23 +70,75 @@ class CampaignType(str, Enum):
 
 # PBX Provider Schemas
 class PBXProviderCreate(BaseModel):
-    """Schema for creating a PBX provider"""
-    name: str = Field(..., description="Provider name (e.g., 'Asterisk', 'FreePBX', '3CX')")
-    provider_type: str = Field(..., description="Provider type: asterisk, freepbx, 3cx, twilio, custom")
+    """Schema for creating a PBX provider with comprehensive configuration"""
+    name: str = Field(..., description="Provider name (e.g., 'Asterisk', 'FreePBX', '3CX', 'Yeastar')")
+    provider_type: str = Field(..., description="Provider type: asterisk, freepbx, 3cx, twilio, yeastar, custom")
     display_name: str = Field(..., description="Display name for the provider")
     description: Optional[str] = Field(None, description="Provider description")
     
-    # Connection Settings
+    # Basic Connection Settings
     host: str = Field(..., description="PBX host IP or domain")
-    port: int = Field(8088, description="PBX port (AMI port for Asterisk)")
+    port: int = Field(5060, description="SIP port (5060) or AMI port (8088)")
     username: str = Field(..., description="PBX username")
     password: str = Field(..., description="PBX password")
-    api_key: Optional[str] = Field(None, description="API key for cloud providers")
+    authentication_name: Optional[str] = Field(None, description="Separate authentication name")
     
-    # PBX Configuration
-    context: str = Field("default", description="Asterisk context")
+    # Advanced Connection Settings
+    enable_outbound_proxy: bool = Field(False, description="Enable outbound proxy")
+    outbound_proxy_host: Optional[str] = Field(None, description="Outbound proxy host")
+    outbound_proxy_port: Optional[int] = Field(5060, description="Outbound proxy port")
+    transport: str = Field("UDP", description="Transport protocol: UDP, TCP, TLS, DNS-NAPTR")
+    enable_nat_traversal: bool = Field(False, description="Enable NAT traversal")
+    nat_type: Optional[str] = Field("auto", description="NAT type: auto, force_rport, comedia")
+    local_network: Optional[str] = Field(None, description="Local network CIDR")
+    
+    # Trunk Configuration
+    trunk_type: str = Field("register", description="Trunk type: register, peer, user")
+    register_interval: int = Field(3600, description="Registration interval in seconds")
+    register_timeout: int = Field(20, description="Registration timeout")
+    max_retries: int = Field(5, description="Max registration retries")
+    
+    # SIP Settings
+    sip_context: str = Field("default", description="SIP context")
     caller_id_field: str = Field("CallerIDNum", description="Field to extract caller ID")
     dialplan_context: str = Field("from-internal", description="Context for outbound calls")
+    from_domain: Optional[str] = Field(None, description="From domain for SIP")
+    to_domain: Optional[str] = Field(None, description="To domain for SIP")
+    
+    # DID/DDI Configuration
+    did_numbers: Optional[str] = Field(None, description="JSON array of DID numbers")
+    did_pattern: Optional[str] = Field(None, description="DID pattern matching")
+    did_strip_digits: int = Field(0, description="Digits to strip from DID")
+    
+    # Caller ID Reformatting
+    inbound_caller_id_reformatting: bool = Field(False, description="Enable inbound caller ID reformatting")
+    outbound_caller_id_reformatting: bool = Field(False, description="Enable outbound caller ID reformatting")
+    caller_id_prefix: Optional[str] = Field(None, description="Prefix to add to caller ID")
+    caller_id_suffix: Optional[str] = Field(None, description="Suffix to add to caller ID")
+    caller_id_replacement_rules: Optional[str] = Field(None, description="JSON array of replacement rules")
+    
+    # SIP Headers
+    custom_sip_headers: Optional[str] = Field(None, description="JSON object of custom SIP headers")
+    p_asserted_identity: Optional[str] = Field(None, description="P-Asserted-Identity header")
+    remote_party_id: Optional[str] = Field(None, description="Remote-Party-ID header")
+    
+    # Codec Settings
+    preferred_codecs: Optional[str] = Field(None, description="JSON array of preferred codecs")
+    codec_negotiation: str = Field("negotiate", description="Codec negotiation: negotiate, force")
+    dtmf_mode: str = Field("rfc2833", description="DTMF mode: rfc2833, inband, sip_info")
+    
+    # Quality of Service (QoS)
+    enable_qos: bool = Field(False, description="Enable QoS")
+    dscp_value: int = Field(46, description="DSCP value for QoS")
+    bandwidth_limit: Optional[int] = Field(None, description="Bandwidth limit in kbps")
+    
+    # Security Settings
+    enable_srtp: bool = Field(False, description="Enable SRTP")
+    srtp_mode: str = Field("optional", description="SRTP mode: optional, required")
+    enable_tls: bool = Field(False, description="Enable TLS")
+    tls_cert_path: Optional[str] = Field(None, description="Path to TLS certificate")
+    tls_key_path: Optional[str] = Field(None, description="Path to TLS private key")
+    tls_ca_path: Optional[str] = Field(None, description="Path to TLS CA certificate")
     
     # Advanced Settings
     recording_enabled: bool = Field(True, description="Enable call recording")
@@ -94,14 +146,32 @@ class PBXProviderCreate(BaseModel):
     transcription_enabled: bool = Field(False, description="Enable call transcription")
     cdr_enabled: bool = Field(True, description="Enable CDR collection")
     cdr_path: str = Field("/var/log/asterisk/cdr-csv", description="CDR path")
+    call_forwarding_enabled: bool = Field(True, description="Enable call forwarding")
+    call_waiting_enabled: bool = Field(True, description="Enable call waiting")
+    three_way_calling_enabled: bool = Field(True, description="Enable three-way calling")
+    
+    # Monitoring and Analytics
+    enable_call_monitoring: bool = Field(True, description="Enable call monitoring")
+    enable_call_recording: bool = Field(False, description="Enable call recording")
+    recording_format: str = Field("wav", description="Recording format: wav, mp3, gsm")
+    recording_quality: str = Field("high", description="Recording quality: low, medium, high")
     
     # Webhook Settings
     webhook_url: Optional[str] = Field(None, description="Webhook URL for notifications")
     webhook_secret: Optional[str] = Field(None, description="Webhook authentication secret")
+    webhook_events: Optional[str] = Field(None, description="JSON array of webhook events")
+    
+    # API Integration
+    api_endpoint: Optional[str] = Field(None, description="API endpoint for provider")
+    api_key: Optional[str] = Field(None, description="API key for cloud providers")
+    api_secret: Optional[str] = Field(None, description="API secret for authentication")
+    api_version: str = Field("v1", description="API version")
     
     # Status Settings
     is_primary: bool = Field(False, description="Set as primary PBX")
     auto_assign_calls: bool = Field(True, description="Auto-assign incoming calls")
+    failover_enabled: bool = Field(False, description="Enable failover")
+    failover_provider_id: Optional[int] = Field(None, description="Failover provider ID")
 
 class PBXProviderUpdate(BaseModel):
     """Schema for updating a PBX provider"""

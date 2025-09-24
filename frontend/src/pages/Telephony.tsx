@@ -122,28 +122,109 @@ const TelephonyEnhanced: React.FC = () => {
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState<any>(null);
   const [providerForm, setProviderForm] = useState({
+    // Basic Information
     name: '',
     provider_type: 'asterisk',
     display_name: '',
+    description: '',
+    
+    // Basic Connection Settings
     host: '',
     port: 5060,
     username: '',
     password: '',
-    api_key: '',
-    description: '',
-    context: 'default',
+    authentication_name: '',
+    
+    // Advanced Connection Settings
+    enable_outbound_proxy: false,
+    outbound_proxy_host: '',
+    outbound_proxy_port: 5060,
+    transport: 'UDP',
+    enable_nat_traversal: false,
+    nat_type: 'auto',
+    local_network: '',
+    
+    // Trunk Configuration
+    trunk_type: 'register',
+    register_interval: 3600,
+    register_timeout: 20,
+    max_retries: 5,
+    
+    // SIP Settings
+    sip_context: 'default',
     caller_id_field: 'CallerIDNum',
     dialplan_context: 'from-internal',
+    from_domain: '',
+    to_domain: '',
+    
+    // DID/DDI Configuration
+    did_numbers: '',
+    did_pattern: '',
+    did_strip_digits: 0,
+    
+    // Caller ID Reformatting
+    inbound_caller_id_reformatting: false,
+    outbound_caller_id_reformatting: false,
+    caller_id_prefix: '',
+    caller_id_suffix: '',
+    caller_id_replacement_rules: '',
+    
+    // SIP Headers
+    custom_sip_headers: '',
+    p_asserted_identity: '',
+    remote_party_id: '',
+    
+    // Codec Settings
+    preferred_codecs: '',
+    codec_negotiation: 'negotiate',
+    dtmf_mode: 'rfc2833',
+    
+    // Quality of Service (QoS)
+    enable_qos: false,
+    dscp_value: 46,
+    bandwidth_limit: '',
+    
+    // Security Settings
+    enable_srtp: false,
+    srtp_mode: 'optional',
+    enable_tls: false,
+    tls_cert_path: '',
+    tls_key_path: '',
+    tls_ca_path: '',
+    
+    // Advanced Settings
+    recording_enabled: true,
     recording_path: '/var/spool/asterisk/monitor',
+    transcription_enabled: false,
     cdr_enabled: true,
     cdr_path: '/var/log/asterisk/cdr-csv',
+    call_forwarding_enabled: true,
+    call_waiting_enabled: true,
+    three_way_calling_enabled: true,
+    
+    // Monitoring and Analytics
+    enable_call_monitoring: true,
+    enable_call_recording: false,
+    recording_format: 'wav',
+    recording_quality: 'high',
+    
+    // Webhook Settings
     webhook_url: '',
     webhook_secret: '',
-    auto_assign_calls: true,
-    is_active: true,
+    webhook_events: '',
+    
+    // API Integration
+    api_endpoint: '',
+    api_key: '',
+    api_secret: '',
+    api_version: 'v1',
+    
+    // Status Settings
     is_primary: false,
-    recording_enabled: false,
-    transcription_enabled: false
+    auto_assign_calls: true,
+    failover_enabled: false,
+    failover_provider_id: '',
+    is_active: true
   });
 
   useEffect(() => {
