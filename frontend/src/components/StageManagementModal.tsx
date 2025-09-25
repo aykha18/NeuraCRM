@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Edit2, Trash2, GripVertical } from 'lucide-react';
 import { stageService, type Stage, type StageCreate, type StageUpdate } from '../services/kanban';
+import ConfirmationModal from './ConfirmationModal';
 
 interface StageManagementModalProps {
   isOpen: boolean;
@@ -18,6 +19,20 @@ export default function StageManagementModal({ isOpen, onClose, onStagesUpdated 
     name: '',
     order: 0,
     wip_limit: undefined
+  });
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
   });
 
   // Load stages when modal opens

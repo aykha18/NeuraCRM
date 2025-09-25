@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { telephonyService } from '../services/telephony';
 import ProviderConfigForm from '../components/ProviderConfigForm';
-import ConfirmationModal from '../components/ConfirmationModal';
 
 const TelephonySimple: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -31,20 +30,6 @@ const TelephonySimple: React.FC = () => {
   // Provider management state
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState<any>(null);
-  
-  // Confirmation modal state
-  const [confirmationModal, setConfirmationModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    type?: 'danger' | 'warning' | 'info';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {}
-  });
   const [providerForm, setProviderForm] = useState({
     // Basic Information
     name: '',
@@ -267,28 +252,6 @@ const TelephonySimple: React.FC = () => {
     }
   };
 
-  const handleDeleteProvider = (providerId: number) => {
-    const provider = providers.find(p => p.id === providerId);
-    const providerName = provider?.display_name || provider?.name || 'this provider';
-    
-    setConfirmationModal({
-      isOpen: true,
-      title: 'Delete Provider',
-      message: `Are you sure you want to delete ${providerName}? This action cannot be undone and will remove all associated configurations.`,
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          await telephonyService.deleteProvider(providerId);
-          await fetchAllData();
-          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to delete provider');
-          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -445,10 +408,7 @@ const TelephonySimple: React.FC = () => {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button 
-                        onClick={() => handleDeleteProvider(provider.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
+                      <button className="text-red-600 hover:text-red-800">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -485,18 +445,6 @@ const TelephonySimple: React.FC = () => {
           isEditing={!!editingProvider}
         />
       )}
-
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmationModal.onConfirm}
-        title={confirmationModal.title}
-        message={confirmationModal.message}
-        type={confirmationModal.type}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { userService, type User, type CreateUserRequest } from '../services/users';
 import { Plus, Trash2, Eye, Users, UserPlus, Search } from 'lucide-react';
 import AnimatedModal from '../components/AnimatedModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -14,6 +15,20 @@ export default function UserManagement() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const [createForm, setCreateForm] = useState<CreateUserRequest>({
     name: '',
@@ -84,25 +99,30 @@ export default function UserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId: number, userName: string) => {
+  const handleDeleteUser = (userId: number, userName: string) => {
     if (!user?.organization_id) return;
     
-    // Use modern confirmation - could be enhanced with a modal in the future
-    if (!window.confirm(`Are you sure you want to delete user "${userName}"?`)) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await userService.deleteUser(user.organization_id, userId);
-      setToast(`User ${userName} deleted successfully!`);
-      await fetchUsers();
-    } catch (err: any) {
-      setToast(err.message || 'Failed to delete user');
-      console.error('Failed to delete user:', err);
-    } finally {
-      setActionLoading(false);
-    }
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Delete User',
+      message: `Are you sure you want to delete user "${userName}"? This action cannot be undone and will permanently remove all user data and access.`,
+      type: 'danger',
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await userService.deleteUser(user.organization_id!, userId);
+          setToast(`User ${userName} deleted successfully!`);
+          await fetchUsers();
+          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+        } catch (err: any) {
+          setToast(err.message || 'Failed to delete user');
+          console.error('Failed to delete user:', err);
+          setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+        } finally {
+          setActionLoading(false);
+        }
+      }
+    });
   };
 
   const resetCreateForm = () => {
@@ -339,6 +359,19 @@ export default function UserManagement() {
           </form>
         </div>
       </AnimatedModal>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={actionLoading}
+      />
     </div>
   );
 }

@@ -41,6 +41,7 @@ import {
 } from '../services/emailAutomation';
 import { fetchLeads } from '../services/leads';
 import { fetchContacts } from '../services/contacts';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 export default function EmailAutomationPage() {
   // State management
@@ -54,6 +55,20 @@ export default function EmailAutomationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   // Auto-clear toast after 3 seconds
   useEffect(() => {

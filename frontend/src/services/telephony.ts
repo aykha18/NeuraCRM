@@ -169,7 +169,7 @@ export const telephonyService = {
   },
 
   async testProviderConnection(providerId: number): Promise<{ success: boolean; message: string; response_time?: number; error?: string }> {
-    return apiRequest<{ success: boolean; message: string; response_time?: number; error?: string }>(`/api/telephony/providers/${providerId}/test`, 'POST');
+    return apiRequest<{ success: boolean; message: string; response_time?: number; error?: string }>(`/api/telephony/providers/${providerId}/test-connection`, 'POST');
   },
 
   // Calls
