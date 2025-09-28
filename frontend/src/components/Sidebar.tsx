@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck, CheckCircle, Target } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck, CheckCircle, Target, Mic } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -19,6 +19,7 @@ const navigationSections = [
     title: "AI INSIGHTS",
     items: [
       { name: "AI Features", icon: <Bot />, path: "/ai" },
+      { name: "Conversational AI", icon: <Mic />, path: "/conversational-ai" },
       { name: "AI Help Guide", icon: <BookOpen />, path: "/ai-help" },
       { name: "Predictive Analytics", icon: <Brain />, path: "/predictive-analytics" },
       { name: "Sentiment Analysis", icon: <TrendingUp />, path: "/sentiment-analysis" },

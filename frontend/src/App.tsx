@@ -17,6 +17,7 @@ import SentimentAnalysis from "./pages/SentimentAnalysis";
 import CustomerSegmentation from "./pages/CustomerSegmentation";
 import AdvancedForecasting from "./pages/AdvancedForecasting";
 import Telephony from "./pages/Telephony";
+import ConversationalAI from "./pages/ConversationalAI";
 import LeadAssignmentRules from "./pages/LeadAssignmentRules";
 import ApprovalWorkflows from "./pages/ApprovalWorkflows";
 import LeadNurturing from "./pages/LeadNurturing";
@@ -189,6 +190,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Telephony />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/conversational-ai" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ConversationalAI />
                 </Layout>
               </ProtectedRoute>
             } />

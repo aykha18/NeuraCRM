@@ -44,6 +44,7 @@ try:
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
+    from api.routers.conversational_ai import router as conversational_ai_router
     DB_AVAILABLE = True
     print("Γ£à Database models imported successfully")
     
@@ -346,6 +347,7 @@ app.add_middleware(
 if DB_AVAILABLE:
     app.include_router(chat.router)
     app.include_router(predictive_analytics_router)
+    app.include_router(conversational_ai_router)
 
 # WebSocket endpoint
 @app.websocket("/ws/chat/{room_id}")
