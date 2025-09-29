@@ -37,6 +37,10 @@ class Organization(Base):
     call_queues = relationship('CallQueue', back_populates='organization')
     call_campaigns = relationship('CallCampaign', back_populates='organization')
     call_analytics = relationship('CallAnalytics', back_populates='organization')
+    # Payment relationships
+    #payment_methods = relationship('PaymentMethod')
+    #payments = relationship('Payment')
+    #subscriptions = relationship('Subscription')
 
 class User(Base):
     __tablename__ = 'users'
@@ -88,6 +92,10 @@ class Contact(Base):
     # Telephony relationships
     calls = relationship('Call', back_populates='contact')
     campaign_calls = relationship('CampaignCall', back_populates='target_contact')
+    # Payment relationships
+    # payment_methods = relationship('PaymentMethod')
+    payments = relationship('Payment',back_populates='contact')
+    # subscriptions = relationship('Subscription')
 
 class Lead(Base):
     __tablename__ = 'leads'
@@ -433,7 +441,8 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     invoice_id = Column(Integer, ForeignKey('invoices.id'), nullable=False)
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
-    
+    contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
+
     # Payment Details
     payment_number = Column(String, unique=True, nullable=False)
     amount = Column(Float, nullable=False)
@@ -454,6 +463,8 @@ class Payment(Base):
     invoice = relationship('Invoice', back_populates='payments')
     organization = relationship('Organization')
     creator = relationship('User')
+    contact = relationship('Contact',back_populates='payments')
+
 
 class Revenue(Base):
     __tablename__ = 'revenue'
@@ -1600,3 +1611,91 @@ class CallRecord(Base):
     lead = relationship('Lead')
     contact = relationship('Contact')
     user = relationship('User')
+
+# Payment Gateway Models
+class PaymentMethod(Base):
+    """Customer payment methods stored in Stripe"""
+    __tablename__ = 'payment_methods'
+    id = Column(Integer, primary_key=True)
+    stripe_payment_method_id = Column(String, nullable=False, unique=True)
+    customer_id = Column(Integer, ForeignKey('contacts.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    type = Column(String, nullable=False)  # card, bank_account, etc.
+    brand = Column(String)  # visa, mastercard, etc.
+    last4 = Column(String)  # last 4 digits
+    exp_month = Column(Integer)
+    exp_year = Column(Integer)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    customer = relationship('Contact')
+    organization = relationship('Organization')
+
+class StripePayment(Base):
+    """Stripe payment records for invoices and subscriptions"""
+    __tablename__ = 'stripe_payments'
+    id = Column(Integer, primary_key=True)
+    stripe_payment_intent_id = Column(String, nullable=False, unique=True)
+    invoice_id = Column(Integer, ForeignKey('invoices.id'), nullable=True)
+    subscription_id = Column(Integer, ForeignKey('stripe_subscriptions.id'), nullable=True)
+    customer_id = Column(Integer, ForeignKey('contacts.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    amount = Column(Float, nullable=False)  # in cents
+    currency = Column(String, default='usd')
+    status = Column(String, nullable=False)  # pending, succeeded, failed, canceled
+    payment_method_id = Column(Integer, ForeignKey('payment_methods.id'), nullable=True)
+    failure_reason = Column(String)
+    payment_metadata = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    invoice = relationship('Invoice')
+    subscription = relationship('StripeSubscription')
+    customer = relationship('Contact')
+    organization = relationship('Organization')
+    payment_method = relationship('PaymentMethod')
+
+class StripeSubscriptionPlan(Base):
+    """Stripe subscription plans for recurring billing"""
+    __tablename__ = 'stripe_subscription_plans'
+    id = Column(Integer, primary_key=True)
+    stripe_price_id = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    amount = Column(Float, nullable=False)  # in cents
+    currency = Column(String, default='usd')
+    interval = Column(String, nullable=False)  # month, year, etc.
+    interval_count = Column(Integer, default=1)
+    trial_period_days = Column(Integer, default=0)
+    features = Column(JSON)  # JSON list of features included
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class StripeSubscription(Base):
+    """Stripe customer subscriptions for recurring billing"""
+    __tablename__ = 'stripe_subscriptions'
+    id = Column(Integer, primary_key=True)
+    stripe_subscription_id = Column(String, nullable=False, unique=True)
+    customer_id = Column(Integer, ForeignKey('contacts.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    plan_id = Column(Integer, ForeignKey('stripe_subscription_plans.id'), nullable=False)
+    status = Column(String, nullable=False)  # active, canceled, past_due, etc.
+    current_period_start = Column(DateTime)
+    current_period_end = Column(DateTime)
+    cancel_at_period_end = Column(Boolean, default=False)
+    canceled_at = Column(DateTime)
+    trial_start = Column(DateTime)
+    trial_end = Column(DateTime)
+    payment_metadata = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    customer = relationship('Contact')
+    organization = relationship('Organization')
+    plan = relationship('StripeSubscriptionPlan')
+    payments = relationship('StripePayment')

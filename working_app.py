@@ -30,9 +30,9 @@ try:
     import jwt
     import bcrypt
     AUTH_AVAILABLE = True
-    print("Γ£à Authentication dependencies imported successfully")
+    print("Authentication dependencies imported successfully")
 except ImportError as e:
-    print(f"ΓÜá∩╕Å Authentication dependencies not available: {e}")
+    print(f"Authentication dependencies not available: {e}")
     AUTH_AVAILABLE = False
 
 # Add backend to path for imports
@@ -40,19 +40,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from api.db import get_db, get_engine
-    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics, Watcher, CompanySettings
+    from api.models import Contact, Lead, Deal, Stage, User, Organization, Subscription, SubscriptionPlan, CustomerAccount, Invoice, Payment, PaymentMethod, StripePayment, StripeSubscription, StripeSubscriptionPlan, Revenue, FinancialReport, SupportTicket, SupportComment, SupportAttachment, KnowledgeBaseArticle, SupportSLA, CustomerSatisfactionSurvey, SupportAnalytics, SupportQueue, UserSkill, AssignmentAudit, Activity, ChatRoom, ChatMessage, CustomerSegment, CustomerSegmentMember, SegmentAnalytics, ForecastingModel, ForecastResult, ForecastingAnalytics, PBXProvider, PBXExtension, Call, CallActivity, CallQueue, CallQueueMember, CallCampaign, CampaignCall, CallAnalytics, Watcher, CompanySettings
     from api.websocket import websocket_endpoint
     from api.routers import chat
     from api.routers.predictive_analytics import router as predictive_analytics_router
     from api.routers.conversational_ai import router as conversational_ai_router
+    from api.routers.payments import router as payments_router
     DB_AVAILABLE = True
-    print("Γ£à Database models imported successfully")
+    print("Database models imported successfully")
     
     # Create financial management tables if they don't exist
     try:
         engine = get_engine()
         Invoice.metadata.create_all(bind=engine)
         Payment.metadata.create_all(bind=engine)
+        PaymentMethod.metadata.create_all(bind=engine)
+        StripePayment.metadata.create_all(bind=engine)
+        StripeSubscription.metadata.create_all(bind=engine)
+        StripeSubscriptionPlan.metadata.create_all(bind=engine)
         Revenue.metadata.create_all(bind=engine)
         FinancialReport.metadata.create_all(bind=engine)
         print("Γ£à Financial management tables created/verified successfully")
@@ -348,6 +353,7 @@ if DB_AVAILABLE:
     app.include_router(chat.router)
     app.include_router(predictive_analytics_router)
     app.include_router(conversational_ai_router)
+    app.include_router(payments_router)
 
 # WebSocket endpoint
 @app.websocket("/ws/chat/{room_id}")
@@ -1009,12 +1015,14 @@ if AUTH_AVAILABLE:
     @app.post("/api/auth/login", response_model=Token)
     def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         """Login user and return access token"""
+        logger.info("Attempting to log in user")
         if not DB_AVAILABLE:
             raise HTTPException(status_code=500, detail="Database not available")
         
         # Authenticate user (email is unique per organization now)
         user = db.query(User).filter(User.email == user_credentials.email).first()
         if not user:
+            logger.error("Failed to log in user")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",

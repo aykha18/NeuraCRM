@@ -1,3 +1,5 @@
 {
-    "kiroAgent.configureMCP": "Disabled"
+    "kiroAgent.configureMCP": "Disabled",
+    "continue.enableConsole": true,
+    "continue.enableQuickActions": true
 }
