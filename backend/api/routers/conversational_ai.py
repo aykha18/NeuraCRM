@@ -374,46 +374,66 @@ async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
 @router.post("/calls", response_model=CallResponse)
 async def create_call(call_data: CallCreate, db: Session = Depends(get_db)):
     """Create and start a new phone call with CRM validation and PBX integration"""
+    logger.info(f"🚀 STARTING CALL CREATION - Agent: {call_data.agent_id}, To: {call_data.to_number}")
+
     try:
+        # Step 1: Check if agent exists
+        logger.info(f"Step 1: Checking agent existence - Agent ID: {call_data.agent_id}")
         if call_data.agent_id not in agents_storage:
+            logger.error(f"Agent not found in storage: {call_data.agent_id}")
             raise HTTPException(status_code=404, detail="Agent not found")
 
-        # Enhanced call creation with CRM validation and PBX integration
+        agent = agents_storage[call_data.agent_id]
+        logger.info(f"Agent found: {agent.name} (Status: {agent.status})")
+
+        # Step 2: Enhanced call creation with CRM validation and PBX integration
+        logger.info("Step 2: Starting phone call creation with Retell AI service")
+
+        metadata = {
+            "lead_id": call_data.lead_id,
+            "contact_id": call_data.contact_id,
+            "scenario": agent.scenario.value,
+            "user_id": getattr(call_data, 'user_id', None)
+        }
+        logger.info(f"Call metadata: {metadata}")
+
         call_id = await retell_ai_service.create_phone_call(
             agent_id=call_data.agent_id,
             to_number=call_data.to_number,
             from_number=None,  # Will be set by PBX provider config
-            metadata={
-                "lead_id": call_data.lead_id,
-                "contact_id": call_data.contact_id,
-                "scenario": agents_storage[call_data.agent_id].scenario.value,
-                "user_id": getattr(call_data, 'user_id', None)  # If user context is available
-            },
+            metadata=metadata,
             db=db
         )
 
+        logger.info(f"Retell AI service returned call_id: {call_id}")
+
         if not call_id:
+            logger.error("Retell AI service returned None call_id")
             raise HTTPException(status_code=500, detail="Failed to create call with Retell AI")
 
-        # Create call record in database for tracking
+        # Step 3: Create call record in database for tracking
+        logger.info("Step 3: Creating call record in database")
         call_record = CallRecord(
             external_call_id=call_id,
             agent_id=call_data.agent_id,
             to_number=call_data.to_number,
-            scenario=agents_storage[call_data.agent_id].scenario.value,
+            scenario=agent.scenario.value,
             lead_id=call_data.lead_id,
             contact_id=call_data.contact_id
         )
         db.add(call_record)
         db.commit()
+        logger.info("Call record committed to database")
 
+        # Step 4: Create response object
+        logger.info("Step 4: Creating response object")
         call_response = CallResponse(
             call_id=call_id,
             agent_id=call_data.agent_id,
             to_number=call_data.to_number,
             from_number=None,  # Will be determined by PBX provider
             status=CallStatus.QUEUED,
-            scenario=agents_storage[call_data.agent_id].scenario,
+            scenario=agent.scenario,
             start_time=datetime.utcnow(),
             created_at=datetime.utcnow(),
             call_metadata={
@@ -424,19 +444,21 @@ async def create_call(call_data: CallCreate, db: Session = Depends(get_db)):
         )
 
         calls_storage[call_id] = call_response
+        logger.info(f"Call response stored in memory: {call_id}")
 
-        logger.info(f"Created call: {call_id} to {call_data.to_number} with CRM validation and PBX routing")
+        logger.info(f"✅ CALL CREATION COMPLETED SUCCESSFULLY - Call ID: {call_id}")
         return call_response
 
     except ValueError as e:
         # Handle validation errors specifically
-        logger.warning(f"Call validation failed: {str(e)}")
+        logger.warning(f"❌ Call validation failed: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
+        logger.warning(f"❌ HTTP Exception during call creation: {str(e)}")
         raise
     except Exception as e:
-        logger.error(f"Error creating call: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to create call")
+        logger.error(f"❌ Unexpected error creating call: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create call: {str(e)}")
 
 @router.get("/calls", response_model=CallListResponse)
 async def get_calls(

@@ -357,11 +357,15 @@ class RetellAIService:
         db: Optional[Any] = None
     ) -> Optional[str]:
         """Create a phone call using Retell AI with CRM validation and PBX integration"""
+        logger.info(f"📞 STARTING PHONE CALL CREATION - Agent: {agent_id}, To: {to_number}")
+
         if not self.api_key:
+            logger.error("❌ Retell AI API key not configured")
             raise ValueError("Retell AI API key not configured")
 
         try:
-            # Validate and enrich call data with CRM information
+            # Step 1: Validate and enrich call data with CRM information
+            logger.info("Step 1: Validating and enriching call data")
             validation_result = await self.validate_and_enrich_call_data(
                 to_number=to_number,
                 lead_id=metadata.get("lead_id") if metadata else None,
@@ -369,20 +373,26 @@ class RetellAIService:
                 db=db
             )
 
+            logger.info(f"Validation result: is_valid={validation_result['is_valid']}, errors={validation_result['validation_errors']}")
+
             if not validation_result["is_valid"]:
                 error_msg = f"Call validation failed: {', '.join(validation_result['validation_errors'])}"
-                logger.error(error_msg)
+                logger.error(f"❌ {error_msg}")
                 raise ValueError(error_msg)
 
-            # Get PBX provider configuration for call routing
+            # Step 2: Get PBX provider configuration for call routing
+            logger.info("Step 2: Getting PBX provider configuration")
             pbx_config = await self._get_pbx_provider_config(db)
             if pbx_config:
                 # Use PBX provider's outbound number if available
                 if not from_number and pbx_config.get("outbound_number"):
                     from_number = pbx_config["outbound_number"]
                     logger.info(f"Using PBX outbound number: {from_number}")
+            else:
+                logger.info("No PBX provider configuration found - proceeding without")
 
-            # Enhance metadata with CRM data
+            # Step 3: Enhance metadata with CRM data
+            logger.info("Step 3: Enhancing metadata with CRM data")
             enhanced_metadata = metadata or {}
             if validation_result["contact_info"]:
                 enhanced_metadata["contact_info"] = validation_result["contact_info"]
@@ -395,11 +405,17 @@ class RetellAIService:
                 for error in validation_result["validation_errors"]:
                     logger.warning(f"Call validation warning: {error}")
 
-            # Use the real API call implementation
-            return await self.create_phone_call_new(agent_id, to_number, from_number or "", enhanced_metadata)
+            logger.info(f"Enhanced metadata: {enhanced_metadata}")
+
+            # Step 4: Use the real API call implementation
+            logger.info("Step 4: Calling create_phone_call_new")
+            result = await self.create_phone_call_new(agent_id, to_number, from_number or "", enhanced_metadata)
+            logger.info(f"create_phone_call_new returned: {result}")
+
+            return result
 
         except Exception as e:
-            logger.error(f"Error creating phone call: {str(e)}")
+            logger.error(f"❌ Error creating phone call: {str(e)}", exc_info=True)
             return None
 
     async def _get_pbx_provider_config(self, db: Optional[Any] = None) -> Optional[Dict[str, Any]]:
@@ -480,6 +496,8 @@ class RetellAIService:
         db: Optional[Any] = None
     ) -> Dict[str, Any]:
         """Validate phone number against CRM data and enrich call metadata"""
+        logger.info(f"🔍 STARTING VALIDATION - Number: {to_number}, Lead ID: {lead_id}, Contact ID: {contact_id}")
+
         result = {
             "is_valid": False,
             "contact_info": None,
@@ -489,28 +507,33 @@ class RetellAIService:
         }
 
         try:
-            # First validate phone number format
+            # Step 1: First validate phone number format
+            logger.info("Step 1: Validating phone number format")
             if not self._validate_phone_number(to_number):
                 result["validation_errors"].append("Invalid phone number format")
-                logger.warning(f"Phone number format validation failed: {to_number}")
+                logger.warning(f"❌ Phone number format validation failed: {to_number}")
                 return result
 
-            # Normalize phone number for comparison
+            logger.info("✅ Phone number format is valid")
+
+            # Step 2: Normalize phone number for comparison
             normalized_number = self._normalize_phone_number(to_number)
             result["normalized_number"] = normalized_number
-            logger.debug(f"Normalized phone number: {normalized_number}")
+            logger.info(f"Normalized phone number: {normalized_number}")
 
             if not db:
                 # If no db provided, just validate format
                 result["is_valid"] = True
-                logger.info("Database not available, allowing call with format validation only")
+                logger.info("ℹ️ Database not available, allowing call with format validation only")
                 return result
 
-            # Check if number exists in contacts or leads
+            # Step 3: Check if number exists in contacts or leads
+            logger.info("Step 3: Checking CRM database for phone number")
             from api.models import Contact, Lead
 
             # Query contacts with error handling
             try:
+                logger.info("Querying contacts table...")
                 contact_query = db.query(Contact).filter(Contact.phone == normalized_number)
                 if contact_id:
                     contact_query = contact_query.filter(Contact.id == contact_id)
@@ -524,13 +547,16 @@ class RetellAIService:
                         "company": contact.company
                     }
                     result["is_valid"] = True
-                    logger.info(f"Found matching contact: {contact.name} (ID: {contact.id})")
+                    logger.info(f"✅ Found matching contact: {contact.name} (ID: {contact.id})")
+                else:
+                    logger.info("No matching contact found")
             except Exception as e:
-                logger.error(f"Error querying contacts: {str(e)}")
+                logger.error(f"❌ Error querying contacts: {str(e)}", exc_info=True)
                 result["validation_errors"].append("Error accessing contact database")
 
             # Query leads with error handling
             try:
+                logger.info("Querying leads table...")
                 if not contact or lead_id:
                     lead_query = db.query(Lead)
                     if lead_id:
@@ -548,21 +574,25 @@ class RetellAIService:
                             "score": lead.score
                         }
                         result["is_valid"] = True
-                        logger.info(f"Found matching lead: {lead.title} (ID: {lead.id})")
+                        logger.info(f"✅ Found matching lead: {lead.title} (ID: {lead.id})")
+                    else:
+                        logger.info("No matching lead found")
             except Exception as e:
-                logger.error(f"Error querying leads: {str(e)}")
+                logger.error(f"❌ Error querying leads: {str(e)}", exc_info=True)
                 result["validation_errors"].append("Error accessing lead database")
 
-            # If no CRM match found, still allow the call but log warning
+            # Step 4: Final validation decision
             if not result["contact_info"] and not result["lead_info"]:
-                logger.info(f"Phone number {normalized_number} not found in CRM contacts/leads - allowing demo call")
+                logger.info(f"ℹ️ Phone number {normalized_number} not found in CRM - allowing demo call")
                 result["is_valid"] = True  # Allow call for demo purposes
-                # Don't add validation error for demo calls - just log it
+            else:
+                logger.info("✅ Phone number validated against CRM data")
 
         except Exception as e:
-            logger.error(f"Unexpected error validating call data: {str(e)}", exc_info=True)
+            logger.error(f"❌ Unexpected error validating call data: {str(e)}", exc_info=True)
             result["validation_errors"].append(f"Validation system error: {str(e)}")
 
+        logger.info(f"🔍 VALIDATION COMPLETE - Result: {result}")
         return result
 
     def _normalize_phone_number(self, phone_number: str) -> str:
