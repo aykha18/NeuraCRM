@@ -405,6 +405,7 @@ class RetellAIService:
     async def _get_pbx_provider_config(self, db: Optional[Any] = None) -> Optional[Dict[str, Any]]:
         """Get active PBX provider configuration for call routing"""
         if not db:
+            logger.debug("No database connection provided for PBX config lookup")
             return None
 
         try:
@@ -445,9 +446,11 @@ class RetellAIService:
 
                 logger.info(f"Using PBX provider {provider.name} for call routing")
                 return config
+            else:
+                logger.debug("No active PBX provider found - proceeding without PBX routing")
 
         except Exception as e:
-            logger.error(f"Error getting PBX provider config: {str(e)}")
+            logger.warning(f"Error getting PBX provider config (non-critical): {str(e)}")
 
         return None
 
@@ -552,9 +555,9 @@ class RetellAIService:
 
             # If no CRM match found, still allow the call but log warning
             if not result["contact_info"] and not result["lead_info"]:
-                logger.warning(f"Phone number {normalized_number} not found in CRM contacts/leads - allowing call")
-                result["is_valid"] = True  # Allow call but warn
-                result["validation_errors"].append("Number not found in CRM database")
+                logger.info(f"Phone number {normalized_number} not found in CRM contacts/leads - allowing demo call")
+                result["is_valid"] = True  # Allow call for demo purposes
+                # Don't add validation error for demo calls - just log it
 
         except Exception as e:
             logger.error(f"Unexpected error validating call data: {str(e)}", exc_info=True)
