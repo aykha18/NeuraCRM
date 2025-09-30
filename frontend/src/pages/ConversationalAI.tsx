@@ -137,11 +137,14 @@ const ConversationalAI: React.FC = () => {
         body: JSON.stringify({
           agent_id: agentId,
           to_number: toNumber,
-          scenario: 'sales_outbound',
+          scenario: 'SALES_OUTBOUND', // Use enum value
           call_metadata: {
             demo: true,
             created_by: 'frontend'
-          }
+          },
+          lead_id: null,
+          contact_id: null,
+          user_id: null
         })
       });
       const data = await response.json();

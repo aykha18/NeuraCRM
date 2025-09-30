@@ -100,7 +100,7 @@ def get_table_definition(conn, table_name):
         }
         
     except Exception as e:
-        print(f"❌ Error getting table definition for {table_name}: {e}")
+        print(f"[ERROR] Error getting table definition for {table_name}: {e}")
         return None
 
 def create_table_sql(table_name, table_def):
@@ -147,51 +147,51 @@ def add_missing_columns(railway_conn, table_name, missing_columns, local_conn):
             
             row = local_cursor.fetchone()
             if not row:
-                print(f"⚠️  Column {col_name} not found in local {table_name}")
+                print(f"   Column {col_name} not found in local {table_name}")
                 continue
-                
+
             data_type, max_length, nullable, default = row
-            
+
             # Build ALTER TABLE statement
             col_def = f'"{col_name}" {data_type}'
             if max_length:
                 col_def += f'({max_length})'
-            
+
             if nullable == 'NO':
                 col_def += ' NOT NULL'
-            
+
             if default:
                 col_def += f' DEFAULT {default}'
-            
+
             alter_sql = f'ALTER TABLE "{table_name}" ADD COLUMN {col_def};'
-            
+
             print(f"   Adding column: {col_name} ({data_type})")
             cursor.execute(alter_sql)
-            print(f"   ✅ Added column {col_name}")
-            
+            print(f"   Added column {col_name}")
+
         except Exception as e:
-            print(f"   ❌ Error adding column {col_name}: {e}")
+            print(f"   Error adding column {col_name}: {e}")
             railway_conn.rollback()
 
 def sync_databases():
     """Sync Railway database with local database"""
-    print("🚀 Railway Database Sync")
+    print("Railway Database Sync")
     print("=" * 50)
-    
+
     local_conn = None
     railway_conn = None
-    
+
     try:
         # Connect to databases
-        print("🔌 Connecting to local database...")
+        print("Connecting to local database...")
         local_conn = psycopg2.connect(**LOCAL_CONFIG)
         local_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        print("✅ Local database connected")
-        
-        print("🔌 Connecting to Railway database...")
+        print("Local database connected")
+
+        print("Connecting to Railway database...")
         railway_conn = psycopg2.connect(**RAILWAY_CONFIG)
         railway_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        print("✅ Railway database connected")
+        print("Railway database connected")
         
         # Get table lists
         local_cursor = local_conn.cursor()
@@ -218,7 +218,7 @@ def sync_databases():
         # 1. Add missing tables to Railway
         missing_tables = local_tables - railway_tables
         if missing_tables:
-            print(f"\n📋 Adding missing tables to Railway ({len(missing_tables)}):")
+            print(f"\nAdding missing tables to Railway ({len(missing_tables)}):")
             for table_name in sorted(missing_tables):
                 print(f"   Creating table: {table_name}")
                 try:
@@ -226,83 +226,83 @@ def sync_databases():
                     if table_def:
                         create_sql = create_table_sql(table_name, table_def)
                         railway_cursor.execute(create_sql)
-                        print(f"   ✅ Created table {table_name}")
+                        print(f"   Created table {table_name}")
                     else:
-                        print(f"   ❌ Failed to get definition for {table_name}")
+                        print(f"   Failed to get definition for {table_name}")
                 except Exception as e:
-                    print(f"   ❌ Error creating table {table_name}: {e}")
+                    print(f"   Error creating table {table_name}: {e}")
                     railway_conn.rollback()
         else:
-            print("\n✅ No missing tables to add")
-        
+            print("\nNo missing tables to add")
+
         # 2. Add missing columns to existing tables
         common_tables = local_tables & railway_tables
         if common_tables:
-            print(f"\n🔧 Adding missing columns to existing tables:")
-            
+            print(f"\nAdding missing columns to existing tables:")
+
             for table_name in sorted(common_tables):
                 # Get columns from both databases
                 local_cursor.execute("""
                     SELECT column_name
-                    FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
                     AND table_name = %s
                     ORDER BY ordinal_position;
                 """, (table_name,))
                 local_cols = set(row[0] for row in local_cursor.fetchall())
-                
+
                 railway_cursor.execute("""
                     SELECT column_name
-                    FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
                     AND table_name = %s
                     ORDER BY ordinal_position;
                 """, (table_name,))
                 railway_cols = set(row[0] for row in railway_cursor.fetchall())
-                
+
                 missing_cols = local_cols - railway_cols
                 if missing_cols:
-                    print(f"\n   📝 Table {table_name}: Adding {len(missing_cols)} columns")
+                    print(f"\n   Table {table_name}: Adding {len(missing_cols)} columns")
                     add_missing_columns(railway_conn, table_name, missing_cols, local_conn)
                 else:
-                    print(f"   ✅ Table {table_name}: No missing columns")
-        
+                    print(f"   Table {table_name}: No missing columns")
+
         # Commit all changes
         railway_conn.commit()
-        print(f"\n🎉 Database sync completed successfully!")
-        
+        print(f"\nDatabase sync completed successfully!")
+
         # Verify sync
-        print(f"\n🔍 Verifying sync...")
+        print(f"\nVerifying sync...")
         railway_cursor.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
             AND table_type = 'BASE TABLE'
             ORDER BY table_name;
         """)
         updated_railway_tables = set(row[0] for row in railway_cursor.fetchall())
-        
+
         print(f"   Local tables: {len(local_tables)}")
         print(f"   Railway tables: {len(updated_railway_tables)}")
         print(f"   Tables added: {len(missing_tables)}")
-        
+
         if updated_railway_tables >= local_tables:
-            print("   ✅ Sync verification passed!")
+            print("   Sync verification passed!")
         else:
-            print("   ⚠️  Some tables may still be missing")
-        
+            print("   Some tables may still be missing")
+
     except Exception as e:
-        print(f"❌ Error during sync: {e}")
+        print(f"Error during sync: {e}")
         if railway_conn:
             railway_conn.rollback()
         sys.exit(1)
-    
+
     finally:
         if local_conn:
             local_conn.close()
         if railway_conn:
             railway_conn.close()
-        print("\n🔌 Connections closed")
+        print("\nConnections closed")
 
 if __name__ == "__main__":
     sync_databases()
