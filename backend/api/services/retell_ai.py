@@ -179,15 +179,16 @@ class RetellAIService:
         """Create a new Retell AI agent"""
         if not self.api_key:
             raise ValueError("Retell AI API key not configured")
-        
+
         try:
             # First create a Retell LLM using the dynamic config
             llm_id = await self.create_retell_llm(agent_config.llm_dynamic_config)
             if not llm_id:
                 logger.error("Failed to create Retell LLM, agent creation aborted.")
                 return None
-            
-            # Now create the agent using the LLM
+
+            # Try different agent creation endpoints and formats
+            # Method 1: Try the current format first
             payload = {
                 "name": agent_config.name,
                 "voice_id": agent_config.voice_id,
@@ -197,29 +198,72 @@ class RetellAIService:
                 },
                 "webhook_url": agent_config.webhook_url
             }
-            
+
+            logger.info(f"Trying agent creation with payload: {payload}")
+
             async with httpx.AsyncClient() as client:
-                response = await client.post(
+                # Try multiple possible endpoints
+                endpoints_to_try = [
                     f"{self.base_url}/create-agent",
-                    headers=await self.get_headers(),
-                    json=payload,
-                    timeout=60.0
-                )
-                
-                if response.status_code in [200, 201]:
-                    result = response.json()
-                    agent_id = result.get("agent_id")
-                    logger.info(f"Created Retell AI agent with ID: {agent_id}")
-                    return agent_id
-                else:
-                    error_detail = response.text
-                    logger.error(f"Retell AI agent creation error {response.status_code}: {error_detail}")
-                    # You might want to delete the orphaned LLM here in a production scenario
-                    return None
-                
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error creating agent: {e.response.status_code} - {e.response.text}")
-            return None
+                    f"{self.base_url}/agents",
+                    f"{self.base_url}/v2/agents"
+                ]
+
+                for endpoint in endpoints_to_try:
+                    try:
+                        logger.info(f"Trying endpoint: {endpoint}")
+                        response = await client.post(
+                            endpoint,
+                            headers=await self.get_headers(),
+                            json=payload,
+                            timeout=60.0
+                        )
+
+                        if response.status_code in [200, 201]:
+                            result = response.json()
+                            agent_id = result.get("agent_id") or result.get("id")
+                            if agent_id:
+                                logger.info(f"Created Retell AI agent with ID: {agent_id} using endpoint {endpoint}")
+                                return agent_id
+
+                        logger.warning(f"Endpoint {endpoint} returned {response.status_code}: {response.text}")
+
+                    except Exception as e:
+                        logger.warning(f"Failed with endpoint {endpoint}: {str(e)}")
+                        continue
+
+                # If all endpoints failed, try alternative payload format
+                logger.info("Trying alternative payload format...")
+                alt_payload = {
+                    "agent_name": agent_config.name,
+                    "voice_id": agent_config.voice_id,
+                    "llm_id": llm_id,
+                    "webhook_url": agent_config.webhook_url
+                }
+
+                for endpoint in endpoints_to_try:
+                    try:
+                        logger.info(f"Trying alternative format with endpoint: {endpoint}")
+                        response = await client.post(
+                            endpoint,
+                            headers=await self.get_headers(),
+                            json=alt_payload,
+                            timeout=60.0
+                        )
+
+                        if response.status_code in [200, 201]:
+                            result = response.json()
+                            agent_id = result.get("agent_id") or result.get("id")
+                            if agent_id:
+                                logger.info(f"Created Retell AI agent with ID: {agent_id} using alternative format")
+                                return agent_id
+
+                    except Exception as e:
+                        continue
+
+                logger.error("All agent creation attempts failed")
+                return None
+
         except Exception as e:
             logger.error(f"Error creating agent: {str(e)}")
             return None
