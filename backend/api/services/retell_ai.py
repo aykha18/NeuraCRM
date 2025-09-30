@@ -1,3 +1,4 @@
+
 """
 Retell AI Integration for Conversational AI Voice Agents
 """
@@ -11,6 +12,10 @@ import os
 import json
 from datetime import datetime
 import uuid
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -26,24 +31,14 @@ class RetellAIVoice(BaseModel):
     sample_url: Optional[str] = None
 
 class RetellAIAgent(BaseModel):
-    """Retell AI Agent Configuration"""
+    """Retell AI Agent Configuration for V2 API"""
     agent_id: Optional[str] = None
     name: str
     voice_id: str
-    language: str
+    # The following fields are now part of the LLM, not the agent.
+    # We keep llm_dynamic_config to pass data from the router, but it's not a direct agent property in Retell.
     llm_dynamic_config: Dict[str, Any]
-    real_time_transcription: bool = True
-    real_time_ai_thoughts: bool = False
-    end_call_message: str = "Thank you for calling. Have a great day!"
-    end_call_phrases: List[str] = ["goodbye", "bye", "end call", "hang up"]
-    interruptions_threshold: int = 2
-    backchannel_frequency: float = 0.3
-    backchannel_threshold: float = 0.7
-    normalize_for_speech: bool = True
     webhook_url: Optional[str] = None
-    webhook_url_auth_header: Optional[str] = None
-    max_duration_seconds: int = 1800  # 30 minutes
-    enable_transcription_formatting: bool = True
 
 class RetellAICall(BaseModel):
     """Retell AI Call Model"""
@@ -129,17 +124,40 @@ class RetellAIService:
             logger.error(f"Error fetching voices from Retell AI: {str(e)}")
             return []
     
-    async def create_retell_llm(self, llm_config: Dict[str, Any]) -> Optional[str]:
+    async def create_retell_llm(self, llm_config_data: Dict[str, Any]) -> Optional[str]:
         """Create a Retell LLM first"""
         if not self.api_key:
             raise ValueError("Retell AI API key not configured")
         
+        # Use dynamic data passed from create_agent
+        llm_payload = {
+            "model": llm_config_data.get("model", "gpt-4o"),
+            "model_temperature": llm_config_data.get("temperature", 0.7),
+            "general_prompt": llm_config_data.get("system_prompt", "You are a helpful AI assistant."),
+            "general_tools": [
+                {
+                    "type": "end_call",
+                    "name": "end_call",
+                    "description": "End the call with user."
+                }
+            ],
+            "starting_state": "main_conversation",
+            "states": [
+                {
+                    "name": "main_conversation",
+                    "state_prompt": llm_config_data.get("system_prompt", "You are a helpful AI assistant."),
+                    "tools": []
+                }
+            ],
+            "begin_message": llm_config_data.get("begin_message", "Hello! How can I help you today?")
+        }
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/create-retell-llm",
                     headers=await self.get_headers(),
-                    json=llm_config,
+                    json=llm_payload,
                     timeout=60.0
                 )
                 
@@ -163,32 +181,10 @@ class RetellAIService:
             raise ValueError("Retell AI API key not configured")
         
         try:
-            # First create a Retell LLM
-            llm_config = {
-                "model": agent_config.llm_dynamic_config.get("model", "gpt-4o"),
-                "model_temperature": agent_config.llm_dynamic_config.get("temperature", 0.7),
-                "general_prompt": agent_config.llm_dynamic_config.get("system_prompt", "You are a helpful AI assistant."),
-                "general_tools": [
-                    {
-                        "type": "end_call",
-                        "name": "end_call",
-                        "description": "End the call with user."
-                    }
-                ],
-                "states": [
-                    {
-                        "name": "main_conversation",
-                        "state_prompt": agent_config.llm_dynamic_config.get("system_prompt", "You are a helpful AI assistant."),
-                        "tools": []
-                    }
-                ],
-                "starting_state": "main_conversation",
-                "begin_message": agent_config.end_call_message or "Hello! How can I help you today?"
-            }
-            
-            llm_id = await self.create_retell_llm(llm_config)
+            # First create a Retell LLM using the dynamic config
+            llm_id = await self.create_retell_llm(agent_config.llm_dynamic_config)
             if not llm_id:
-                logger.error("Failed to create Retell LLM")
+                logger.error("Failed to create Retell LLM, agent creation aborted.")
                 return None
             
             # Now create the agent using the LLM
@@ -198,7 +194,8 @@ class RetellAIService:
                 "response_engine": {
                     "llm_id": llm_id,
                     "type": "retell-llm"
-                }
+                },
+                "webhook_url": agent_config.webhook_url
             }
             
             async with httpx.AsyncClient() as client:
@@ -217,13 +214,17 @@ class RetellAIService:
                 else:
                     error_detail = response.text
                     logger.error(f"Retell AI agent creation error {response.status_code}: {error_detail}")
+                    # You might want to delete the orphaned LLM here in a production scenario
                     return None
                 
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error creating agent: {e.response.status_code} - {e.response.text}")
+            return None
         except Exception as e:
-            logger.error(f"Error creating Retell AI agent: {str(e)}")
+            logger.error(f"Error creating agent: {str(e)}")
             return None
     
-    async def get_agent(self, agent_id: str) -> Optional[RetellAIAgent]:
+    async def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Get agent configuration"""
         if not self.api_key:
             return None
@@ -238,25 +239,13 @@ class RetellAIService:
                 response.raise_for_status()
                 
                 agent_data = response.json()
-                return RetellAIAgent(
-                    agent_id=agent_data.get("agent_id"),
-                    name=agent_data.get("name"),
-                    voice_id=agent_data.get("voice_id"),
-                    language=agent_data.get("language"),
-                    llm_dynamic_config=agent_data.get("llm_dynamic_config", {}),
-                    real_time_transcription=agent_data.get("real_time_transcription", True),
-                    real_time_ai_thoughts=agent_data.get("real_time_ai_thoughts", False),
-                    end_call_message=agent_data.get("end_call_message", ""),
-                    end_call_phrases=agent_data.get("end_call_phrases", []),
-                    interruptions_threshold=agent_data.get("interruptions_threshold", 2),
-                    backchannel_frequency=agent_data.get("backchannel_frequency", 0.3),
-                    backchannel_threshold=agent_data.get("backchannel_threshold", 0.7),
-                    normalize_for_speech=agent_data.get("normalize_for_speech", True),
-                    webhook_url=agent_data.get("webhook_url"),
-                    webhook_url_auth_header=agent_data.get("webhook_url_auth_header"),
-                    max_duration_seconds=agent_data.get("max_duration_seconds", 1800),
-                    enable_transcription_formatting=agent_data.get("enable_transcription_formatting", True)
-                )
+                return {
+                    "agent_id": agent_data.get("agent_id"),
+                    "name": agent_data.get("name"),
+                    "voice_id": agent_data.get("voice_id"),
+                    "llm_dynamic_config": agent_data.get("llm_dynamic_config", {}),
+                    "webhook_url": agent_data.get("webhook_url")
+                }
                 
         except Exception as e:
             logger.error(f"Error fetching agent: {str(e)}")
@@ -271,23 +260,11 @@ class RetellAIService:
             payload = {
                 "name": agent_config.name,
                 "voice_id": agent_config.voice_id,
-                "language": agent_config.language,
                 "response_engine": {
                     "type": "custom_function"
                 },  # Required field
                 "llm_dynamic_config": agent_config.llm_dynamic_config,
-                "real_time_transcription": agent_config.real_time_transcription,
-                "real_time_ai_thoughts": agent_config.real_time_ai_thoughts,
-                "end_call_message": agent_config.end_call_message,
-                "end_call_phrases": agent_config.end_call_phrases,
-                "interruptions_threshold": agent_config.interruptions_threshold,
-                "backchannel_frequency": agent_config.backchannel_frequency,
-                "backchannel_threshold": agent_config.backchannel_threshold,
-                "normalize_for_speech": agent_config.normalize_for_speech,
-                "webhook_url": agent_config.webhook_url,
-                "webhook_url_auth_header": agent_config.webhook_url_auth_header,
-                "max_duration_seconds": agent_config.max_duration_seconds,
-                "enable_transcription_formatting": agent_config.enable_transcription_formatting
+                "webhook_url": agent_config.webhook_url
             }
             
             async with httpx.AsyncClient() as client:
@@ -328,38 +305,308 @@ class RetellAIService:
         agent_id: str,
         to_number: str,
         from_number: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        db: Optional[Any] = None
     ) -> Optional[str]:
-        """Create a phone call using Retell AI"""
+        """Create a phone call using Retell AI with CRM validation and PBX integration"""
         if not self.api_key:
             raise ValueError("Retell AI API key not configured")
-        
+
         try:
-            # For demo purposes, we'll simulate call creation since the actual endpoint
-            # appears to be different or not publicly available
-            # In a production environment, you would need to:
-            # 1. Contact Retell AI support for the correct call creation endpoint
-            # 2. Set up webhook endpoints for call status updates
-            # 3. Use their SDK if available
-            
-            # Generate a simulated call ID for demo purposes
-            import uuid
-            call_id = f"call_{uuid.uuid4().hex[:16]}"
-            
-            logger.info(f"Simulated call creation - Agent: {agent_id}, To: {to_number}, Call ID: {call_id}")
-            logger.info("Note: This is a demo simulation. For production, contact Retell AI for call creation endpoint.")
-            
-            # In a real implementation, you would:
-            # 1. Make the actual API call to create the call
-            # 2. Set up webhooks to receive call status updates
-            # 3. Store the call record in the database
-            
-            return call_id
-                
+            # Validate and enrich call data with CRM information
+            validation_result = await self.validate_and_enrich_call_data(
+                to_number=to_number,
+                lead_id=metadata.get("lead_id") if metadata else None,
+                contact_id=metadata.get("contact_id") if metadata else None,
+                db=db
+            )
+
+            if not validation_result["is_valid"]:
+                error_msg = f"Call validation failed: {', '.join(validation_result['validation_errors'])}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            # Get PBX provider configuration for call routing
+            pbx_config = await self._get_pbx_provider_config(db)
+            if pbx_config:
+                # Use PBX provider's outbound number if available
+                if not from_number and pbx_config.get("outbound_number"):
+                    from_number = pbx_config["outbound_number"]
+                    logger.info(f"Using PBX outbound number: {from_number}")
+
+            # Enhance metadata with CRM data
+            enhanced_metadata = metadata or {}
+            if validation_result["contact_info"]:
+                enhanced_metadata["contact_info"] = validation_result["contact_info"]
+            if validation_result["lead_info"]:
+                enhanced_metadata["lead_info"] = validation_result["lead_info"]
+            enhanced_metadata["normalized_to_number"] = validation_result["normalized_number"]
+
+            # Log validation warnings
+            if validation_result["validation_errors"]:
+                for error in validation_result["validation_errors"]:
+                    logger.warning(f"Call validation warning: {error}")
+
+            # Use the real API call implementation
+            return await self.create_phone_call_new(agent_id, to_number, from_number or "", enhanced_metadata)
+
         except Exception as e:
             logger.error(f"Error creating phone call: {str(e)}")
             return None
-    
+
+    async def _get_pbx_provider_config(self, db: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+        """Get active PBX provider configuration for call routing"""
+        if not db:
+            return None
+
+        try:
+            from api.models import PBXProvider
+
+            # Get primary or first active PBX provider
+            provider = db.query(PBXProvider).filter(
+                PBXProvider.is_active == True,
+                PBXProvider.is_primary == True
+            ).first()
+
+            if not provider:
+                # Fallback to any active provider
+                provider = db.query(PBXProvider).filter(
+                    PBXProvider.is_active == True
+                ).first()
+
+            if provider:
+                # Check if this provider supports Retell AI integration
+                config = {
+                    "provider_id": provider.id,
+                    "provider_type": provider.provider_type,
+                    "name": provider.name,
+                    "api_endpoint": provider.api_endpoint,
+                    "api_key": provider.api_key,
+                    "outbound_number": None
+                }
+
+                # Extract outbound number from DID numbers if available
+                if provider.did_numbers:
+                    import json
+                    try:
+                        dids = json.loads(provider.did_numbers)
+                        if dids and len(dids) > 0:
+                            config["outbound_number"] = dids[0]  # Use first DID as outbound
+                    except (json.JSONDecodeError, TypeError):
+                        logger.warning(f"Invalid DID numbers format for provider {provider.id}")
+
+                logger.info(f"Using PBX provider {provider.name} for call routing")
+                return config
+
+        except Exception as e:
+            logger.error(f"Error getting PBX provider config: {str(e)}")
+
+        return None
+
+    def _validate_phone_number(self, phone_number: str) -> bool:
+        """Validate phone number format"""
+        import re
+
+        # Remove all non-digit characters except + and spaces
+        cleaned = re.sub(r'[^\d+\s]', '', phone_number).strip()
+
+        # Check for valid international format
+        # + followed by country code and number, or just digits
+        if cleaned.startswith('+'):
+            # International format: +country_code + number (at least 7 digits total)
+            digits_only = re.sub(r'[^\d]', '', cleaned)
+            return len(digits_only) >= 7 and len(digits_only) <= 15
+        else:
+            # Local format: just digits (at least 7 digits)
+            digits_only = re.sub(r'[^\d]', '', cleaned)
+            return len(digits_only) >= 7 and len(digits_only) <= 15
+
+    async def validate_and_enrich_call_data(
+        self,
+        to_number: str,
+        lead_id: Optional[int] = None,
+        contact_id: Optional[int] = None,
+        db: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        """Validate phone number against CRM data and enrich call metadata"""
+        result = {
+            "is_valid": False,
+            "contact_info": None,
+            "lead_info": None,
+            "normalized_number": None,
+            "validation_errors": []
+        }
+
+        try:
+            # First validate phone number format
+            if not self._validate_phone_number(to_number):
+                result["validation_errors"].append("Invalid phone number format")
+                logger.warning(f"Phone number format validation failed: {to_number}")
+                return result
+
+            # Normalize phone number for comparison
+            normalized_number = self._normalize_phone_number(to_number)
+            result["normalized_number"] = normalized_number
+            logger.debug(f"Normalized phone number: {normalized_number}")
+
+            if not db:
+                # If no db provided, just validate format
+                result["is_valid"] = True
+                logger.info("Database not available, allowing call with format validation only")
+                return result
+
+            # Check if number exists in contacts or leads
+            from api.models import Contact, Lead
+
+            # Query contacts with error handling
+            try:
+                contact_query = db.query(Contact).filter(Contact.phone == normalized_number)
+                if contact_id:
+                    contact_query = contact_query.filter(Contact.id == contact_id)
+
+                contact = contact_query.first()
+                if contact:
+                    result["contact_info"] = {
+                        "id": contact.id,
+                        "name": contact.name,
+                        "email": contact.email,
+                        "company": contact.company
+                    }
+                    result["is_valid"] = True
+                    logger.info(f"Found matching contact: {contact.name} (ID: {contact.id})")
+            except Exception as e:
+                logger.error(f"Error querying contacts: {str(e)}")
+                result["validation_errors"].append("Error accessing contact database")
+
+            # Query leads with error handling
+            try:
+                if not contact or lead_id:
+                    lead_query = db.query(Lead)
+                    if lead_id:
+                        lead_query = lead_query.filter(Lead.id == lead_id)
+                    elif contact:
+                        # Find lead by contact association
+                        lead_query = lead_query.filter(Lead.contact_id == contact.id)
+
+                    lead = lead_query.first()
+                    if lead:
+                        result["lead_info"] = {
+                            "id": lead.id,
+                            "title": lead.title,
+                            "status": lead.status,
+                            "score": lead.score
+                        }
+                        result["is_valid"] = True
+                        logger.info(f"Found matching lead: {lead.title} (ID: {lead.id})")
+            except Exception as e:
+                logger.error(f"Error querying leads: {str(e)}")
+                result["validation_errors"].append("Error accessing lead database")
+
+            # If no CRM match found, still allow the call but log warning
+            if not result["contact_info"] and not result["lead_info"]:
+                logger.warning(f"Phone number {normalized_number} not found in CRM contacts/leads - allowing call")
+                result["is_valid"] = True  # Allow call but warn
+                result["validation_errors"].append("Number not found in CRM database")
+
+        except Exception as e:
+            logger.error(f"Unexpected error validating call data: {str(e)}", exc_info=True)
+            result["validation_errors"].append(f"Validation system error: {str(e)}")
+
+        return result
+
+    def _normalize_phone_number(self, phone_number: str) -> str:
+        """Normalize phone number for consistent storage and comparison"""
+        import re
+
+        # Remove all non-digit characters
+        digits_only = re.sub(r'[^\d]', '', phone_number)
+
+        # Add + prefix for international numbers if not present
+        if not phone_number.startswith('+') and len(digits_only) > 10:
+            # Assume international format
+            return f"+{digits_only}"
+
+        return phone_number.strip()
+
+    async def create_phone_call_new(
+        self,
+        agent_id: str,
+        to_number: str,
+        from_number: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
+        """Create a new phone call using Retell AI with comprehensive error handling"""
+        if not self.api_key:
+            logger.error("Retell AI API key not configured")
+            raise ValueError("Retell AI API key not configured")
+
+        # Validate required parameters
+        if not agent_id or not agent_id.strip():
+            logger.error("Agent ID is required for call creation")
+            raise ValueError("Agent ID is required")
+
+        if not to_number or not to_number.strip():
+            logger.error("Destination number is required for call creation")
+            raise ValueError("Destination number is required")
+
+        logger.info(f"Initiating Retell AI call - Agent: {agent_id}, To: {to_number}, From: {from_number}")
+
+        try:
+            payload = {
+                "agent_id": agent_id.strip(),
+                "to_number": to_number.strip(),
+                "from_number": from_number.strip() if from_number else "",
+                "override_agent_prompt": False,  # Set to true if you want to override prompt per call
+            }
+
+            # Add metadata if provided
+            if metadata:
+                # Ensure metadata is serializable
+                try:
+                    import json
+                    json.dumps(metadata)  # Test serialization
+                    payload["metadata"] = metadata
+                except (TypeError, ValueError) as e:
+                    logger.warning(f"Metadata not serializable, skipping: {str(e)}")
+
+            logger.debug(f"Retell API payload: {payload}")
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/create-phone-call",
+                    headers=await self.get_headers(),
+                    json=payload,
+                    timeout=30.0
+                )
+
+                # Log response details for debugging
+                logger.debug(f"Retell API response status: {response.status_code}")
+
+                response.raise_for_status()
+                call_data = response.json()
+
+                call_id = call_data.get("call_id")
+                if not call_id:
+                    logger.error(f"Retell API response missing call_id: {call_data}")
+                    return None
+
+                logger.info(f"Successfully initiated call to {to_number} with call_id: {call_id}")
+                return call_id
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Retell API HTTP error: {e.response.status_code} - {e.response.text}")
+            # Don't re-raise HTTP errors, return None to allow graceful handling
+            return None
+        except httpx.TimeoutException as e:
+            logger.error(f"Retell API timeout: {str(e)}")
+            return None
+        except httpx.RequestError as e:
+            logger.error(f"Retell API request error: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error creating phone call: {str(e)}", exc_info=True)
+            return None
+
     async def get_call(self, call_id: str) -> Optional[RetellAICall]:
         """Get call details"""
         if not self.api_key:
@@ -496,31 +743,29 @@ class RetellAIService:
         logger.info(f"Using voice ID: {voice_id} for demo agents")
         
         for scenario_id, scenario_config in scenarios.items():
-            agent_config = RetellAIAgent(
-                name=scenario_config["name"],
-                voice_id=voice_id,  # Use real voice ID from API
-                language=scenario_config["language"],
-                llm_dynamic_config=scenario_config["llm_dynamic_config"],
-                end_call_message=scenario_config["end_call_message"],
-                end_call_phrases=scenario_config["end_call_phrases"],
-                webhook_url=scenario_config["webhook_url"],
-                max_duration_seconds=scenario_config["max_duration_seconds"],
-                real_time_transcription=True,
-                real_time_ai_thoughts=False,
-                interruptions_threshold=2,
-                backchannel_frequency=0.3,
-                backchannel_threshold=0.7,
-                normalize_for_speech=True,
-                enable_transcription_formatting=True
-            )
-            
+            # Step 1: Create the Retell LLM object
+            llm_id = await self.create_retell_llm(scenario_config["llm_dynamic_config"])
+            if not llm_id:
+                logger.error(f"Failed to create Retell LLM for scenario {scenario_id}, skipping agent creation.")
+                continue
+
+            # Step 2: Create the Agent using the llm_id
+            agent_config = {
+                "llm_id": llm_id,
+                "voice_id": voice_id,
+                "agent_name": scenario_config["name"],
+                "webhook_url": scenario_config["webhook_url"],
+                "enable_backchannel": True,
+                "agent_prompt": scenario_config["llm_dynamic_config"]["system_prompt"], # Optional but good for reference
+            }
+
             agent_id = await self.create_agent(agent_config)
             if agent_id:
                 created_agents[scenario_id] = agent_id
                 logger.info(f"Created agent for scenario {scenario_id}: {agent_id}")
             else:
                 logger.error(f"Failed to create agent for scenario {scenario_id}")
-        
+
         return created_agents
 
 # Global instance

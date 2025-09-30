@@ -1,8 +1,9 @@
+
 """
 Conversational AI API endpoints for Retell AI integration
 """
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -14,7 +15,8 @@ from api.schemas.conversational_ai import (
     AgentCreate, AgentUpdate, AgentResponse, AgentListResponse,
     CallCreate, CallResponse, CallUpdate, CallListResponse,
     VoiceListResponse, ConversationContext, CallAnalytics,
-    DemoScenario, DemoScenarioList, ConversationScenario, CallStatus
+    DemoScenario, DemoScenarioList, ConversationScenario, CallStatus,
+    TranscriptEntry, AIThoughtEntry
 )
 from api.services.retell_ai import retell_ai_service
 
@@ -271,9 +273,10 @@ async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
         success = await retell_ai_service.delete_agent(agent_id)
         
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to delete agent from Retell AI")
+            # Log but don't fail, allow local deletion
+            logger.warning(f"Failed to delete agent {agent_id} from Retell AI, deleting locally.")
         
-        # Remove from local storage
+        # Delete from local storage
         del agents_storage[agent_id]
         
         logger.info(f"Deleted agent: {agent_id}")
@@ -285,50 +288,69 @@ async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
         logger.error(f"Error deleting agent: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to delete agent")
 
+# --- Call Management Endpoints ---
+
 @router.post("/calls", response_model=CallResponse)
-async def create_call(
-    call_data: CallCreate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Create a new phone call"""
+async def create_call(call_data: CallCreate, db: Session = Depends(get_db)):
+    """Create and start a new phone call with CRM validation and PBX integration"""
     try:
-        # Validate agent exists
         if call_data.agent_id not in agents_storage:
             raise HTTPException(status_code=404, detail="Agent not found")
-        
-        agent = agents_storage[call_data.agent_id]
-        
-        # Create call in Retell AI
+
+        # Enhanced call creation with CRM validation and PBX integration
         call_id = await retell_ai_service.create_phone_call(
             agent_id=call_data.agent_id,
             to_number=call_data.to_number,
-            from_number=call_data.from_number,
-            metadata=call_data.call_metadata
+            from_number=None,  # Will be set by PBX provider config
+            metadata={
+                "lead_id": call_data.lead_id,
+                "contact_id": call_data.contact_id,
+                "scenario": agents_storage[call_data.agent_id].scenario.value,
+                "user_id": getattr(call_data, 'user_id', None)  # If user context is available
+            },
+            db=db
         )
-        
+
         if not call_id:
-            raise HTTPException(status_code=500, detail="Failed to create call in Retell AI")
-        
-        # Store call locally
+            raise HTTPException(status_code=500, detail="Failed to create call with Retell AI")
+
+        # Create call record in database for tracking
+        call_record = CallRecord(
+            external_call_id=call_id,
+            agent_id=call_data.agent_id,
+            to_number=call_data.to_number,
+            scenario=agents_storage[call_data.agent_id].scenario.value,
+            lead_id=call_data.lead_id,
+            contact_id=call_data.contact_id
+        )
+        db.add(call_record)
+        db.commit()
+
         call_response = CallResponse(
             call_id=call_id,
             agent_id=call_data.agent_id,
             to_number=call_data.to_number,
-            from_number=call_data.from_number,
-            status=CallStatus.PENDING,
-            scenario=agent.scenario,
-            created_at=datetime.utcnow()
+            from_number=None,  # Will be determined by PBX provider
+            status=CallStatus.QUEUED,
+            scenario=agents_storage[call_data.agent_id].scenario,
+            start_time=datetime.utcnow(),
+            created_at=datetime.utcnow(),
+            call_metadata={
+                "lead_id": call_data.lead_id,
+                "contact_id": call_data.contact_id,
+                "user_id": getattr(call_data, 'user_id', None)
+            }
         )
-        
+
         calls_storage[call_id] = call_response
-        
-        # Store in database
-        background_tasks.add_task(store_call_record, db, call_data, call_id)
-        
-        logger.info(f"Created call: {call_id}")
+
+        logger.info(f"Created call: {call_id} to {call_data.to_number} with CRM validation and PBX routing")
         return call_response
-        
+
+    except ValueError as e:
+        # Handle validation errors specifically
+        logger.warning(f"Call validation failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -337,218 +359,150 @@ async def create_call(
 
 @router.get("/calls", response_model=CallListResponse)
 async def get_calls(
-    page: int = Query(1, ge=1, description="Page number"),
-    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
-    scenario: Optional[ConversationScenario] = Query(None, description="Filter by scenario"),
-    status: Optional[CallStatus] = Query(None, description="Filter by status"),
-    db: Session = Depends(get_db)
+    status: Optional[CallStatus] = Query(None, description="Filter by call status"),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
 ):
-    """Get call history"""
+    """Get a list of all calls"""
     try:
-        calls = list(calls_storage.values())
-        
-        # Apply filters
-        if scenario:
-            calls = [call for call in calls if call.scenario == scenario]
+        all_calls = sorted(calls_storage.values(), key=lambda c: c.start_time, reverse=True)
+
         if status:
-            calls = [call for call in calls if call.status == status]
-        
-        # Sort by creation date (newest first)
-        calls.sort(key=lambda x: x.created_at, reverse=True)
-        
-        # Pagination
-        total = len(calls)
-        start = (page - 1) * per_page
-        end = start + per_page
-        paginated_calls = calls[start:end]
-        
+            all_calls = [call for call in all_calls if call.status == status]
+
+        paginated_calls = all_calls[offset : offset + limit]
+
+        # Calculate page number from offset and limit
+        page = (offset // limit) + 1 if limit > 0 else 1
+
         return CallListResponse(
             calls=paginated_calls,
-            total=total,
+            total=len(all_calls),
             page=page,
-            per_page=per_page
+            per_page=limit
         )
-        
     except Exception as e:
         logger.error(f"Error fetching calls: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch calls")
 
 @router.get("/calls/{call_id}", response_model=CallResponse)
-async def get_call(call_id: str, db: Session = Depends(get_db)):
-    """Get a specific call"""
-    try:
-        if call_id not in calls_storage:
-            raise HTTPException(status_code=404, detail="Call not found")
-        
-        # Update call from Retell AI
-        retell_call = await retell_ai_service.get_call(call_id)
-        
-        if retell_call:
-            # Update local storage with latest data
-            existing_call = calls_storage[call_id]
-            existing_call.status = CallStatus(retell_call.status.lower())
-            existing_call.start_time = retell_call.start_time
-            existing_call.end_time = retell_call.end_time
-            existing_call.duration = retell_call.duration
-            existing_call.recording_url = retell_call.recording_url
-            existing_call.transcript = retell_call.transcript
-            existing_call.cost = retell_call.cost
-        
-        return calls_storage[call_id]
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching call: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to fetch call")
+async def get_call(call_id: str):
+    """Get details for a specific call"""
+    if call_id not in calls_storage:
+        raise HTTPException(status_code=404, detail="Call not found")
+    return calls_storage[call_id]
 
-@router.get("/analytics", response_model=CallAnalytics)
-async def get_call_analytics(
-    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
-    scenario: Optional[ConversationScenario] = Query(None, description="Filter by scenario"),
-    db: Session = Depends(get_db)
-):
-    """Get call analytics"""
+@router.get("/analytics")
+async def get_call_analytics(db: Session = Depends(get_db)):
+    """Get call analytics data"""
     try:
-        calls = list(calls_storage.values())
-        
-        # Filter by date range
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
-        calls = [call for call in calls if call.created_at >= cutoff_date]
-        
-        # Filter by scenario if specified
-        if scenario:
-            calls = [call for call in calls if call.scenario == scenario]
-        
-        # Calculate analytics
-        total_calls = len(calls)
-        successful_calls = len([call for call in calls if call.status == CallStatus.COMPLETED])
-        failed_calls = len([call for call in calls if call.status == CallStatus.FAILED])
-        
-        total_duration = sum(call.duration or 0 for call in calls)
-        average_duration = total_duration / total_calls if total_calls > 0 else 0
-        
-        total_cost = sum(call.cost or 0 for call in calls)
+        # Calculate basic analytics from stored calls
+        total_calls = len(calls_storage)
+        successful_calls = len([c for c in calls_storage.values() if c.status in ["completed", "answered"]])
+        failed_calls = len([c for c in calls_storage.values() if c.status in ["failed", "busy", "no-answer"]])
+
+        # Calculate duration stats
+        completed_calls = [c for c in calls_storage.values() if c.duration and c.duration > 0]
+        total_duration = sum(c.duration for c in completed_calls) if completed_calls else 0
+        average_duration = total_duration / len(completed_calls) if completed_calls else 0
+
+        # Calculate cost stats
+        total_cost = sum(c.cost for c in calls_storage.values() if c.cost) or 0
+
+        # Calculate success rate
         success_rate = (successful_calls / total_calls * 100) if total_calls > 0 else 0
-        
+
         # Scenario breakdown
         scenario_breakdown = {}
-        for call in calls:
-            scenario_breakdown[call.scenario.value] = scenario_breakdown.get(call.scenario.value, 0) + 1
-        
-        return CallAnalytics(
-            total_calls=total_calls,
-            successful_calls=successful_calls,
-            failed_calls=failed_calls,
-            total_duration=total_duration,
-            average_duration=average_duration,
-            total_cost=total_cost,
-            success_rate=success_rate,
-            scenario_breakdown=scenario_breakdown
-        )
-        
-    except Exception as e:
-        logger.error(f"Error calculating analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to calculate analytics")
+        for call in calls_storage.values():
+            scenario = call.scenario.value if hasattr(call.scenario, 'value') else str(call.scenario)
+            scenario_breakdown[scenario] = scenario_breakdown.get(scenario, 0) + 1
 
-@router.post("/demo/create-agents")
-async def create_demo_agents(db: Session = Depends(get_db)):
-    """Create demo agents for all scenarios"""
-    try:
-        created_agents = await retell_ai_service.create_demo_agents()
-        
-        # Store demo agents locally
-        scenarios = retell_ai_service.get_conversation_scenarios()
-        
-        for scenario_id, agent_id in created_agents.items():
-            scenario_config = scenarios[scenario_id]
-            
-            agent_response = AgentResponse(
-                agent_id=agent_id,
-                name=scenario_config["name"],
-                voice_id=scenario_config["voice_id"],
-                language=scenario_config["language"],
-                scenario=ConversationScenario(scenario_id),
-                status="active",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                config=scenario_config["llm_dynamic_config"]
-            )
-            
-            agents_storage[agent_id] = agent_response
-        
-        logger.info(f"Created {len(created_agents)} demo agents")
-        return {
-            "message": f"Created {len(created_agents)} demo agents successfully",
-            "agents": created_agents
+        analytics = {
+            "total_calls": total_calls,
+            "successful_calls": successful_calls,
+            "failed_calls": failed_calls,
+            "total_duration": total_duration,
+            "average_duration": average_duration,
+            "total_cost": total_cost,
+            "success_rate": success_rate,
+            "scenario_breakdown": scenario_breakdown
         }
-        
-    except Exception as e:
-        logger.error(f"Error creating demo agents: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to create demo agents")
 
-# Webhook endpoints for Retell AI callbacks
+        return analytics
+
+    except Exception as e:
+        logger.error(f"Error generating analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate analytics")
+
+# --- Webhook Endpoint ---
+
 @router.post("/webhook/{scenario}")
-async def handle_webhook(
-    scenario: str,
-    webhook_data: Dict[str, Any],
-    db: Session = Depends(get_db)
-):
-    """Handle webhook events from Retell AI"""
+async def handle_webhook(scenario: ConversationScenario, request: Request):
+    """Handle real-time call events from Retell AI"""
     try:
-        event_type = webhook_data.get("event_type")
-        call_id = webhook_data.get("call_id")
+        event_data = await request.json()
+        call_id = event_data.get("call_id")
+        event_type = event_data.get("event")
         
-        logger.info(f"Received webhook for scenario {scenario}: {event_type} - {call_id}")
+        logger.info(f"Webhook received for call {call_id}, event: {event_type}, scenario: {scenario.value}")
+
+        if not call_id or call_id not in calls_storage:
+            logger.warning(f"Webhook for unknown or untracked call_id: {call_id}")
+            # Return 200 OK to prevent Retell from retrying.
+            return {"status": "ok", "message": "Call ID not tracked"}
+
+        call = calls_storage[call_id]
         
-        if call_id in calls_storage:
-            call = calls_storage[call_id]
-            
-            # Update call status based on event type
-            if event_type == "call_started":
-                call.status = CallStatus.ANSWERED
-                call.start_time = datetime.utcnow()
-            elif event_type == "call_ended":
-                call.status = CallStatus.COMPLETED
-                call.end_time = datetime.utcnow()
-                if call.start_time:
-                    call.duration = int((call.end_time - call.start_time).total_seconds())
-            elif event_type == "call_failed":
-                call.status = CallStatus.FAILED
-            elif event_type == "transcript":
-                call.transcript = webhook_data.get("transcript", "")
-            elif event_type == "recording":
-                call.recording_url = webhook_data.get("recording_url", "")
-            elif event_type == "cost":
-                call.cost = webhook_data.get("cost", 0.0)
-        
-        return {"status": "success"}
-        
+        if event_type == "call_started":
+            call.status = CallStatus.IN_PROGRESS
+            call.start_time = datetime.fromisoformat(event_data["timestamp"].replace("Z", "+00:00"))
+            logger.info(f"Call {call_id} started.")
+
+        elif event_type == "call_ended":
+            call.status = CallStatus.ENDED
+            call.end_time = datetime.fromisoformat(event_data["timestamp"].replace("Z", "+00:00"))
+            if call.start_time:
+                call.duration = (call.end_time - call.start_time).total_seconds()
+
+            analysis = event_data.get("analysis", {})
+            summary = analysis.get("summary")
+
+            # Store summary and recording in call metadata
+            if not call.call_metadata:
+                call.call_metadata = {}
+            if summary:
+                call.call_metadata["summary"] = summary
+            if "recording_url" in event_data:
+                call.call_metadata["recording_url"] = event_data["recording_url"]
+
+            logger.info(f"Call {call_id} ended. Duration: {call.duration}s. Summary: {summary}")
+            # Here you could trigger post-call CRM actions, like creating a task or note.
+
+        elif event_type == "transcript_updated":
+            # Store transcript in call metadata since schema doesn't have transcript field
+            transcript_data = event_data.get("transcript", [])
+            if transcript_data:
+                if not call.call_metadata:
+                    call.call_metadata = {}
+                call.call_metadata["transcript"] = transcript_data
+            logger.debug(f"Transcript updated for call {call_id}")
+
+        elif event_type == "ai_thought_updated":
+            # Store AI thoughts in call metadata since schema doesn't have ai_thoughts field
+            thoughts_data = event_data.get("thoughts", [])
+            if thoughts_data:
+                if not call.call_metadata:
+                    call.call_metadata = {}
+                call.call_metadata["ai_thoughts"] = thoughts_data
+            logger.debug(f"AI thoughts updated for call {call_id}")
+
+        else:
+            logger.info(f"Received unhandled event type: {event_type} for call {call_id}")
+
+        return {"status": "ok"}
+
     except Exception as e:
         logger.error(f"Error handling webhook: {str(e)}")
-        raise HTTPException(status_code=500, detail="Webhook processing failed")
-
-# Helper function to store call record in database
-async def store_call_record(db: Session, call_data: CallCreate, call_id: str):
-    """Store call record in database"""
-    try:
-        call_record = CallRecord(
-            external_call_id=call_id,
-            agent_id=call_data.agent_id,
-            to_number=call_data.to_number,
-            from_number=call_data.from_number,
-            scenario=call_data.scenario.value,
-            status="pending",
-            call_metadata=call_data.call_metadata,
-            lead_id=call_data.lead_id,
-            contact_id=call_data.contact_id,
-            user_id=call_data.user_id
-        )
-        
-        db.add(call_record)
-        db.commit()
-        logger.info(f"Stored call record in database: {call_id}")
-        
-    except Exception as e:
-        logger.error(f"Error storing call record: {str(e)}")
-        db.rollback()
+        # Return a 500 error to indicate a problem on our end.
+        raise HTTPException(status_code=500, detail="Error processing webhook")

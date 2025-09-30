@@ -1,3 +1,4 @@
+
 """
 Pydantic schemas for Conversational AI API endpoints
 """
@@ -197,3 +198,12 @@ class DemoScenarioList(BaseModel):
     """Schema for demo scenario list"""
     scenarios: List[DemoScenario] = Field(..., description="Available demo scenarios")
     total: int = Field(..., description="Total number of scenarios")
+
+class TranscriptEntry(BaseModel):
+    speaker: str
+    text: str
+    timestamp: datetime
+
+class AIThoughtEntry(BaseModel):
+    thought: str
+    timestamp: datetime
