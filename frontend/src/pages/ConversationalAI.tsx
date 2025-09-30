@@ -55,6 +55,7 @@ const ConversationalAI: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCreateAgent, setShowCreateAgent] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -112,12 +113,14 @@ const ConversationalAI: React.FC = () => {
       });
       const data = await response.json();
       if (data.message) {
-        alert(data.message);
+        setToast(data.message);
+        setTimeout(() => setToast(null), 2000);
         loadAgents(); // Reload agents
       }
     } catch (error) {
       console.error('Error creating demo agents:', error);
-      alert('Error creating demo agents');
+      setToast('Error creating demo agents');
+      setTimeout(() => setToast(null), 2000);
     } finally {
       setLoading(false);
     }
@@ -143,12 +146,14 @@ const ConversationalAI: React.FC = () => {
       });
       const data = await response.json();
       if (data.call_id) {
-        alert(`Call created successfully! Call ID: ${data.call_id}`);
+        setToast(`Call created successfully! Call ID: ${data.call_id}`);
+        setTimeout(() => setToast(null), 3000);
         loadCalls(); // Reload calls
       }
     } catch (error) {
       console.error('Error creating call:', error);
-      alert('Error creating call');
+      setToast('Error creating call');
+      setTimeout(() => setToast(null), 2000);
     } finally {
       setLoading(false);
     }
@@ -387,6 +392,13 @@ const ConversationalAI: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-fade-in">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };
