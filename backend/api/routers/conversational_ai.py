@@ -118,14 +118,18 @@ async def create_demo_agents(db: Session = Depends(get_db)):
             agent_id = await retell_ai_service.create_agent(retell_agent)
 
             if agent_id:
+                # Determine if this is a demo agent (when real API is unavailable)
+                is_demo_agent = agent_id.startswith("demo_agent_")
+                agent_status = "demo" if is_demo_agent else "active"
+
                 # Store agent locally
                 agent_response = AgentResponse(
                     agent_id=agent_id,
-                    name=f"Demo {config['name']} Agent",
+                    name=f"Demo {config['name']} Agent" + (" (Demo Mode)" if is_demo_agent else ""),
                     voice_id=config["voice_id"],
                     language=config["language"],
                     scenario=ConversationScenario(scenario_id),
-                    status="active",
+                    status=agent_status,
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
                     config={
@@ -136,7 +140,8 @@ async def create_demo_agents(db: Session = Depends(get_db)):
                         "end_call_phrases": ["Thank you for your time", "Goodbye", "Have a great day"],
                         "max_duration_seconds": config["max_duration_seconds"],
                         "enable_transcription": True,
-                        "enable_ai_thoughts": True
+                        "enable_ai_thoughts": True,
+                        "demo_mode": is_demo_agent
                     }
                 )
 
@@ -145,9 +150,22 @@ async def create_demo_agents(db: Session = Depends(get_db)):
 
                 logger.info(f"Created demo agent: {agent_id} for scenario {scenario_id}")
 
+        # Check if any agents are in demo mode
+        has_demo_agents = any(agent.status == "demo" for agent in demo_agents)
+        has_real_agents = any(agent.status == "active" for agent in demo_agents)
+
+        if has_demo_agents and not has_real_agents:
+            message = f"Created {len(demo_agents)} demo agents (Retell AI API unavailable - using demo mode)"
+        elif has_demo_agents and has_real_agents:
+            real_count = sum(1 for agent in demo_agents if agent.status == "active")
+            demo_count = sum(1 for agent in demo_agents if agent.status == "demo")
+            message = f"Created {real_count} real agents and {demo_count} demo agents"
+        else:
+            message = f"Successfully created {len(demo_agents)} demo agents"
+
         return {
-            "message": f"Successfully created {len(demo_agents)} demo agents",
-            "agents": [{"agent_id": agent.agent_id, "name": agent.name, "scenario": agent.scenario.value} for agent in demo_agents]
+            "message": message,
+            "agents": [{"agent_id": agent.agent_id, "name": agent.name, "scenario": agent.scenario.value, "status": agent.status} for agent in demo_agents]
         }
 
     except Exception as e:
