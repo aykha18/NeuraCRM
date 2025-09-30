@@ -58,7 +58,7 @@ async def get_demo_scenarios():
     """Get available demo scenarios"""
     try:
         scenarios_config = retell_ai_service.get_conversation_scenarios()
-        
+
         scenarios = []
         for scenario_id, config in scenarios_config.items():
             scenarios.append(DemoScenario(
@@ -81,15 +81,78 @@ async def get_demo_scenarios():
                     "Thank you for your time. Have a great day!"
                 ]
             ))
-        
+
         return DemoScenarioList(
             scenarios=scenarios,
             total=len(scenarios)
         )
-        
+
     except Exception as e:
         logger.error(f"Error fetching scenarios: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch scenarios")
+
+@router.post("/demo/create-agents")
+async def create_demo_agents(db: Session = Depends(get_db)):
+    """Create demo agents for testing purposes"""
+    try:
+        demo_agents = []
+        scenarios_config = retell_ai_service.get_conversation_scenarios()
+
+        for scenario_id, config in scenarios_config.items():
+            # Create agent for each scenario
+            from api.services.retell_ai import RetellAIAgent
+
+            retell_agent = RetellAIAgent(
+                name=f"Demo {config['name']} Agent",
+                voice_id=config["voice_id"],
+                language=config["language"],
+                llm_dynamic_config=config["llm_dynamic_config"],
+                end_call_message=config["end_call_message"],
+                end_call_phrases=["Thank you for your time", "Goodbye", "Have a great day"],
+                max_duration_seconds=config["max_duration_seconds"],
+                real_time_transcription=True,
+                real_time_ai_thoughts=True,
+                webhook_url=f"{retell_ai_service.webhook_base_url}/api/conversational-ai/webhook/{scenario_id}"
+            )
+
+            agent_id = await retell_ai_service.create_agent(retell_agent)
+
+            if agent_id:
+                # Store agent locally
+                agent_response = AgentResponse(
+                    agent_id=agent_id,
+                    name=f"Demo {config['name']} Agent",
+                    voice_id=config["voice_id"],
+                    language=config["language"],
+                    scenario=ConversationScenario(scenario_id),
+                    status="active",
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    config={
+                        "temperature": config["llm_dynamic_config"].get("temperature", 0.7),
+                        "max_tokens": config["llm_dynamic_config"].get("max_tokens", 150),
+                        "system_prompt": config["llm_dynamic_config"]["system_prompt"],
+                        "end_call_message": config["end_call_message"],
+                        "end_call_phrases": ["Thank you for your time", "Goodbye", "Have a great day"],
+                        "max_duration_seconds": config["max_duration_seconds"],
+                        "enable_transcription": True,
+                        "enable_ai_thoughts": True
+                    }
+                )
+
+                agents_storage[agent_id] = agent_response
+                demo_agents.append(agent_response)
+
+                logger.info(f"Created demo agent: {agent_id} for scenario {scenario_id}")
+
+        return {
+            "message": f"Successfully created {len(demo_agents)} demo agents",
+            "agents": [{"agent_id": agent.agent_id, "name": agent.name, "scenario": agent.scenario.value} for agent in demo_agents]
+        }
+
+    except Exception as e:
+        logger.error(f"Error creating demo agents: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create demo agents")
 
 @router.post("/agents", response_model=AgentResponse)
 async def create_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
