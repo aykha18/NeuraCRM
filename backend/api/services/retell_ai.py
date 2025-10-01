@@ -633,13 +633,18 @@ class RetellAIService:
             logger.error("Destination number is required for call creation")
             raise ValueError("Destination number is required")
 
+        if not from_number or not from_number.strip():
+            logger.error("Source number (from_number) is required for call creation")
+            raise ValueError("Source number (from_number) is required")
+
         logger.info(f"Initiating Retell AI call - Agent: {agent_id}, To: {to_number}, From: {from_number}, Demo: {is_demo_agent}")
 
-        # For demo agents, simulate a successful call creation
+        # For demo agents, simulate a successful call creation but require from_number
         if is_demo_agent:
             import uuid
             demo_call_id = f"demo_call_{uuid.uuid4().hex[:12]}"
-            logger.info(f"Demo call created successfully - Call ID: {demo_call_id} (simulated)")
+            logger.info(f"Demo call created successfully - Call ID: {demo_call_id} (simulated - API unavailable)")
+            logger.info(f"Demo call details - From: {from_number}, To: {to_number}")
             return demo_call_id
 
         try:

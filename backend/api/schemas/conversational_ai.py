@@ -95,7 +95,7 @@ class CallCreate(BaseModel):
     """Schema for creating a new call"""
     agent_id: str = Field(..., description="Retell AI agent ID")
     to_number: str = Field(..., description="Destination phone number")
-    from_number: Optional[str] = Field(None, description="Source phone number")
+    from_number: Optional[str] = Field(None, description="Source phone number (required for real calls)")
     scenario: Optional[ConversationScenario] = Field(None, description="Conversation scenario (determined by agent)")
     call_metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Call metadata")
     lead_id: Optional[int] = Field(None, description="Associated lead ID")
