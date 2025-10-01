@@ -126,7 +126,7 @@ const ConversationalAI: React.FC = () => {
     }
   };
 
-  const createCall = async (agentId: string, toNumber: string) => {
+  const createCall = async (agentId: string, toNumber: string, fromNumber?: string) => {
     setLoading(true);
     try {
       const response = await fetch('/conversational-ai/calls', {
@@ -137,7 +137,7 @@ const ConversationalAI: React.FC = () => {
         body: JSON.stringify({
           agent_id: agentId,
           to_number: toNumber,
-          scenario: 'SALES_OUTBOUND', // Use enum value
+          from_number: fromNumber || '+1234567890', // Default demo number, can be overridden
           call_metadata: {
             demo: true,
             created_by: 'frontend'

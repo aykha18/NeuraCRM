@@ -547,26 +547,32 @@ async def get_call_analytics(db: Session = Depends(get_db)):
 # --- Webhook Endpoint ---
 
 @router.post("/webhook/{scenario}")
-async def handle_webhook(scenario: ConversationScenario, request: Request):
-    """Handle real-time call events from Retell AI"""
+async def handle_webhook(scenario: ConversationScenario, request: Request, db: Session = Depends(get_db)):
+    """Handle real-time call events from Retell AI (inbound and outbound)"""
     try:
         event_data = await request.json()
         call_id = event_data.get("call_id")
         event_type = event_data.get("event")
-        
+
         logger.info(f"Webhook received for call {call_id}, event: {event_type}, scenario: {scenario.value}")
 
+        # Check if this is an inbound call (not in our storage yet)
         if not call_id or call_id not in calls_storage:
-            logger.warning(f"Webhook for unknown or untracked call_id: {call_id}")
-            # Return 200 OK to prevent Retell from retrying.
-            return {"status": "ok", "message": "Call ID not tracked"}
+            # This might be an inbound call - create a new call record
+            if event_type in ["call_started", "call_received"]:
+                logger.info(f"Processing inbound call: {call_id}")
+                return await handle_inbound_call(event_data, scenario, db)
+            else:
+                logger.warning(f"Webhook for unknown call_id: {call_id}, event: {event_type}")
+                return {"status": "ok", "message": "Call ID not tracked"}
 
+        # Handle existing call (outbound calls)
         call = calls_storage[call_id]
-        
+
         if event_type == "call_started":
             call.status = CallStatus.IN_PROGRESS
             call.start_time = datetime.fromisoformat(event_data["timestamp"].replace("Z", "+00:00"))
-            logger.info(f"Call {call_id} started.")
+            logger.info(f"Outbound call {call_id} started.")
 
         elif event_type == "call_ended":
             call.status = CallStatus.ENDED
@@ -615,3 +621,76 @@ async def handle_webhook(scenario: ConversationScenario, request: Request):
         logger.error(f"Error handling webhook: {str(e)}")
         # Return a 500 error to indicate a problem on our end.
         raise HTTPException(status_code=500, detail="Error processing webhook")
+
+async def handle_inbound_call(event_data: dict, scenario: ConversationScenario, db: Session):
+    """Handle inbound call events from Retell AI"""
+    try:
+        call_id = event_data.get("call_id")
+        from_number = event_data.get("from_number")
+        to_number = event_data.get("to_number")
+
+        logger.info(f"📞 INBOUND CALL - From: {from_number}, To: {to_number}, Call ID: {call_id}")
+
+        # Find appropriate agent for this scenario
+        agent = find_agent_for_inbound_call(scenario, db)
+        if not agent:
+            logger.warning(f"No agent found for scenario {scenario.value}")
+            return {"status": "error", "message": "No agent available"}
+
+        # Validate and enrich caller information
+        validation_result = await retell_ai_service.validate_and_enrich_call_data(
+            to_number=from_number,  # The caller's number becomes our "to_number" for validation
+            db=db
+        )
+
+        # Create call record for inbound call
+        call_record = CallRecord(
+            external_call_id=call_id,
+            agent_id=agent.agent_id,
+            from_number=from_number,
+            to_number=to_number,
+            scenario=scenario.value,
+            direction="inbound"
+        )
+        db.add(call_record)
+        db.commit()
+
+        # Create call response object
+        call_response = CallResponse(
+            call_id=call_id,
+            agent_id=agent.agent_id,
+            from_number=from_number,
+            to_number=to_number,
+            status=CallStatus.IN_PROGRESS,
+            scenario=scenario,
+            start_time=datetime.fromisoformat(event_data["timestamp"].replace("Z", "+00:00")),
+            created_at=datetime.utcnow(),
+            call_metadata={
+                "direction": "inbound",
+                "contact_info": validation_result.get("contact_info"),
+                "lead_info": validation_result.get("lead_info")
+            }
+        )
+
+        calls_storage[call_id] = call_response
+
+        logger.info(f"✅ Inbound call {call_id} connected to agent {agent.name}")
+        return {"status": "ok", "message": "Inbound call processed"}
+
+    except Exception as e:
+        logger.error(f"Error handling inbound call: {str(e)}")
+        return {"status": "error", "message": "Failed to process inbound call"}
+
+def find_agent_for_inbound_call(scenario: ConversationScenario, db: Session):
+    """Find the most appropriate agent for handling an inbound call"""
+    # Look for agents with the matching scenario
+    for agent in agents_storage.values():
+        if agent.scenario == scenario and agent.status in ["active", "demo"]:
+            return agent
+
+    # Fallback to any available agent
+    for agent in agents_storage.values():
+        if agent.status in ["active", "demo"]:
+            return agent
+
+    return None

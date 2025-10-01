@@ -1574,39 +1574,40 @@ class CallRecord(Base):
     """Call records for Retell AI conversational AI calls"""
     __tablename__ = 'call_records'
     id = Column(Integer, primary_key=True)
-    
+
     # External call identification
     external_call_id = Column(String, nullable=False, unique=True)  # Retell AI call ID
     agent_id = Column(String, nullable=False)  # Retell AI agent ID
-    
+
     # Call details
     to_number = Column(String, nullable=False)  # Destination number
     from_number = Column(String)  # Source number (optional)
-    
+
     # Call scenario and context
     scenario = Column(String, nullable=False)  # sales_outbound, customer_support, etc.
+    direction = Column(String, default='outbound')  # inbound, outbound
     status = Column(String, default='pending')  # pending, answered, completed, failed
-    
+
     # Call timing
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     duration = Column(Integer)  # Duration in seconds
-    
+
     # Call results
     recording_url = Column(String)  # Call recording URL
     transcript = Column(Text)  # Call transcript
     cost = Column(Float, default=0.0)  # Call cost
-    
+
     # CRM associations
     lead_id = Column(Integer, ForeignKey('leads.id'), nullable=True)
     contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # User who initiated
-    
+
     # Metadata
     call_metadata = Column(JSON)  # Additional call metadata
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     lead = relationship('Lead')
     contact = relationship('Contact')
