@@ -375,6 +375,7 @@ async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
 async def create_call(call_data: CallCreate, db: Session = Depends(get_db)):
     """Create and start a new phone call with CRM validation and PBX integration"""
     logger.info(f"🚀 STARTING CALL CREATION - Agent: {call_data.agent_id}, To: {call_data.to_number}")
+    logger.info(f"Call data received: {call_data.dict()}")
 
     try:
         # Step 1: Check if agent exists
@@ -458,6 +459,11 @@ async def create_call(call_data: CallCreate, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"❌ Unexpected error creating call: {str(e)}", exc_info=True)
+        # Check if it's a Pydantic validation error
+        from pydantic import ValidationError
+        if isinstance(e, ValidationError):
+            logger.error(f"❌ Pydantic validation error details: {e.errors()}")
+            raise HTTPException(status_code=422, detail=f"Validation error: {e.errors()}")
         raise HTTPException(status_code=500, detail=f"Failed to create call: {str(e)}")
 
 @router.get("/calls", response_model=CallListResponse)
