@@ -126,8 +126,10 @@ NeuraCRM is a comprehensive, enterprise-grade Customer Relationship Management s
 
 ### **Prerequisites**
 - Python 3.9+
-- Node.js 16+
+- Node.js 18+
 - PostgreSQL 13+
+- Redis 7+ (for caching and sessions)
+- Git
 
 ### **Local Development Setup**
 
@@ -139,20 +141,37 @@ NeuraCRM is a comprehensive, enterprise-grade Customer Relationship Management s
 
 2. **Backend Setup**
    ```bash
+   cd backend
+
+   # Create virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+
    # Install Python dependencies
    pip install -r requirements.txt
-   
+
+   # Set up environment variables
+   cp .env.example .env
+   # Edit .env with your local configuration
+
    # Set up database
    python setup_db.py
-   
-   # Run the server
-   python working_app.py
+
+   # Run database migrations
+   alembic upgrade head
+
+   # Start the backend server
+   python main.py
    ```
 
 3. **Frontend Setup**
    ```bash
    cd frontend
+
+   # Install dependencies
    npm install
+
+   # Start development server
    npm run dev
    ```
 
@@ -160,10 +179,23 @@ NeuraCRM is a comprehensive, enterprise-grade Customer Relationship Management s
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
+   - Health Check: http://localhost:8000/api/health
 
 ### **Demo Credentials**
 - **Email**: nodeit@node.com
 - **Password**: NodeIT2024!
+
+### **Docker Development (Alternative)**
+```bash
+# Start all services with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
 
 ---
 
@@ -460,6 +492,17 @@ The application is configured for Railway deployment with:
 - **GitHub Issues**: For bug reports and feature requests
 
 ---
+
+## 📚 **Documentation**
+
+For comprehensive documentation, see our [documentation portal](./docs/README.md):
+
+- **[User Guide](./docs/user-guide/)** - Getting started, feature guides, and user manuals
+- **[Developer Guide](./docs/developer-guide/)** - Technical implementation and development resources
+- **[API Reference](./docs/api-reference/)** - Complete API documentation and integration guides
+- **[Architecture](./docs/architecture/)** - System design and technical specifications
+- **[Deployment](./docs/deployment/)** - DevOps, operations, and deployment guides
+- **[Contributing](./docs/contributing/)** - Guidelines for contributors and community
 
 ## 📄 **License**
 
