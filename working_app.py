@@ -46,6 +46,7 @@ try:
     from api.routers.predictive_analytics import router as predictive_analytics_router
     from api.routers.conversational_ai import router as conversational_ai_router
     from api.routers.payments import router as payments_router
+    from api.services.ai_summarization import AISummarizationService
     DB_AVAILABLE = True
     print("Database models imported successfully")
     
@@ -60,9 +61,9 @@ try:
         StripeSubscriptionPlan.metadata.create_all(bind=engine)
         Revenue.metadata.create_all(bind=engine)
         FinancialReport.metadata.create_all(bind=engine)
-        print("Γ£à Financial management tables created/verified successfully")
+        print("[OK] Financial management tables created/verified successfully")
     except Exception as e:
-        print(f"Γ¥î Error creating financial tables: {e}")
+        print(f"[ERROR] Error creating financial tables: {e}")
     
     # Create customer support tables if they don't exist
     try:
@@ -77,12 +78,12 @@ try:
         SupportQueue.metadata.create_all(bind=engine)
         UserSkill.metadata.create_all(bind=engine)
         AssignmentAudit.metadata.create_all(bind=engine)
-        print("Γ£à Customer support tables created/verified successfully")
+        print("[OK] Customer support tables created/verified successfully")
     except Exception as e:
-        print(f"Γ¥î Error creating customer support tables: {e}")
+        print(f"[ERROR] Error creating customer support tables: {e}")
         
 except ImportError as e:
-    print(f"Γ¥î Database import failed: {e}")
+    print(f"[ERROR] Database import failed: {e}")
     DB_AVAILABLE = False
 
 # Authentication configuration (only if auth is available)
@@ -4537,6 +4538,39 @@ def auto_assign_ticket(
     except Exception as e:
         db.rollback()
         return {"error": f"Failed to auto-assign ticket: {str(e)}"}
+
+# AI Summarization Endpoint
+@app.post("/api/support/tickets/{ticket_id}/summarize")
+async def summarize_support_ticket(ticket_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Generate AI summary for a support ticket"""
+    if not DB_AVAILABLE:
+        return {"error": "Database not available"}
+
+    try:
+        # Get the ticket
+        ticket = db.query(SupportTicket).filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.organization_id == current_user.organization_id
+        ).first()
+
+        if not ticket:
+            return {"error": "Support ticket not found"}
+
+        # Generate summary using the service
+        summarization_service = AISummarizationService()
+        summary = await summarization_service.summarize_support_ticket_by_id(ticket_id, db)
+
+        if summary:
+            return {
+                "message": "Ticket summarized successfully",
+                "summary": summary,
+                "ticket_id": ticket_id
+            }
+        else:
+            return {"error": "Failed to generate summary"}
+
+    except Exception as e:
+        return {"error": f"Failed to summarize ticket: {str(e)}"}
 
 # Support Ticket Closure Endpoints
 @app.patch("/api/support/tickets/{ticket_id}/resolve")

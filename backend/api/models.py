@@ -580,7 +580,12 @@ class SupportTicket(Base):
     satisfaction_feedback = Column(Text)
     satisfaction_survey_sent = Column(Boolean, default=False)
     satisfaction_survey_sent_at = Column(DateTime)
-    
+
+    # AI-Generated Summary
+    ai_summary = Column(Text)  # AI-generated summary of ticket and comments
+    ai_summary_generated_at = Column(DateTime)  # When the summary was generated
+    ai_summary_model = Column(String)  # Which AI model was used for summarization
+
     # Metadata
     created_by = Column(Integer, ForeignKey('users.id'), nullable=True)  # Support agent who created
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Ticket, 
-  MessageSquare, 
-  BookOpen, 
-  BarChart3, 
-  Plus, 
-  Search, 
-  Filter, 
-  Clock, 
-  User, 
-  AlertCircle, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Ticket,
+  MessageSquare,
+  BookOpen,
+  BarChart3,
+  Plus,
+  Search,
+  Filter,
+  Clock,
+  User,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
   Star,
   TrendingUp,
   Users,
@@ -29,7 +29,9 @@ import {
   Settings,
   Bell,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import AnimatedModal from '../components/AnimatedModal';
 import { apiRequest } from '../utils/api';
@@ -58,6 +60,9 @@ interface SupportTicket {
   resolved_at?: string;
   closed_at?: string;
   comments?: SupportComment[];
+  ai_summary?: string;
+  ai_summary_generated_at?: string;
+  ai_summary_model?: string;
 }
 
 interface SupportComment {
@@ -179,6 +184,9 @@ const CustomerSupport: React.FC = () => {
   });
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // AI Summarization
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   // Forms
   const [ticketForm, setTicketForm] = useState({
@@ -627,6 +635,42 @@ const CustomerSupport: React.FC = () => {
       setError('Failed to add comment');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateAISummary = async (ticketId: number) => {
+    try {
+      setGeneratingSummary(true);
+      const response = await apiRequest(`/api/support/tickets/${ticketId}/summarize`, {
+        method: 'POST'
+      }) as any;
+
+      if (response && !response.error) {
+        setError(null);
+        setSuccessMessage('AI summary generated successfully!');
+        setShowSuccessModal(true);
+
+        // Update the selected ticket with the new summary data
+        if (selectedTicket && selectedTicket.id === ticketId) {
+          setSelectedTicket({
+            ...selectedTicket,
+            ai_summary: response.summary || '',
+            ai_summary_generated_at: new Date().toISOString(),
+            ai_summary_model: 'gpt-4o-mini'
+          });
+        }
+
+        fetchTickets(); // Refresh tickets list to get the updated summary
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(response?.error || 'Failed to generate AI summary');
+      }
+    } catch (err) {
+      console.error('Error generating AI summary:', err);
+      setShowErrorModal(true);
+      setErrorMessage('Failed to generate AI summary');
+    } finally {
+      setGeneratingSummary(false);
     }
   };
 
@@ -1942,6 +1986,52 @@ const CustomerSupport: React.FC = () => {
                   <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {selectedTicket.description}
                   </p>
+                </div>
+              </div>
+
+              {/* AI Summary */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2 text-purple-500" />
+                    AI Summary
+                  </h4>
+                  <button
+                    onClick={() => generateAISummary(selectedTicket.id)}
+                    disabled={generatingSummary}
+                    className="flex items-center space-x-2 px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
+                  >
+                    {generatingSummary ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    <span>{generatingSummary ? 'Generating...' : 'Generate Summary'}</span>
+                  </button>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                  {selectedTicket.ai_summary ? (
+                    <div>
+                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
+                        {selectedTicket.ai_summary}
+                      </p>
+                      {selectedTicket.ai_summary_generated_at && (
+                        <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Generated on {formatDate(selectedTicket.ai_summary_generated_at)}
+                            {selectedTicket.ai_summary_model && ` using ${selectedTicket.ai_summary_model}`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Sparkles className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        No AI summary available. Click "Generate Summary" to create an intelligent summary of this ticket.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
