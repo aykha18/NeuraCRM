@@ -18,6 +18,8 @@ import CustomerSegmentation from "./pages/CustomerSegmentation";
 import AdvancedForecasting from "./pages/AdvancedForecasting";
 import Telephony from "./pages/Telephony";
 import ConversationalAI from "./pages/ConversationalAI";
+import MLOps from "./pages/MLOps";
+import DocumentProcessing from "./pages/DocumentProcessing";
 import LeadAssignmentRules from "./pages/LeadAssignmentRules";
 import ApprovalWorkflows from "./pages/ApprovalWorkflows";
 import LeadNurturing from "./pages/LeadNurturing";
@@ -200,7 +202,21 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            
+            <Route path="/mlops" element={
+              <ProtectedRoute>
+                <Layout>
+                  <MLOps />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/document-processing" element={
+              <ProtectedRoute>
+                <Layout>
+                  <DocumentProcessing />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             {/* Catch-all route for unknown paths */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

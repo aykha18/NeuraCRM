@@ -1,0 +1,43 @@
+{
+  "test_sentiment_analyzer": [
+    {
+      "model_name": "test_sentiment_analyzer",
+      "version": "20251002_230152_a2b05188",
+      "created_at": "2025-10-02 23:01:52.981310",
+      "accuracy_score": 0.85,
+      "training_data_size": 1000,
+      "model_path": "backend\\models\\test_sentiment_analyzer_20251002_230152_a2b05188.pkl",
+      "metadata": {
+        "algorithm": "keyword_based"
+      },
+      "is_active": false,
+      "deployment_date": null
+    },
+    {
+      "model_name": "test_sentiment_analyzer",
+      "version": "20251002_230233_a2b05188",
+      "created_at": "2025-10-02 23:02:33.831738",
+      "accuracy_score": 0.85,
+      "training_data_size": 1000,
+      "model_path": "backend\\models\\test_sentiment_analyzer_20251002_230233_a2b05188.pkl",
+      "metadata": {
+        "algorithm": "keyword_based"
+      },
+      "is_active": false,
+      "deployment_date": "2025-10-02 23:02:33.832252"
+    },
+    {
+      "model_name": "test_sentiment_analyzer",
+      "version": "20251002_230258_a2b05188",
+      "created_at": "2025-10-02 23:02:58.351639",
+      "accuracy_score": 0.85,
+      "training_data_size": 1000,
+      "model_path": "backend\\models\\test_sentiment_analyzer_20251002_230258_a2b05188.pkl",
+      "metadata": {
+        "algorithm": "keyword_based"
+      },
+      "is_active": true,
+      "deployment_date": "2025-10-02 23:02:58.352267"
+    }
+  ]
+}

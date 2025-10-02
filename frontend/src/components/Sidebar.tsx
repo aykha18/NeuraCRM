@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck, CheckCircle, Target, Mic } from "lucide-react";
+import { LayoutDashboard, Users, Contact, Kanban, Bot, Settings, LogOut, MessageCircle, Mail, Brain, UserCog, BookOpen, Building2, DollarSign, Headphones, TrendingUp, ChevronDown, ChevronRight, Phone, UserCheck, CheckCircle, Target, Mic, Database, FileText } from "lucide-react";
 import neuraLogo from "../assets/NeuraCRM.png";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -25,6 +25,8 @@ const navigationSections = [
       { name: "Sentiment Analysis", icon: <TrendingUp />, path: "/sentiment-analysis" },
       { name: "Customer Segmentation", icon: <Users />, path: "/customer-segmentation" },
       { name: "Advanced Forecasting", icon: <TrendingUp />, path: "/advanced-forecasting" },
+      { name: "MLOps", icon: <Database />, path: "/mlops" },
+      { name: "Document Processing", icon: <FileText />, path: "/document-processing" },
     ]
   },
   {

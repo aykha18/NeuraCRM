@@ -46,6 +46,8 @@ try:
     from api.routers.predictive_analytics import router as predictive_analytics_router
     from api.routers.conversational_ai import router as conversational_ai_router
     from api.routers.payments import router as payments_router
+    from api.routers.mlops import router as mlops_router
+    from api.routers.document_processing import router as document_processing_router
     from api.services.ai_summarization import AISummarizationService
     DB_AVAILABLE = True
     print("Database models imported successfully")
@@ -355,6 +357,8 @@ if DB_AVAILABLE:
     app.include_router(predictive_analytics_router)
     app.include_router(conversational_ai_router)
     app.include_router(payments_router)
+    app.include_router(mlops_router)
+    app.include_router(document_processing_router, prefix="/api/documents")
 
 # WebSocket endpoint
 @app.websocket("/ws/chat/{room_id}")
