@@ -2,7 +2,46 @@
 
 ## Overview
 
-This roadmap outlines the implementation of advanced RAG (Retrieval-Augmented Generation) patterns for NeuraCRM, building upon our existing traditional RAG foundation. Each pattern addresses specific business challenges while leveraging cutting-edge AI capabilities.
+This roadmap outlines the implementation of advanced RAG (Retrieval-Augmented Generation) patterns for NeuraCRM, building upon our existing traditional RAG foundation. Each pattern addresses specific business challenges while leveraging cutting-edge AI capabilities and modern RAG frameworks.
+
+## Technology Stack: Modern RAG Frameworks
+
+### Core Frameworks
+- **LangChain**: Orchestration, chains, and agent management
+- **LlamaIndex**: Advanced retrieval, data ingestion, and indexing
+- **LangGraph**: Complex multi-agent workflows and state management
+- **LangSmith**: Observability, debugging, and performance monitoring
+
+### Supporting Technologies
+- **Pinecone/Weaviate/Qdrant**: Vector databases for embeddings
+- **OpenAI/Anthropic**: LLM providers for generation
+- **Redis**: Caching and session management
+- **PostgreSQL**: Structured metadata and application data
+
+### Why These Frameworks?
+- **Industry Standard**: Widely used in production RAG systems
+- **Job Market Relevance**: High demand for LangChain/LlamaIndex skills
+- **Rapid Development**: Pre-built components reduce development time
+- **Enterprise Features**: Production-ready monitoring, scaling, and reliability
+- **Active Ecosystem**: Large communities and extensive documentation
+
+### Implementation Strategy
+- **Phase 1**: Enhance existing custom RAG with LangChain components (Memory, Chains, Callbacks)
+- **Phase 2**: Introduce LlamaIndex for advanced retrieval patterns (Composable graphs, multi-index queries)
+- **Phase 3**: Implement LangGraph for agentic workflows (State management, conditional routing)
+- **Phase 4**: Add LangSmith for comprehensive observability (Tracing, debugging, analytics)
+
+### Framework Integration Benefits
+- **LangChain**: Production-ready chains, memory management, and tool integration
+- **LlamaIndex**: Advanced indexing strategies, data connectors, and query optimization
+- **LangGraph**: Complex agent orchestration with state machines and conditional logic
+- **LangSmith**: End-to-end observability, performance monitoring, and debugging
+
+### Skills Development Path
+- **Beginner**: Start with LangChain basics (chains, prompts, memory)
+- **Intermediate**: Learn LlamaIndex indexing and retrieval patterns
+- **Advanced**: Master LangGraph for multi-agent systems
+- **Expert**: Use LangSmith for production monitoring and optimization
 
 ## Current State Assessment
 
@@ -32,30 +71,95 @@ This roadmap outlines the implementation of advanced RAG (Retrieval-Augmented Ge
 
 #### Phase 1: Feedback Loop Infrastructure (2 weeks)
 ```python
+# Enhanced with LangChain, LangGraph, and LangSmith
+from langchain.chains import LLMChain, ConversationalRetrievalChain
+from langchain.prompts import PromptTemplate
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.callbacks import LangChainTracer
+from langchain.schema import Document
+from langgraph import StateGraph, END
+from langsmith import Client
+
 class CorrectiveRAGService:
     def __init__(self):
-        self.feedback_store = {}  # Store agent corrections
-        self.correction_model = CorrectionLearner()
+        # LangSmith for observability and debugging
+        self.langsmith_client = Client()
+
+        # LangChain memory for correction history
+        self.correction_memory = ConversationBufferWindowMemory(
+            memory_key="correction_history",
+            return_messages=True,
+            k=50  # Keep last 50 corrections
+        )
+
+        # LangChain correction chain
+        self.correction_chain = LLMChain(
+            llm=OpenAI(temperature=0.1),
+            prompt=PromptTemplate(
+                input_variables=["original_response", "correction_feedback", "similar_cases"],
+                template="""
+                Original AI Response: {original_response}
+
+                Agent Correction: {correction_feedback}
+
+                Similar Past Cases: {similar_cases}
+
+                Generate an improved response that incorporates the correction and learns from similar cases.
+                Focus on accuracy and avoid the mistake that required correction.
+
+                Improved Response:"""
+            ),
+            memory=self.correction_memory,
+            callbacks=[LangChainTracer()],
+            verbose=True
+        )
+
+        # LangGraph for correction workflow
+        self.correction_workflow = self._build_correction_workflow()
+
+    def _build_correction_workflow(self):
+        """Build LangGraph workflow for correction processing"""
+        workflow = StateGraph(CorrectionState)
+
+        # Add nodes
+        workflow.add_node("analyze_feedback", self._analyze_feedback)
+        workflow.add_node("find_similar_cases", self._find_similar_cases)
+        workflow.add_node("apply_correction", self._apply_correction)
+        workflow.add_node("validate_correction", self._validate_correction)
+
+        # Add edges
+        workflow.add_edge("analyze_feedback", "find_similar_cases")
+        workflow.add_edge("find_similar_cases", "apply_correction")
+        workflow.add_edge("apply_correction", "validate_correction")
+        workflow.add_edge("validate_correction", END)
+
+        return workflow.compile()
 
     async def process_ticket_with_correction(self, ticket_data: Dict) -> Dict:
-        """Process support ticket with corrective feedback"""
+        """Process support ticket with corrective feedback using LangChain + LangGraph"""
 
-        # Initial RAG response
+        # Initial RAG response (using existing system)
         initial_response = await self.generate_initial_response(ticket_data)
 
-        # Check for similar past corrections
-        corrections = await self.find_similar_corrections(initial_response)
+        # Execute correction workflow with LangGraph
+        correction_result = await self.correction_workflow.ainvoke({
+            "ticket_data": ticket_data,
+            "initial_response": initial_response,
+            "correction_history": self.correction_memory.load_memory_variables({})
+        })
 
-        if corrections:
-            # Apply corrections to improve response
-            corrected_response = await self.apply_corrections(initial_response, corrections)
-            return corrected_response
+        # Log to LangSmith for observability
+        self.langsmith_client.create_run(
+            name="corrective_rag_workflow",
+            inputs={"ticket_data": ticket_data, "initial_response": initial_response},
+            outputs={"corrected_response": correction_result}
+        )
 
-        return initial_response
+        return correction_result
 
     async def store_agent_feedback(self, ticket_id: str, ai_response: str,
                                  agent_correction: str, feedback_score: int):
-        """Store agent corrections for future learning"""
+        """Store agent corrections using LangChain memory and LangSmith tracking"""
 
         correction_data = {
             'ticket_id': ticket_id,
@@ -63,11 +167,21 @@ class CorrectiveRAGService:
             'agent_correction': agent_correction,
             'feedback_score': feedback_score,
             'timestamp': datetime.utcnow(),
-            'patterns': await self.extract_correction_patterns(ai_response, agent_correction)
+            'correction_pattern': await self.extract_correction_patterns(ai_response, agent_correction)
         }
 
-        await self.feedback_store.store(correction_data)
-        await self.update_correction_model(correction_data)
+        # Store in LangChain memory for future retrieval
+        self.correction_memory.save_context(
+            {"input": ai_response},
+            {"output": f"Correction: {agent_correction} (Score: {feedback_score})"}
+        )
+
+        # Log to LangSmith for analysis and debugging
+        self.langsmith_client.create_run(
+            name="feedback_collection",
+            inputs={"ai_response": ai_response, "agent_correction": agent_correction},
+            outputs={"feedback_score": feedback_score, "patterns": correction_data['correction_pattern']}
+        )
 ```
 
 #### Phase 2: Pattern Recognition & Auto-Correction (3 weeks)
@@ -236,69 +350,155 @@ class OnlineLearner:
 
 #### Phase 1: Agent Orchestration Framework (3 weeks)
 ```python
+# Using LangGraph for complex multi-agent workflows
+from langgraph import StateGraph, END
+from langchain.agents import create_openai_functions_agent, AgentExecutor
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema import HumanMessage, AIMessage
+from langchain.tools import Tool
+from langchain_community.vectorstores import Pinecone as LangChainPinecone
+from langchain_community.embeddings import OpenAIEmbeddings
+from langsmith import Client
+
 class SalesAgentOrchestrator:
     def __init__(self):
+        # LangSmith for agent monitoring
+        self.langsmith_client = Client()
+
+        # Initialize vector store for RAG capabilities
+        self.vectorstore = LangChainPinecone.from_existing_index(
+            index_name="neuracrm-knowledge",
+            embedding=OpenAIEmbeddings()
+        )
+
+        # Create specialized agents using LangChain
         self.agents = {
-            'qualifier': LeadQualificationAgent(),
-            'researcher': CompanyResearchAgent(),
-            'outreach': PersonalizedOutreachAgent(),
-            'negotiator': DealNegotiationAgent(),
-            'closer': DealClosingAgent()
+            'qualifier': self._create_qualification_agent(),
+            'researcher': self._create_research_agent(),
+            'outreach': self._create_outreach_agent(),
+            'negotiator': self._create_negotiation_agent(),
+            'closer': self._create_closing_agent()
         }
-        self.workflow_engine = WorkflowEngine()
-        self.communication_bus = AgentCommunicationBus()
+
+        # Build LangGraph workflow
+        self.workflow = self._build_sales_workflow()
+
+    def _create_qualification_agent(self):
+        """Create lead qualification agent with RAG capabilities"""
+        tools = [
+            Tool(
+                name="knowledge_search",
+                description="Search knowledge base for lead qualification criteria",
+                func=lambda q: self.vectorstore.similarity_search(q, k=3)
+            )
+        ]
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a lead qualification expert. Use the knowledge base to assess lead quality.
+            Consider: company size, industry, budget, timeline, and engagement signals.
+            Provide a score from 0-100 and detailed reasoning."""),
+            ("human", "{input}"),
+            ("assistant", "{agent_scratchpad}")
+        ])
+
+        agent = create_openai_functions_agent(
+            llm=OpenAI(temperature=0.2),
+            tools=tools,
+            prompt=prompt
+        )
+
+        return AgentExecutor.from_agent_and_tools(
+            agent=agent,
+            tools=tools,
+            verbose=True,
+            handle_parsing_errors=True
+        )
+
+    def _build_sales_workflow(self):
+        """Build complex sales workflow using LangGraph"""
+        workflow = StateGraph(SalesWorkflowState)
+
+        # Add agent nodes
+        workflow.add_node("qualify_lead", self._execute_qualifier_agent)
+        workflow.add_node("research_company", self._execute_researcher_agent)
+        workflow.add_node("personalize_outreach", self._execute_outreach_agent)
+        workflow.add_node("negotiate_deal", self._execute_negotiator_agent)
+        workflow.add_node("close_deal", self._execute_closer_agent)
+        workflow.add_node("human_handoff", self._handle_human_handoff)
+
+        # Define workflow logic with conditional edges
+        workflow.add_conditional_edges(
+            "qualify_lead",
+            self._should_research,
+            {
+                "research": "research_company",
+                "skip_research": "personalize_outreach"
+            }
+        )
+
+        workflow.add_edge("research_company", "personalize_outreach")
+        workflow.add_edge("personalize_outreach", "negotiate_deal")
+
+        workflow.add_conditional_edges(
+            "negotiate_deal",
+            self._should_close,
+            {
+                "close": "close_deal",
+                "handoff": "human_handoff"
+            }
+        )
+
+        workflow.add_edge("close_deal", END)
+        workflow.add_edge("human_handoff", END)
+
+        # Set entry point
+        workflow.set_entry_point("qualify_lead")
+
+        return workflow.compile()
 
     async def orchestrate_sales_workflow(self, lead_data: Dict) -> Dict:
-        """Orchestrate multi-agent sales workflow"""
+        """Orchestrate multi-agent sales workflow using LangGraph"""
 
-        # Initialize workflow context
-        context = await self.initialize_workflow_context(lead_data)
+        # Initialize workflow state
+        initial_state = SalesWorkflowState(
+            lead_data=lead_data,
+            current_stage="qualification",
+            agent_outputs={},
+            human_handoff_required=False,
+            workflow_complete=False
+        )
 
-        # Execute agent pipeline
-        results = {}
-        for agent_name, agent in self.agents.items():
-            # Check if agent should execute
-            if await self.should_agent_execute(agent_name, context):
-                # Execute agent with RAG capabilities
-                agent_result = await agent.execute_with_rag(context)
+        # Execute workflow
+        final_state = await self.workflow.ainvoke(initial_state)
 
-                # Update shared context
-                context = await self.update_shared_context(context, agent_result)
-
-                # Store agent results
-                results[agent_name] = agent_result
-
-                # Check for workflow completion or handoff
-                if await self.should_handoff_to_human(context):
-                    break
-
-        return {
-            'workflow_results': results,
-            'final_context': context,
-            'recommendations': await self.generate_workflow_recommendations(results)
-        }
-
-class LeadQualificationAgent:
-    def __init__(self):
-        self.rag_service = RAGService()
-        self.qualification_rules = QualificationRules()
-
-    async def execute_with_rag(self, context: Dict) -> Dict:
-        """Execute lead qualification using RAG"""
-
-        # Retrieve relevant qualification knowledge
-        query = f"Qualify lead: {context['company']} in {context['industry']}"
-        relevant_knowledge = await self.rag_service.search_knowledge(query, top_k=5)
-
-        # Generate qualification assessment
-        assessment = await self.generate_qualification_assessment(context, relevant_knowledge)
+        # Log complete workflow to LangSmith
+        self.langsmith_client.create_run(
+            name="sales_workflow_orchestration",
+            inputs={"lead_data": lead_data},
+            outputs={
+                "final_state": final_state,
+                "agent_outputs": final_state.agent_outputs,
+                "human_handoff": final_state.human_handoff_required
+            }
+        )
 
         return {
-            'agent': 'qualifier',
-            'assessment': assessment,
-            'confidence': await self.calculate_confidence(assessment),
-            'next_steps': await self.determine_next_steps(assessment)
+            'workflow_results': final_state.agent_outputs,
+            'final_stage': final_state.current_stage,
+            'human_handoff_required': final_state.human_handoff_required,
+            'recommendations': await self._generate_workflow_recommendations(final_state)
         }
+
+    async def _execute_qualifier_agent(self, state: SalesWorkflowState) -> SalesWorkflowState:
+        """Execute qualification agent"""
+        result = await self.agents['qualifier'].ainvoke({
+            "input": f"Qualify this lead: {state.lead_data}"
+        })
+
+        state.agent_outputs['qualifier'] = result
+        state.current_stage = "qualified"
+
+        return state
 ```
 
 #### Phase 2: Inter-Agent Communication (2 weeks)
@@ -365,46 +565,139 @@ class AgentCommunicationBus:
 
 #### Phase 1: Interaction History Indexing (2 weeks)
 ```python
+# Using LlamaIndex for advanced contextual indexing and retrieval
+from llama_index import VectorStoreIndex, ServiceContext
+from llama_index.vector_stores import PineconeVectorStore
+from llama_index.embeddings import OpenAIEmbedding
+from llama_index.llms import OpenAI
+from llama_index.schema import Document
+from llama_index.indices.composability import ComposableGraph
+from langsmith import Client
+
 class ContextualCRMService:
     def __init__(self):
-        self.interaction_indexer = InteractionIndexer()
-        self.context_builder = ContextBuilder()
-        self.personalization_engine = PersonalizationEngine()
+        # LangSmith for observability
+        self.langsmith_client = Client()
+
+        # LlamaIndex service context with custom settings
+        self.service_context = ServiceContext.from_defaults(
+            llm=OpenAI(temperature=0.1, model="gpt-4"),
+            embed_model=OpenAIEmbedding(),
+            chunk_size=512,  # Smaller chunks for precise context
+            chunk_overlap=50
+        )
+
+        # Initialize vector store
+        self.vector_store = PineconeVectorStore(
+            pinecone_index_name="neuracrm-customer-context",
+            dimension=1536
+        )
+
+        # Create separate indices for different context types
+        self.interaction_index = VectorStoreIndex.from_vector_store(
+            vector_store=self.vector_store,
+            service_context=self.service_context
+        )
+
+        self.customer_profile_index = VectorStoreIndex.from_vector_store(
+            vector_store=self.vector_store,
+            service_context=self.service_context
+        )
+
+        # Composable graph for multi-index queries
+        self.composable_graph = ComposableGraph.from_indices(
+            indices=[self.interaction_index, self.customer_profile_index],
+            index_summaries=["Customer interaction history", "Customer profile data"]
+        )
 
     async def build_customer_context(self, customer_id: str) -> Dict:
-        """Build comprehensive customer context from all interactions"""
+        """Build comprehensive customer context using LlamaIndex"""
 
-        # Retrieve all customer interactions
+        # Retrieve all customer interactions from CRM database
         interactions = await self.get_customer_interactions(customer_id)
 
-        # Index interactions for retrieval
-        indexed_interactions = await self.interaction_indexer.index_interactions(interactions)
+        # Convert interactions to LlamaIndex documents
+        interaction_documents = [
+            Document(
+                text=interaction['content'],
+                metadata={
+                    'customer_id': customer_id,
+                    'interaction_type': interaction['type'],
+                    'timestamp': interaction['timestamp'],
+                    'channel': interaction['channel'],
+                    'sentiment': interaction.get('sentiment'),
+                    'outcome': interaction.get('outcome')
+                }
+            ) for interaction in interactions
+        ]
 
-        # Build contextual summary
-        context_summary = await self.context_builder.build_summary(indexed_interactions)
+        # Index interactions with LlamaIndex
+        self.interaction_index.insert_nodes(
+            await self.service_context.node_parser.get_nodes_from_documents(
+                interaction_documents
+            )
+        )
+
+        # Build contextual summary using LlamaIndex query engine
+        query_engine = self.interaction_index.as_query_engine(
+            similarity_top_k=10,
+            response_mode="tree_summarize"
+        )
+
+        context_summary = await query_engine.aquery(
+            f"Summarize all interactions for customer {customer_id}. "
+            "Include key topics, sentiment trends, and important details."
+        )
 
         # Generate personalization profile
-        personalization = await self.personalization_engine.create_profile(context_summary)
+        personalization_profile = await self._generate_personalization_profile(
+            customer_id, context_summary
+        )
 
-        return {
+        context_data = {
             'customer_id': customer_id,
-            'interaction_summary': context_summary,
-            'personalization_profile': personalization,
+            'interaction_summary': str(context_summary),
+            'personalization_profile': personalization_profile,
             'last_updated': datetime.utcnow(),
-            'interaction_count': len(interactions)
+            'interaction_count': len(interactions),
+            'context_index': self.interaction_index.index_id
         }
 
+        # Log to LangSmith
+        self.langsmith_client.create_run(
+            name="customer_context_building",
+            inputs={"customer_id": customer_id, "interaction_count": len(interactions)},
+            outputs=context_data
+        )
+
+        return context_data
+
     async def retrieve_contextual_responses(self, query: str, customer_context: Dict) -> List[Dict]:
-        """Retrieve responses personalized for customer context"""
+        """Retrieve responses personalized for customer context using LlamaIndex"""
 
         # Enhance query with customer context
-        enhanced_query = await self.enhance_query_with_context(query, customer_context)
+        enhanced_query = await self._enhance_query_with_context(query, customer_context)
 
-        # Search knowledge base with personalization
-        base_results = await self.rag_service.search_knowledge(enhanced_query)
+        # Use composable graph for multi-index search
+        query_engine = self.composable_graph.as_query_engine()
+
+        # Retrieve contextual information
+        context_results = await query_engine.aquery(
+            f"Find relevant information for: {enhanced_query}\n"
+            f"Customer context: {customer_context.get('interaction_summary', '')}"
+        )
 
         # Personalize results based on customer history
-        personalized_results = await self.personalize_results(base_results, customer_context)
+        personalized_results = await self._personalize_results_with_llamaindex(
+            context_results, customer_context
+        )
+
+        # Log contextual retrieval
+        self.langsmith_client.create_run(
+            name="contextual_response_retrieval",
+            inputs={"query": query, "customer_context": customer_context},
+            outputs={"personalized_results": personalized_results}
+        )
 
         return personalized_results
 ```
