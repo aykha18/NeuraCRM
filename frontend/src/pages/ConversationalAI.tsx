@@ -67,7 +67,12 @@ const ConversationalAI: React.FC = () => {
 
   const loadVoices = async () => {
     try {
-      const response = await fetch('/conversational-ai/voices');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/voices', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       setVoices(data.voices || []);
     } catch (error) {
@@ -77,7 +82,12 @@ const ConversationalAI: React.FC = () => {
 
   const loadAgents = async () => {
     try {
-      const response = await fetch('/conversational-ai/agents');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/agents', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       setAgents(data.agents || []);
     } catch (error) {
@@ -87,7 +97,12 @@ const ConversationalAI: React.FC = () => {
 
   const loadCalls = async () => {
     try {
-      const response = await fetch('/conversational-ai/calls');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/calls', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       setCalls(data.calls || []);
     } catch (error) {
@@ -97,7 +112,12 @@ const ConversationalAI: React.FC = () => {
 
   const loadAnalytics = async () => {
     try {
-      const response = await fetch('/conversational-ai/analytics');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/analytics', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       setAnalytics(data);
     } catch (error) {
@@ -108,8 +128,12 @@ const ConversationalAI: React.FC = () => {
   const createDemoAgents = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/conversational-ai/demo/create-agents', {
-        method: 'POST'
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/demo/create-agents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       const data = await response.json();
       if (data.message) {
@@ -129,10 +153,12 @@ const ConversationalAI: React.FC = () => {
   const createCall = async (agentId: string, toNumber: string, fromNumber?: string) => {
     setLoading(true);
     try {
-      const response = await fetch('/conversational-ai/calls', {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/conversational-ai/calls', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           agent_id: agentId,

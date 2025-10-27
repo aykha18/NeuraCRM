@@ -54,8 +54,8 @@ def wait_for_database(max_retries=30, retry_delay=2):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from working_app import app
-    logger.info("Successfully imported app from working_app.py")
+    from app import app
+    logger.info("Successfully imported app from app.py")
 except Exception as e:
     logger.error(f"Failed to import app: {e}")
     logger.info("Creating minimal app as fallback...")

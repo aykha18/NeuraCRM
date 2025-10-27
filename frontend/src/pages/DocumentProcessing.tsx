@@ -69,13 +69,24 @@ export default function DocumentProcessing() {
 
   const loadDocuments = async () => {
     try {
-      const response = await fetch('/api/documents/documents');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/documents/documents', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setDocuments(data);
+      } else {
+        console.error('Error loading documents:', response.status, response.statusText);
+        // Set empty documents array if API fails
+        setDocuments([]);
       }
     } catch (err) {
       console.error('Error loading documents:', err);
+      // Set empty documents array if fetch fails
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
@@ -83,13 +94,36 @@ export default function DocumentProcessing() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/documents/stats');
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/documents/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else {
+        console.error('Error loading stats:', response.status, response.statusText);
+        // Set default stats if API fails
+        setStats({
+          total_documents: 0,
+          total_size_mb: 0,
+          by_type: {},
+          processing_status: { completed: 0, processing: 0, failed: 0 },
+          recent_uploads: 0
+        });
       }
     } catch (err) {
       console.error('Error loading stats:', err);
+      // Set default stats if fetch fails
+      setStats({
+        total_documents: 0,
+        total_size_mb: 0,
+        by_type: {},
+        processing_status: { completed: 0, processing: 0, failed: 0 },
+        recent_uploads: 0
+      });
     }
   };
 

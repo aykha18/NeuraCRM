@@ -22,7 +22,7 @@ from api.services.retell_ai import retell_ai_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/conversational-ai", tags=["Conversational AI"])
+router = APIRouter(prefix="/api/conversational-ai", tags=["Conversational AI"])
 
 # In-memory storage for demo purposes (replace with database in production)
 agents_storage: Dict[str, AgentResponse] = {}
