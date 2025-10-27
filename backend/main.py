@@ -62,10 +62,13 @@ except Exception as e:
     # Create a minimal app that at least responds to health checks
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
     from datetime import datetime
-    
+    import os
+
     app = FastAPI(title="CRM API - Fallback Mode")
-    
+
     # CORS setup
     app.add_middleware(
         CORSMiddleware,
@@ -74,15 +77,31 @@ except Exception as e:
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
-    
-    @app.get("/")
-    def read_root():
-        return {"message": "CRM API is running (fallback mode).", "status": "healthy"}
-    
+
+    # Mount static files for frontend
+    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+    if os.path.exists(frontend_dist):
+        app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+
+        @app.get("/")
+        def read_root():
+            return FileResponse(os.path.join(frontend_dist, "index.html"))
+
+        @app.get("/{path:path}")
+        def serve_frontend(path: str):
+            file_path = os.path.join(frontend_dist, path)
+            if os.path.exists(file_path) and not os.path.isdir(file_path):
+                return FileResponse(file_path)
+            return FileResponse(os.path.join(frontend_dist, "index.html"))
+    else:
+        @app.get("/")
+        def read_root():
+            return {"message": "CRM API is running (fallback mode).", "status": "healthy"}
+
     @app.get("/api/ping")
     def ping():
         return {"status": "ok", "message": "pong", "timestamp": datetime.now().isoformat()}
-    
+
     @app.get("/health")
     def health_check():
         return {"status": "healthy", "message": "Service is running (fallback mode)"}
