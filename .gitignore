@@ -3,10 +3,12 @@ node_modules/
 
 # Build
 build/
-dist/
 .next/
 out/
 coverage/
+
+# Frontend dist (keep for Railway deployment)
+# dist/
 
 # Logs
 npm-debug.log*
