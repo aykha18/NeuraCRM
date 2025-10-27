@@ -59,13 +59,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to import app: {e}")
     logger.info("Creating minimal app as fallback...")
-    # Try importing working_app as backup
-    try:
-        from working_app import app
-        logger.info("Successfully imported app from working_app.py")
-    except Exception as e2:
-        logger.error(f"Failed to import working_app: {e2}")
-        logger.info("Creating minimal app as fallback...")
     # Create a minimal app that at least responds to health checks
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
