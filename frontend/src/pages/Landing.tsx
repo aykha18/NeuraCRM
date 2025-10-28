@@ -17,13 +17,19 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Landing: React.FC = () => {
+  console.log('Landing component rendering...');
   const { isAuthenticated } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  console.log('Landing: isAuthenticated =', isAuthenticated);
+
   // Redirect authenticated users to dashboard
   if (isAuthenticated) {
+    console.log('Landing: Redirecting authenticated user to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
+
+  console.log('Landing: Rendering landing page for unauthenticated user');
 
   const features = [
     {
@@ -124,8 +130,15 @@ const Landing: React.FC = () => {
     }
   ];
 
+  console.log('Landing: Returning JSX');
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Debug indicator */}
+      <div style={{ position: 'fixed', top: '10px', right: '10px', background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>
+        DEBUG: Landing Page Loaded
+      </div>
+
       {/* Navigation */}
       <nav className="fixed w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

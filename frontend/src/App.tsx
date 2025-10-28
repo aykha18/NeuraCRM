@@ -39,6 +39,8 @@ import { UserProvider } from "./contexts/UserContext";
  * - Defines routes for Dashboard, Leads, Contacts, Kanban, and Chat pages
  */
 function App() {
+  console.log('App component rendering...');
+
   return (
     // AuthProvider provides authentication context for the app
     <AuthProvider>
