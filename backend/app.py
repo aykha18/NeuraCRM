@@ -194,8 +194,12 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    """API information"""
-    return {"message": "NeuraCRM API", "version": "1.0.0", "docs": "/docs"}
+    """Serve the React frontend"""
+    try:
+        with open("frontend_dist/index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return {"message": "NeuraCRM API", "version": "1.0.0", "docs": "/docs"}
 
 @app.post("/api/auth/login")
 async def login(request: Request, db: Session = Depends(get_db)):
@@ -1179,6 +1183,16 @@ async def search_documents(q: str, current_user: User = Depends(get_current_user
             "processing_status": "completed"
         }
     ]
+
+# Static file serving for React frontend
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Mount static files
+try:
+    app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")
+except RuntimeError:
+    print("Warning: frontend_dist directory not found, static files not mounted")
 
 if __name__ == "__main__":
     import uvicorn
