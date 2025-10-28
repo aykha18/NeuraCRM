@@ -192,14 +192,16 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "NeuraCRM"}
 
-@app.get("/")
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the React frontend"""
     try:
         with open("frontend_dist/index.html", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return {"message": "NeuraCRM API", "version": "1.0.0", "docs": "/docs"}
+        return HTMLResponse("<h1>NeuraCRM</h1><p>Frontend not built yet. Please run build process.</p>", status_code=200)
 
 @app.post("/api/auth/login")
 async def login(request: Request, db: Session = Depends(get_db)):
