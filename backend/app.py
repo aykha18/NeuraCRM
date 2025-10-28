@@ -348,78 +348,78 @@ async def get_leads(current_user: User = Depends(get_current_user), db: Session 
         created_at=l.created_at.isoformat()
     ) for l in leads]
 
-# Include routers with error handling
-try:
-    # Kanban endpoints - Use the existing kanban router
-    from backend.api.routers.kanban import router as kanban_router
-    app.include_router(kanban_router)
-    print("✓ Kanban router loaded")
-except Exception as e:
-    print(f"✗ Failed to load kanban router: {e}")
+# Include routers with error handling - commented out for now to avoid import issues
+# try:
+#     # Kanban endpoints - Use the existing kanban router
+#     from backend.api.routers.kanban import router as kanban_router
+#     app.include_router(kanban_router)
+#     print("Kanban router loaded")
+# except Exception as e:
+#     print(f"Failed to load kanban router: {e}")
 
-try:
-    # Predictive Analytics router
-    from backend.api.routers.predictive_analytics import router as predictive_analytics_router
-    app.include_router(predictive_analytics_router)
-    print("✓ Predictive Analytics router loaded")
-except Exception as e:
-    print(f"✗ Failed to load predictive analytics router: {e}")
+# try:
+#     # Predictive Analytics router
+#     from backend.api.routers.predictive_analytics import router as predictive_analytics_router
+#     app.include_router(predictive_analytics_router)
+#     print("Predictive Analytics router loaded")
+# except Exception as e:
+#     print(f"Failed to load predictive analytics router: {e}")
 
-try:
-    # Email Automation router
-    from backend.api.routers.email_automation import router as email_automation_router
-    app.include_router(email_automation_router)
-    print("✓ Email Automation router loaded")
-except Exception as e:
-    print(f"✗ Failed to load email automation router: {e}")
+# try:
+#     # Email Automation router
+#     from backend.api.routers.email_automation import router as email_automation_router
+#     app.include_router(email_automation_router)
+#     print("Email Automation router loaded")
+# except Exception as e:
+#     print(f"Failed to load email automation router: {e}")
 
-try:
-    # Chat router
-    from backend.api.routers.chat import router as chat_router
-    app.include_router(chat_router)
-    print("✓ Chat router loaded")
-except Exception as e:
-    print(f"✗ Failed to load chat router: {e}")
+# try:
+#     # Chat router
+#     from backend.api.routers.chat import router as chat_router
+#     app.include_router(chat_router)
+#     print("Chat router loaded")
+# except Exception as e:
+#     print(f"Failed to load chat router: {e}")
 
-try:
-    # Conversational AI router
-    from backend.api.routers.conversational_ai import router as conversational_ai_router
-    app.include_router(conversational_ai_router)
-    print("✓ Conversational AI router loaded")
-except Exception as e:
-    print(f"✗ Failed to load conversational AI router: {e}")
+# try:
+#     # Conversational AI router
+#     from backend.api.routers.conversational_ai import router as conversational_ai_router
+#     app.include_router(conversational_ai_router)
+#     print("Conversational AI router loaded")
+# except Exception as e:
+#     print(f"Failed to load conversational AI router: {e}")
 
-try:
-    # Users router
-    from backend.api.routers.users import router as users_router
-    app.include_router(users_router)
-    print("✓ Users router loaded")
-except Exception as e:
-    print(f"✗ Failed to load users router: {e}")
+# try:
+#     # Users router
+#     from backend.api.routers.users import router as users_router
+#     app.include_router(users_router)
+#     print("Users router loaded")
+# except Exception as e:
+#     print(f"Failed to load users router: {e}")
 
-try:
-    # Lead Assignment Rules router
-    from backend.api.routers.lead_assignment_rules import router as lead_assignment_rules_router
-    app.include_router(lead_assignment_rules_router, prefix="/api")
-    print("✓ Lead Assignment Rules router loaded")
-except Exception as e:
-    print(f"✗ Failed to load lead assignment rules router: {e}")
+# try:
+#     # Lead Assignment Rules router
+#     from backend.api.routers.lead_assignment_rules import router as lead_assignment_rules_router
+#     app.include_router(lead_assignment_rules_router, prefix="/api")
+#     print("Lead Assignment Rules router loaded")
+# except Exception as e:
+#     print(f"Failed to load lead assignment rules router: {e}")
 
-try:
-    # Approval Workflows router
-    from backend.api.routers.approval_workflows import router as approval_workflows_router
-    app.include_router(approval_workflows_router, prefix="/api")
-    print("✓ Approval Workflows router loaded")
-except Exception as e:
-    print(f"✗ Failed to load approval workflows router: {e}")
+# try:
+#     # Approval Workflows router
+#     from backend.api.routers.approval_workflows import router as approval_workflows_router
+#     app.include_router(approval_workflows_router, prefix="/api")
+#     print("Approval Workflows router loaded")
+# except Exception as e:
+#     print(f"Failed to load approval workflows router: {e}")
 
-try:
-    # Lead Nurturing router
-    from backend.api.routers.lead_nurturing import router as lead_nurturing_router
-    app.include_router(lead_nurturing_router, prefix="/api")
-    print("✓ Lead Nurturing router loaded")
-except Exception as e:
-    print(f"✗ Failed to load lead nurturing router: {e}")
+# try:
+#     # Lead Nurturing router
+#     from backend.api.routers.lead_nurturing import router as lead_nurturing_router
+#     app.include_router(lead_nurturing_router, prefix="/api")
+#     print("Lead Nurturing router loaded")
+# except Exception as e:
+#     print(f"Failed to load lead nurturing router: {e}")
 
 # Predictive Analytics endpoints - Remove these since we now have the router
 
