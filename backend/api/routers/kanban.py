@@ -123,22 +123,46 @@ def delete_deal(deal_id: int, db: Session = Depends(get_db)):
 
 @router.post("/deals/{deal_id}/move", response_model=DealOut)
 def move_deal_to_stage(
-    deal_id: int, 
+    deal_id: int,
     move_request: DealMoveRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> DealOut:
     """
     Move a deal to a different stage and optionally specify its position
     """
     db_deal = move_deal(
-        db=db, 
-        deal_id=deal_id, 
-        new_stage_id=move_request.to_stage_id, 
+        db=db,
+        deal_id=deal_id,
+        new_stage_id=move_request.to_stage_id,
         new_position=move_request.position
     )
     if db_deal is None:
         raise HTTPException(status_code=404, detail="Deal not found")
-    return db_deal
+
+    # Return the deal with related data
+    deal_with_data = get_deal(db, deal_id)
+    if not deal_with_data:
+        raise HTTPException(status_code=404, detail="Deal not found after move")
+
+    # Convert to proper format
+    deal, contact_name, owner_name, stage_name = deal_with_data
+    deal_dict = {
+        "id": deal.id,
+        "title": deal.title,
+        "description": deal.description,
+        "value": deal.value,
+        "contact_id": deal.contact_id,
+        "owner_id": deal.owner_id,
+        "stage_id": deal.stage_id,
+        "reminder_date": deal.reminder_date,
+        "created_at": deal.created_at,
+        "contact_name": contact_name,
+        "owner_name": owner_name,
+        "stage_name": stage_name,
+        "watchers": [user.name for user in deal.watchers]
+    }
+    return deal_dict
 
 @router.post("/deals/{deal_id}/watch", response_model=DealOut)
 def add_watcher(deal_id: int, db: Session = Depends(get_db)):
