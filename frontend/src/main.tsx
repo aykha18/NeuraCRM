@@ -16,14 +16,23 @@ const queryClient = new QueryClient({
 })
 
 // Capture UTM on first load
-try {
-  captureUtmAttribution(window.location.href, document.referrer || '');
-} catch {}
+if (captureUtmAttribution) {
+  try {
+    captureUtmAttribution(window.location.href, document.referrer || '');
+  } catch (error) {
+    console.error('UTM capture failed:', error);
+  }
+}
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </StrictMode>,
-)
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  console.error('Root element not found!');
+} else {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </StrictMode>,
+  )
+}
