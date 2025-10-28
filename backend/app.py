@@ -426,6 +426,14 @@ try:
 except Exception as e:
     print(f"Failed to load lead nurturing router: {e}")
 
+try:
+    # Telephony router
+    from backend.api.routers.telephony import router as telephony_router
+    app.include_router(telephony_router)
+    print("Telephony router loaded")
+except Exception as e:
+    print(f"Failed to load telephony router: {e}")
+
 # Predictive Analytics endpoints - Remove these since we now have the router
 
 # Sentiment Analysis endpoints
