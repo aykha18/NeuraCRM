@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from api.crud.kanban import (
+from backend.api.crud.kanban import (
     get_kanban_board,
     get_stage, get_stages, create_stage, update_stage, delete_stage,
     get_deal, create_deal, update_deal, delete_deal, move_deal
 )
-from api.schemas.kanban import (
+from backend.api.schemas.kanban import (
     StageBase, StageCreate, StageUpdate, StageOut,
     DealBase, DealCreate, DealUpdate, DealOut,
     DealMoveRequest, KanbanBoard
 )
-from api.dependencies import get_db, get_current_user
-from api.models import Deal, User
+from backend.api.dependencies import get_db, get_current_user
+from backend.api.models import Deal, User
 
 router = APIRouter(
     prefix="/api/kanban",

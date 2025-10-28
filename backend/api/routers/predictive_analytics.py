@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from api.db import get_db
-from api.dependencies import get_current_user
-from api.models import User
-from api.predictive_analytics import predictive_analytics_service
+from backend.api.db import get_db
+from backend.api.dependencies import get_current_user
+from backend.api.models import User
+from backend.api.predictive_analytics import predictive_analytics_service
 
 router = APIRouter(prefix="/api/predictive-analytics", tags=["Predictive Analytics"])
 
