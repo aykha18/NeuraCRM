@@ -353,10 +353,10 @@ async def get_leads(current_user: User = Depends(get_current_user), db: Session 
         created_at=l.created_at.isoformat()
     ) for l in leads]
 
-# Include routers with error handling
+# Include routers with error handling - use absolute imports for Railway
 try:
     # Kanban endpoints - Use the existing kanban router
-    from .api.routers.kanban import router as kanban_router
+    from backend.api.routers.kanban import router as kanban_router
     app.include_router(kanban_router)
     print("Kanban router loaded")
 except Exception as e:
@@ -364,7 +364,7 @@ except Exception as e:
 
 try:
     # Predictive Analytics router
-    from .api.routers.predictive_analytics import router as predictive_analytics_router
+    from backend.api.routers.predictive_analytics import router as predictive_analytics_router
     app.include_router(predictive_analytics_router)
     print("Predictive Analytics router loaded")
 except Exception as e:
@@ -372,7 +372,7 @@ except Exception as e:
 
 try:
     # Email Automation router
-    from .api.routers.email_automation import router as email_automation_router
+    from backend.api.routers.email_automation import router as email_automation_router
     app.include_router(email_automation_router)
     print("Email Automation router loaded")
 except Exception as e:
@@ -380,7 +380,7 @@ except Exception as e:
 
 try:
     # Chat router
-    from .api.routers.chat import router as chat_router
+    from backend.api.routers.chat import router as chat_router
     app.include_router(chat_router)
     print("Chat router loaded")
 except Exception as e:
@@ -388,7 +388,7 @@ except Exception as e:
 
 try:
     # Conversational AI router
-    from .api.routers.conversational_ai import router as conversational_ai_router
+    from backend.api.routers.conversational_ai import router as conversational_ai_router
     app.include_router(conversational_ai_router)
     print("Conversational AI router loaded")
 except Exception as e:
@@ -396,7 +396,7 @@ except Exception as e:
 
 try:
     # Users router
-    from .api.routers.users import router as users_router
+    from backend.api.routers.users import router as users_router
     app.include_router(users_router)
     print("Users router loaded")
 except Exception as e:
@@ -404,7 +404,7 @@ except Exception as e:
 
 try:
     # Lead Assignment Rules router
-    from .api.routers.lead_assignment_rules import router as lead_assignment_rules_router
+    from backend.api.routers.lead_assignment_rules import router as lead_assignment_rules_router
     app.include_router(lead_assignment_rules_router, prefix="/api")
     print("Lead Assignment Rules router loaded")
 except Exception as e:
@@ -412,7 +412,7 @@ except Exception as e:
 
 try:
     # Approval Workflows router
-    from .api.routers.approval_workflows import router as approval_workflows_router
+    from backend.api.routers.approval_workflows import router as approval_workflows_router
     app.include_router(approval_workflows_router, prefix="/api")
     print("Approval Workflows router loaded")
 except Exception as e:
@@ -420,7 +420,7 @@ except Exception as e:
 
 try:
     # Lead Nurturing router
-    from .api.routers.lead_nurturing import router as lead_nurturing_router
+    from backend.api.routers.lead_nurturing import router as lead_nurturing_router
     app.include_router(lead_nurturing_router, prefix="/api")
     print("Lead Nurturing router loaded")
 except Exception as e:
