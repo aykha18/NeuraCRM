@@ -74,22 +74,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserInfo = async (authToken: string) => {
     try {
+      console.log('Fetching user info from:', `${API_BASE_URL}/api/auth/me`);
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
+      console.log('Auth response status:', response.status);
+
       if (response.ok) {
         const userData = await response.json();
+        console.log('User data received:', userData);
         setUser(userData);
       } else {
+        console.log('Auth failed, clearing token');
         // Token is invalid, remove it
         localStorage.removeItem('access_token');
         setToken(null);
         setUser(null);
       }
     } catch (error) {
+      console.error('Auth fetch error:', error);
       // Silent fail: reset auth state
       localStorage.removeItem('access_token');
       setToken(null);
