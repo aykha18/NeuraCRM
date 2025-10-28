@@ -50,8 +50,11 @@ def wait_for_database(max_retries=30, retry_delay=2):
     
     return False
 
-# Add the current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the current directory and parent directory to Python path for Railway deployment
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, current_dir)
+sys.path.insert(0, parent_dir)
 
 try:
     from app import app
