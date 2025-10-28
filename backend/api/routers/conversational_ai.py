@@ -9,16 +9,16 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
 
-from api.db import get_db
-from api.models import User, Lead, Contact, CallRecord
-from api.schemas.conversational_ai import (
+from ..db import get_db
+from ..models import User, Lead, Contact, CallRecord
+from ..schemas.conversational_ai import (
     AgentCreate, AgentUpdate, AgentResponse, AgentListResponse,
     CallCreate, CallResponse, CallUpdate, CallListResponse,
     VoiceListResponse, ConversationContext, CallAnalytics,
     DemoScenario, DemoScenarioList, ConversationScenario, CallStatus,
     TranscriptEntry, AIThoughtEntry
 )
-from api.services.retell_ai import retell_ai_service
+from ..services.retell_ai import retell_ai_service
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ async def create_demo_agents(db: Session = Depends(get_db)):
 
         for scenario_id, config in scenarios_config.items():
             # Create agent for each scenario
-            from api.services.retell_ai import RetellAIAgent
+            from ..services.retell_ai import RetellAIAgent
 
             retell_agent = RetellAIAgent(
                 name=f"Demo {config['name']} Agent",
@@ -177,7 +177,7 @@ async def create_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
     """Create a new conversational AI agent"""
     try:
         # Create agent in Retell AI
-        from api.services.retell_ai import RetellAIAgent
+        from ..services.retell_ai import RetellAIAgent
         
         retell_agent = RetellAIAgent(
             name=agent_data.name,
@@ -285,7 +285,7 @@ async def update_agent(
         existing_agent = agents_storage[agent_id]
         
         # Update Retell AI agent
-        from api.services.retell_ai import RetellAIAgent
+        from ..services.retell_ai import RetellAIAgent
         
         retell_agent = RetellAIAgent(
             name=agent_data.name or existing_agent.name,
