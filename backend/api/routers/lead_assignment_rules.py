@@ -4,9 +4,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-from api.db import get_db
-from api.dependencies import get_current_user
-from api.models import User
+from backend.api.dependencies import get_db, get_current_user
+from backend.api.models import User
 
 router = APIRouter()
 
