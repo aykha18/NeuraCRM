@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
-from api.db import get_db
-from api.models import User, ChatRoom, ChatMessage, ChatParticipant, Organization
-from api.dependencies import get_current_user
-from api.schemas.chat import (
-    ChatRoomCreate, ChatRoomResponse, ChatMessageCreate, 
+from backend.api.db import get_db
+from backend.api.models import User, ChatRoom, ChatMessage, ChatParticipant, Organization
+from backend.api.dependencies import get_current_user
+from backend.api.schemas.chat import (
+    ChatRoomCreate, ChatRoomResponse, ChatMessageCreate,
     ChatMessageResponse, ChatParticipantResponse, ChatRoomList
 )
 
