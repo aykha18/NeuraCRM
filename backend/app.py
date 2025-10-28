@@ -1190,7 +1190,16 @@ async def search_documents(q: str, current_user: User = Depends(get_current_user
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# Mount static files
+# Catch-all route for React SPA - MUST be last
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    """Serve React SPA for all non-API routes"""
+    try:
+        return FileResponse("frontend_dist/index.html", media_type="text/html")
+    except FileNotFoundError:
+        return {"detail": "Frontend not built yet"}
+
+# Mount static files (only after catch-all route)
 try:
     app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")
 except RuntimeError:
