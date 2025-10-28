@@ -1195,20 +1195,27 @@ async def search_documents(q: str, current_user: User = Depends(get_current_user
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+# Mount static files BEFORE catch-all route
+try:
+    app.mount("/assets", StaticFiles(directory="frontend_dist/assets", html=False), name="assets")
+    app.mount("/vite.svg", StaticFiles(directory="frontend_dist", html=False), name="vite")
+    print("Static files mounted successfully")
+except RuntimeError as e:
+    print(f"Warning: Static files not mounted: {e}")
+
 # Catch-all route for React SPA - MUST be last
 @app.get("/{path:path}")
 async def serve_spa(path: str):
     """Serve React SPA for all non-API routes"""
+    # Skip API routes
+    if path.startswith("api/"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+
     try:
         return FileResponse("frontend_dist/index.html", media_type="text/html")
     except FileNotFoundError:
-        return {"detail": "Frontend not built yet"}
-
-# Mount static files (only after catch-all route)
-try:
-    app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")
-except RuntimeError:
-    print("Warning: frontend_dist directory not found, static files not mounted")
+        return HTMLResponse("<h1>NeuraCRM</h1><p>Frontend not built yet. Please run build process.</p>", status_code=200)
 
 if __name__ == "__main__":
     import uvicorn
