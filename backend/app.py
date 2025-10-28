@@ -405,7 +405,7 @@ except Exception as e:
 try:
     # Lead Assignment Rules router
     from backend.api.routers.lead_assignment_rules import router as lead_assignment_rules_router
-    app.include_router(lead_assignment_rules_router, prefix="/api")
+    app.include_router(lead_assignment_rules_router)
     print("Lead Assignment Rules router loaded")
 except Exception as e:
     print(f"Failed to load lead assignment rules router: {e}")
